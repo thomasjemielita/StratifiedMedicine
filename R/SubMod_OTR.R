@@ -1,0 +1,76 @@
+#' Subgroup Identification: CTREE
+#'
+#' Uses the CTREE (conditional inference trees) algorithm to identify subgroups.
+#' For continuous, binary, or survival outcomes, regress I(PLE>thres)~X with weights=abs(PLE)
+#'
+#' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
+#' @param A Treatment variable. (a=1,...A)
+#' @param X Covariate matrix. Must be numeric.
+#' @param Xtest Test set
+#' @param mu_train Patient-level estimates (See PLE_models)
+#' @param minbucket Minimum number of observations in a tree node.
+#' Default = floor( dim(train)[1]*0.05  )
+#' @param maxdepth Maximum depth of any node in the tree (default=4)
+#' @param thres Threshold for I(PLE>thres) (default=0)
+#' @param ... Any additional parameters, not currently passed through.
+#'
+#' @import partykit
+#'
+#' @return CTREE (OTR) model, predictions, identified subgroups, and subgroup rules/definitions.
+#'  \itemize{
+#'   \item mod - CTREE (OTR) model object
+#'   \item Subgrps.train - Identified subgroups (training set)
+#'   \item Subgrps.test - Identified subgroups (test set)
+#'   \item pred.train - Predictions (training set)
+#'   \item pred.test - Predictions (test set)
+#'   \item Rules - Subgroups rules/definitions
+#' }
+#'
+#' @export
+#' @examples
+#' library(StratifiedMedicine)
+#'
+#' ## Continuous ##
+#' dat_ctns = generate_subgrp_data(family="gaussian")
+#' Y = dat_ctns$Y
+#' X = dat_ctns$X
+#' A = dat_ctns$A
+#'
+#' \donttest{
+#' ## Estimate PLEs (through Ranger) ##
+#' mod_ple = PLE_ranger(Y, A, X, Xtest=X)
+#'
+#' ## Fit OTR Subgroup Model ##
+#' res_OTR = SubMod_OTR(Y, A, X, Xtest=X, mu_train = mod_ple$mu_train)
+#' plot(res_OTR$mod)
+#' }
+#'
+#' @seealso \code{\link{PRISM}}, \code{\link{ctree}}
+
+#### OTR: I(PLE>thres) ~ X, weights = abs(PLE) ###
+SubMod_OTR = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.05  ),
+                      maxdepth = 4, thres=0, ...){
+  ## Set up data ##
+  ind_PLE = ifelse(mu_train$PLE>thres, 1, 0)
+  w_PLE = abs(mu_train$PLE)
+  hold = data.frame(ind_PLE, X)
+  mod <- suppressWarnings( ctree(ind_PLE ~ ., data = hold, weights = w_PLE,
+                                 control = ctree_control(minbucket=minbucket,
+                                                         maxdepth=maxdepth)) )
+  ##  Predict Subgroups for Train/Test ##
+  Subgrps.train = as.numeric( predict(mod, type="node") )
+  Subgrps.test = as.numeric( predict(mod, type="node", newdata = Xtest) )
+  Rules = list_rules(mod)
+  if (length(unique(Subgrps.train))==1){
+    Rules = data.frame(Subgrps = unique(Subgrps.train), Rules = "All" )
+  }
+  if (length(unique(Subgrps.train))>1){
+    Rules = data.frame(Subgrps = as.numeric(names(Rules)), Rules = as.character(Rules) )
+  }
+  ## Predict E(Y|X=x, A=1)-E(Y|X=x,A=0) ##
+  pred.train = as.numeric( predict(mod) )
+  pred.test = as.numeric( predict(mod, newdata = Xtest) )
+  ## Return Results ##
+  return(  list(mod=mod, Subgrps.train=Subgrps.train, Subgrps.test=Subgrps.test,
+                pred.train=pred.train, pred.test=pred.test, Rules=Rules) )
+}
