@@ -4,9 +4,13 @@
 \alias{generate_subgrp_data}
 \title{Generate Subgroup Data-sets}
 \usage{
-generate_subgrp_data(family, ...)
+generate_subgrp_data(n = 800, seed = 513413, family, ...)
 }
 \arguments{
+\item{n}{sample size (default=800)}
+
+\item{seed}{seed number (default=513413)}
+
 \item{family}{Outcome type ("gaussian", "binomial", "survival")}
 
 \item{...}{Any additional parameters, not currently passed through.}
