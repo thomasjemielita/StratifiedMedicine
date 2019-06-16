@@ -17,6 +17,7 @@
 #'
 #' @return Patient-level estimates (E(Y|X,1), E(Y|X,0), E(Y|X,1)-E(Y|X,0)) for train/test sets.
 #'  \itemize{
+#'   \item mods - trained model(s)
 #'   \item mu_train - Patient-level estimates (training set)
 #'   \item mu_test - Patient-level estimates (test set)
 #' }
@@ -62,15 +63,15 @@ PLE_causal_forest = function(Y, A, X, Xtest, tune=FALSE, num.trees=500, family="
   # W.hat.train = predict(forest.W)$predictions
   # W.hat.test = predict(forest.W, newdata=Xtest)$predictions
   ## Causal Forest ##
-  CFmod = causal_forest(X, Y, W, tune.parameters = tune, num.trees=num.trees,
+  forest.CF = causal_forest(X, Y, W, tune.parameters = tune, num.trees=num.trees,
                         W.hat=W.hat.train, Y.hat=Y.hat.train)
 
   ## Predictions: Train/Test ##
-  PLE.train = CFmod$predictions
+  PLE.train = forest.CF$predictions
   mu0.train = Y.hat.train - W.hat.train * PLE.train
   mu1.train = Y.hat.train + (1 - W.hat.train) * PLE.train
 
-  PLE.test = predict(CFmod, newdata = Xtest)$predictions
+  PLE.test = predict(forest.CF, newdata = Xtest)$predictions
   mu0.test = Y.hat.test - W.hat.test * PLE.test
   mu1.test = Y.hat.test + (1 - W.hat.test) * PLE.test
 
@@ -80,5 +81,5 @@ PLE_causal_forest = function(Y, A, X, Xtest, tune=FALSE, num.trees=500, family="
   mu_test = data.frame(mu1 = mu1.test, mu0 = mu0.test,
                        PLE = PLE.test)
   ## Return Results ##
-  return( list(mu_train = mu_train, mu_test = mu_test) )
+  return( list(mods = list(forest.Y, forest.CF), mu_train = mu_train, mu_test = mu_test) )
 }

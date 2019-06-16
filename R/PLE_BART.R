@@ -15,6 +15,7 @@
 #'
 #' @return Patient-level estimates (E(Y|X,1), E(Y|X,0), E(Y|X,1)-E(Y|X,0)) for train/test sets.
 #'  \itemize{
+#'   \item mods - trained model(s)
 #'   \item mu_train - Patient-level estimates (training set)
 #'   \item mu_test - Patient-level estimates (test set)
 #' }
@@ -65,5 +66,5 @@ PLE_BART = function(Y, A, X, Xtest, family="gaussian", ...){
   mu_test$PLE = mu_test$mu1 - mu_test$mu0
 
   ## Return Results ##
-  return( list(mu_train = mu_train, mu_test=mu_test) )
+  return( list(mods = bartFit, mu_train = mu_train, mu_test=mu_test) )
 }

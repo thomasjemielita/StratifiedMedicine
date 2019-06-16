@@ -19,6 +19,7 @@
 #'
 #' @return Patient-level estimates (E(Y|X,1), E(Y|X,0), E(Y|X,1)-E(Y|X,0)) for train/test sets.
 #'  \itemize{
+#'   \item mods - trained model(s)
 #'   \item mu_train - Patient-level estimates (training set)
 #'   \item mu_test - Patient-level estimates (test set)
 #' }
@@ -55,18 +56,19 @@ PLE_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussi
     train0 =  data.frame(Y=Y[A==0], X[A==0,])
     train1 =  data.frame(Y=Y[A==1], X[A==1,])
     # Trt 0 #
-    RF_0 <- ranger(Y ~ ., data = train0, seed=1, min.node.size = min.node.pct*dim(train0)[1])
+    mod0 <- ranger(Y ~ ., data = train0, seed=1, min.node.size = min.node.pct*dim(train0)[1])
     # Trt 1 #
-    RF_1 <- ranger(Y ~ ., data = train1, seed=2, min.node.size = min.node.pct*dim(train1)[1])
+    mod1 <- ranger(Y ~ ., data = train1, seed=2, min.node.size = min.node.pct*dim(train1)[1])
 
+    mods = list(mod0=mod0, mod1=mod1)
     if (family %in% c("gaussian", "binomial")){
       ## Predictions: Train/Test ##
-      mu_train = data.frame( mu1 =  predict(RF_1, data = X)$predictions,
-                             mu0 = predict(RF_0, data = X)$predictions)
+      mu_train = data.frame( mu1 =  predict(mod1, data = X)$predictions,
+                             mu0 = predict(mod0, data = X)$predictions)
       mu_train$PLE = with(mu_train, mu1 - mu0 )
 
-      mu_test = data.frame( mu1 =  predict(RF_1, data = Xtest)$predictions,
-                            mu0 = predict(RF_0, data = Xtest)$predictions)
+      mu_test = data.frame( mu1 =  predict(mod1, data = Xtest)$predictions,
+                            mu0 = predict(mod0, data = Xtest)$predictions)
       mu_test$PLE = with(mu_test, mu1 - mu0 )
     }
     if (family=="survival"){
@@ -93,19 +95,20 @@ PLE_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussi
     colnames(Xtest1) = c( "A", colnames(Xtest), paste(colnames(Xtest), "_A", sep="") )
 
     ## Fit RF ##
-    RF <- ranger(Y ~ ., data = train.inter, seed=5,
+    mod.inter <- ranger(Y ~ ., data = train.inter, seed=5,
                  min.node.size = min.node.pct*dim(train.inter)[1])
 
     ## Predictions: Train/Test ##
-    mu_train = data.frame( mu1 =  predict(RF, data = Xtrain1)$predictions,
-                           mu0 = predict(RF, data = Xtrain0)$predictions)
+    mu_train = data.frame( mu1 =  predict(mod.inter, data = Xtrain1)$predictions,
+                           mu0 = predict(mod.inter, data = Xtrain0)$predictions)
     mu_train$PLE = with(mu_train, mu1 - mu0 )
 
-    mu_test = data.frame( mu1 =  predict(RF, data = Xtest1)$predictions,
-                          mu0 = predict(RF, data = Xtest0)$predictions)
+    mu_test = data.frame( mu1 =  predict(mod.inter, data = Xtest1)$predictions,
+                          mu0 = predict(mod.inter, data = Xtest0)$predictions)
     mu_test$PLE = with(mu_test, mu1 - mu0 )
+    mods = list(mod.inter=mod.inter)
   }
 
   ## Return Results ##
-  return( list(mu_train = mu_train, mu_test = mu_test) )
+  return( list(mods=mods, mu_train = mu_train, mu_test = mu_test) )
 }

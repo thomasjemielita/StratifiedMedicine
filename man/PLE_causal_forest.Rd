@@ -27,6 +27,7 @@ PLE_causal_forest(Y, A, X, Xtest, tune = FALSE, num.trees = 500,
 \value{
 Patient-level estimates (E(Y|X,1), E(Y|X,0), E(Y|X,1)-E(Y|X,0)) for train/test sets.
  \itemize{
+  \item mods - trained model(s)
   \item mu_train - Patient-level estimates (training set)
   \item mu_test - Patient-level estimates (test set)
 }

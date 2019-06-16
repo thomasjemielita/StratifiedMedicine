@@ -26,6 +26,7 @@ PLE_ENET(Y, A, X, Xtest, lambda = "lambda.min", family, ...)
 Patient-level estimates (E(Y|X,1), E(Y|X,0), E(Y|X,1)-E(Y|X,0)) or
  (HR(X,1), HR(X,0), HR(X,1)-HR(X,0)) for train/test sets.
  \itemize{
+  \item mods - trained model(s)
   \item mu_train - Patient-level estimates (training set)
   \item mu_test - Patient-level estimates (test set)
 }
