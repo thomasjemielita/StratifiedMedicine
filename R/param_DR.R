@@ -1,4 +1,4 @@
-#' Parameter Estimation: Linear Regression
+#' Parameter Estimation: Double-robust estimator
 #'
 #'For each identified subgroups and in the overall population, use the double robust estimator.
 #'Usable for continuous and binary outcomes.
@@ -29,20 +29,20 @@
 #' A = dat_ctns$A
 #'
 #' ## Estimate PLEs (ranger) ##
-#' res_ranger = PLE_ranger(Y, A, X, Xtest=X)
+#' res_ranger = ple_ranger(Y, A, X, Xtest=X)
 #'
 #' ## Identify Subgroups: MOB (lmtree) ##
-#' res_lmtree = SubMod_lmtree(Y, A, X, Xtest=X)
+#' res_lmtree = submod_lmtree(Y, A, X, Xtest=X)
 #'
 #' ## Parameter-estimation ##
-#' params = Param_DR(Y, A, X, mu_hat = res_ranger$mu_train,
+#' params = param_DR(Y, A, X, mu_hat = res_ranger$mu_train,
 #'                   Subgrps = res_lmtree$Subgrps.train, alpha_ovrl=0.05,
 #'                   alpha_s=0.05)
 #' params
 #'
 
 ### AIPTW (Double-Robust) Param ###
-Param_DR = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
+param_DR = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
 
   indata = data.frame(Y=Y, A=A, X)
   ## Overall Estimate ##
