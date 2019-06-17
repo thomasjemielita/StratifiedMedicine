@@ -37,15 +37,15 @@
 #' train = data.frame(Y, A, X)
 #' # Outcome/treatment must be labeled as Y/A #
 #'
-#' res_lmtree1 = SubMod_lmtree(Y, A, X, Xtest=X)
-#' res_lmtree2 = SubMod_lmtree(Y, A, X, Xtest=X, maxdepth=2, minsize=100)
+#' res_lmtree1 = submod_lmtree(Y, A, X, Xtest=X)
+#' res_lmtree2 = submod_lmtree(Y, A, X, Xtest=X, maxdepth=2, minsize=100)
 #' plot(res_lmtree1$mod)
 #' plot(res_lmtree2$mod)
 #'
 #' @seealso \code{\link{PRISM}}, \code{\link{lmtree}}
 #'
 #### lmtree (MOB) ###
-SubMod_lmtree = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0.05  ),
+submod_lmtree = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0.05  ),
                          maxdepth = 4, ...){
 
   ## Fit Model ##
