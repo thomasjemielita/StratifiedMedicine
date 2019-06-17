@@ -30,20 +30,20 @@
 #' train = data.frame(Y, A, X)
 #'
 #' ## Estimate PLEs (ranger) ##
-#' res_ranger = PLE_ranger(Y, A, X, Xtest=X)
+#' res_ranger = ple_ranger(Y, A, X, Xtest=X)
 #'
 #' ## Identify Subgroups: MOB (lmtree) ##
-#' res_lmtree = SubMod_lmtree(Y, A, X, Xtest=X)
+#' res_lmtree = submod_lmtree(Y, A, X, Xtest=X)
 #'
 #' ## Parameter-estimation ##
-#' params = Param_PLE(Y, A, X, mu_hat = res_ranger$mu_train,
+#' params = param_ple(Y, A, X, mu_hat = res_ranger$mu_train,
 #'                   Subgrps = res_lmtree$Subgrps.train, alpha_ovrl=0.05,
 #'                   alpha_s=0.05)
 #' params
 #'
 #'
 ### PLE Param: Plug-in estimator using PLE estimates, Use EIF for SEs
-Param_PLE = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
+param_ple = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
 
   indata = data.frame(Y=Y, A=A, X)
   ## Overall Estimate ##
