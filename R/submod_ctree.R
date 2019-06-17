@@ -1,4 +1,4 @@
-#' Subgroup Identification: CTREE
+#' Subgroup Identification: Conditional Inference Trees (CTREE)
 #'
 #' Uses the CTREE (conditional inference trees) algorithm to identify subgroups.
 #' Usable for continuous and binary outcomes.
@@ -38,23 +38,23 @@
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
-#' res_CTREE1 = SubMod_CTREE(Y, A, X, Xtest=X, family="gaussian")
-#' res_CTREE2 = SubMod_CTREE(Y, A, X, Xtest=X, family="gaussian", maxdepth=2, minsize=100)
-#' plot(res_CTREE1$mod)
-#' plot(res_CTREE2$mod)
+#' res_ctree1 = submod_ctree(Y, A, X, Xtest=X, family="gaussian")
+#' res_ctree2 = submod_ctree(Y, A, X, Xtest=X, family="gaussian", maxdepth=2, minsize=100)
+#' plot(res_ctree1$mod)
+#' plot(res_ctree2$mod)
 #'
 #' # Survival #
 #' dat_surv = generate_subgrp_data(family="survival")
 #' Y = dat_surv$Y
 #' X = dat_surv$X
 #' A = dat_surv$A
-#' res_CTREE3 = SubMod_CTREE(Y, A, X, Xtest=X, family="survival")
-#' plot(res_CTREE3$mod)
+#' res_ctree3 = submod_ctree(Y, A, X, Xtest=X, family="survival")
+#' plot(res_ctree3$mod)
 #'
 #' @seealso \code{\link{PRISM}}, \code{\link{ctree}}
 #'
 #### CTREE ###
-SubMod_CTREE = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.05  ),
+submod_ctree = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.05  ),
                         maxdepth = 4, outcome_PLE=FALSE, family="gaussian", ...){
 
   ## Use PLE as outcome? ##
