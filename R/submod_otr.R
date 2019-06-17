@@ -1,7 +1,6 @@
-#' Subgroup Identification: CTREE
+#' Subgroup Identification: Optimal Treatment Regime (through CTREE)
 #'
-#' Uses the CTREE (conditional inference trees) algorithm to identify subgroups.
-#' For continuous, binary, or survival outcomes, regress I(PLE>thres)~X with weights=abs(PLE)
+#' For continuous, binary, or survival outcomes, regress I(PLE>thres)~X with weights=abs(PLE) in CTREE
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -38,17 +37,17 @@
 #'
 #' \donttest{
 #' ## Estimate PLEs (through Ranger) ##
-#' mod_ple = PLE_ranger(Y, A, X, Xtest=X)
+#' mod_ple = ple_ranger(Y, A, X, Xtest=X)
 #'
 #' ## Fit OTR Subgroup Model ##
-#' res_OTR = SubMod_OTR(Y, A, X, Xtest=X, mu_train = mod_ple$mu_train)
-#' plot(res_OTR$mod)
+#' res_otr = submod_otr(Y, A, X, Xtest=X, mu_train = mod_ple$mu_train)
+#' plot(res_otr$mod)
 #' }
 #'
 #' @seealso \code{\link{PRISM}}, \code{\link{ctree}}
 
 #### OTR: I(PLE>thres) ~ X, weights = abs(PLE) ###
-SubMod_OTR = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.05  ),
+submod_otr = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.05  ),
                       maxdepth = 4, thres=0, ...){
   ## Set up data ##
   ind_PLE = ifelse(mu_train$PLE>thres, 1, 0)
