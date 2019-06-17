@@ -38,14 +38,14 @@
 #' Y = with(surv.dat, Surv(time, cens))
 #' X = surv.dat[,!(colnames(surv.dat) %in% c("time", "cens")) ]
 #' A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
-#' res_weibull = SubMod_weibull(Y, A, X, Xtest=X, family="survival")
+#' res_weibull = submod_weibull(Y, A, X, Xtest=X, family="survival")
 #' plot(res_weibull$mod)
 #' }
 #'
 #' @seealso \code{\link{PRISM}}, \code{\link{mob}}
 #'
 ## MOB: Weibull ##
-SubMod_weibull = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0.05  ),
+submod_weibull = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0.05  ),
                           maxdepth = 4, ...){
 
   #### Weibull Mob Functions ###
