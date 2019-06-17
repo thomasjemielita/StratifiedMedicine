@@ -33,11 +33,11 @@
 #'
 #' \donttest{
 #' # Default (treatment-specific ranger models) #
-#' mod1 = PLE_ranger(Y, A, X, Xtest=X)
+#' mod1 = ple_ranger(Y, A, X, Xtest=X)
 #' summary(mod1$mu_train$PLE)
 #'
 #' # Generate A*X covariates (single ranger model) #
-#' mod2 = PLE_ranger(Y, A, X, Xtest=X, byTrt=0)
+#' mod2 = ple_ranger(Y, A, X, Xtest=X, byTrt=0)
 #' summary(mod2$mu_train$PLE)
 #' }
 #'
@@ -47,7 +47,7 @@
 #' @seealso \code{\link{PRISM}}, \code{\link{ranger}}
 #'
 #### Counterfactual Forest: Ranger ####
-PLE_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussian", ...){
+ple_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussian", ...){
 
   set.seed(668877)
   ## Random Forest models for each Treatment ##
