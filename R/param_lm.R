@@ -28,16 +28,16 @@
 #' A = dat_ctns$A
 #'
 #' ## Identify Subgroups: MOB (lmtree) ##
-#' res_lmtree = SubMod_lmtree(Y, A, X,  Xtest=X)
+#' res_lmtree = submod_lmtree(Y, A, X,  Xtest=X)
 #'
 #' ## Parameter-estimation ##
-#' params = Param_lm(Y, A, X, Subgrps = res_lmtree$Subgrps.train, alpha_ovrl=0.05,
+#' params = param_lm(Y, A, X, Subgrps = res_lmtree$Subgrps.train, alpha_ovrl=0.05,
 #'                   alpha_s=0.05)
 #' params
 #'
 #'
 ### Linear Regression: E(Y|A=1) - E(Y|A=0) ###
-Param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
+param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
 
   indata = data.frame(Y=Y,A=A, X)
   ## Overall estimate ##
