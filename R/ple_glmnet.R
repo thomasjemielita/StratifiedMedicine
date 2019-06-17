@@ -1,4 +1,4 @@
-#' Patient-level Estimates: Elastic Net
+#' Patient-level Estimates: Elastic Net (glmnet)
 #'
 #' Uses the elastic net (glmnet R package) to obtain patient-level estimates.
 #' For continuous/binary, output estimates of E(Y|X,A=a) and E(Y|X,A=1)-E(Y|X,A=0) (PLE).
@@ -32,14 +32,14 @@
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
-#' mod1 = PLE_ENET(Y, A, X, Xtest=X, family="gaussian")
+#' mod1 = ple_glmnet(Y, A, X, Xtest=X, family="gaussian")
 #' summary(mod1$mu_train$PLE)
 #'
 #'
 #' @seealso \code{\link{PRISM}}, \code{\link{glmnet}}
 
-##### ENET: Y~(A,X,A*X) ==> PLEs ######
-PLE_ENET = function(Y, A, X, Xtest, lambda="lambda.min", family, ...){
+##### Elastic net (glmnet): Y~(A,X,A*X) ==> PLEs ######
+ple_glmnet = function(Y, A, X, Xtest, lambda="lambda.min", family, ...){
 
   ## Extract covariate space ###
   X = model.matrix(~. -1, data = X )
