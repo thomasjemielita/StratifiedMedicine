@@ -1,6 +1,6 @@
-#' Subgroup Identification: CART
+#' Subgroup Identification: CART (rpart)
 #'
-#' Uses the CART algorithm to identify subgroups. Usable for continuous and binary outcomes.
+#' Uses the CART algorithm (rpart) to identify subgroups. Usable for continuous and binary outcomes.
 #' Option to use the observed outcome or PLEs for subgroup identification.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
@@ -18,9 +18,9 @@
 #'
 #' @import rpart
 #'
-#' @return CART model, predictions, identified subgroups, and subgroup rules/definitions.
+#' @return rpart model, predictions, identified subgroups, and subgroup rules/definitions.
 #'  \itemize{
-#'   \item mod - CART model object
+#'   \item mod - rpart model as partykit object
 #'   \item Subgrps.train - Identified subgroups (training set)
 #'   \item Subgrps.test - Identified subgroups (test set)
 #'   \item pred.train - Predictions (training set)
@@ -38,15 +38,15 @@
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
-#' res_CART1 = SubMod_CART(Y, A, X, Xtest=X, family="gaussian")
-#' res_CART2 = SubMod_CART(Y, A, X, Xtest=X, maxdepth=2, minbucket=100, family="gaussian")
-#' plot(res_CART1$mod)
-#' plot(res_CART2$mod)
+#' res_rpart1 = submod_rpart(Y, A, X, Xtest=X, family="gaussian")
+#' res_rpart2 = submod_rpart(Y, A, X, Xtest=X, maxdepth=2, minbucket=100, family="gaussian")
+#' plot(res_rpart1$mod)
+#' plot(res_rpart2$mod)
 #'
 #' @seealso \code{\link{PRISM}}, \code{\link{rpart}}
 #'
-#### CART ####
-SubMod_CART = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.05  ),
+## CART(rpart) ###
+submod_rpart = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.05  ),
                        maxdepth = 4, outcome_PLE=FALSE, family="gaussian", ...){
 
   ## Use PLE as outcome? #
