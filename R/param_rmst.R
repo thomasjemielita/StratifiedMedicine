@@ -35,18 +35,18 @@
 #` # A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
 #'
 #' # MOB-Weibull Subgroup Model ##
-#' res_weibull = SubMod_weibull(Y, A, X, Xtest=X, family="survival")
+#' res_weibull = submod_weibull(Y, A, X, Xtest=X, family="survival")
 #' plot(res_weibull$mod)
 #'
 #' ## Parameter-Estimation ##
-#' params = Param_RMST(Y, A, X, Subgrps = res_weibull$Subgrps.train, alpha_ovrl=0.05,
+#' params = param_rmst(Y, A, X, Subgrps = res_weibull$Subgrps.train, alpha_ovrl=0.05,
 #'                    alpha_s=0.05)
 #' params
 #' }
 #'
 #'
 ### RMST (unadjusted) ###
-Param_RMST = function(Y, A, X, mu_hat, alpha_ovrl, alpha_s, Subgrps, ...){
+param_rmst = function(Y, A, X, mu_hat, alpha_ovrl, alpha_s, Subgrps, ...){
   indata = data.frame(Y=Y, A=A, X)
   ### Loop through subgroups ##
   looper = function(s){
