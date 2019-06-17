@@ -1,4 +1,4 @@
-#' Filter: Random Forest Variable Importance
+#' Filter: Random Forest (ranger) Variable Importance
 #'
 #' Filtering through Random Forest Variable Importance with p-values.
 #' Default is to remove variables with p-values >= 0.10.
@@ -32,7 +32,7 @@
 #' A = dat_ctns$A
 #'
 #' \donttest{
-#' mod1 = filter_RF(Y, A, X, K=200) # Same as default #
+#' mod1 = filter_ranger(Y, A, X, K=200) # Same as default #
 #' mod1$filter.vars
 #' mod1$mod # summary of variable importance outputs
 #' }
@@ -43,7 +43,7 @@
 #' @seealso \code{\link{PRISM}}, \code{\link{ranger}}
 #'
 ##### RF Variable Importance ######
-filter_RF = function(Y, A, X, b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thres=0.10,
+filter_ranger = function(Y, A, X, b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thres=0.10,
                      family="gaussian", ...){
 
   if (DF2==TRUE){ #Generate the interaction covariates #
