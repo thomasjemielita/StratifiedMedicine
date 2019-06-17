@@ -32,7 +32,7 @@
 #'
 #' # BART #
 #' \donttest{
-#' mod1 = PLE_BART(train=train, Xtest=X)
+#' mod1 = ple_BART(train=train, Xtest=X)
 #'
 #' summary(mod1$mu_train$PLE)
 #' }
@@ -40,7 +40,7 @@
 #' @seealso \code{\link{PRISM}}, \code{\link{BART}}
 #'
 #### BART ###
-PLE_BART = function(Y, A, X, Xtest, family="gaussian", ...){
+ple_BART = function(Y, A, X, Xtest, family="gaussian", ...){
 
   ## Generate counterfactual design matrices  ##
   Xtrain_0 = data.frame(A=0, X)
