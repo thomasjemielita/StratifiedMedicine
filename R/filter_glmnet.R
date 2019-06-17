@@ -1,4 +1,4 @@
-#' Filter: Elastic Net Variable Importance
+#' Filter: Elastic Net (glmnet) Variable Importance
 #'
 #' Filter variables through elastic net. Variables with zero coefficients
 #' (depending on lambda choice; default is lambda.min) are filtered.
@@ -28,9 +28,9 @@
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
-#' mod1 = Filter_ENET(Y, A, X)
-#' mod2 = Filter_ENET(Y, A, X, lambda = "lambda.min") # same as default
-#' mod3 = Filter_ENET(Y, A, X, lambda = "lambda.1se")
+#' mod1 = filter_glmnet(Y, A, X)
+#' mod2 = filter_glmnet(Y, A, X, lambda = "lambda.min") # same as default
+#' mod3 = filter_glmnet(Y, A, X, lambda = "lambda.1se")
 #' mod1$filter.vars
 #' mod2$filter.vars
 #' mod3$filter.vars
@@ -38,8 +38,8 @@
 
 #' @seealso \code{\link{PRISM}}, \code{\link{glmnet}}
 
-##### ENET: Y~X ######
-Filter_ENET = function(Y, A, X, lambda="lambda.min", family="gaussian", ...){
+##### Elastic net (glmnet): Y~X ######
+filter_glmnet = function(Y, A, X, lambda="lambda.min", family="gaussian", ...){
 
   ## Model matrix X matrix #
   X = model.matrix(~. -1, data = X )
