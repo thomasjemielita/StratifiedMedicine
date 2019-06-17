@@ -31,11 +31,11 @@
 #` # A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
 #'
 #' # MOB-Weibull Subgroup Model ##
-#' res_weibull = SubMod_weibull(Y, A, X, Xtest=X, family="survival")
+#' res_weibull = submod_weibull(Y, A, X, Xtest=X, family="survival")
 #' plot(res_weibull$mod)
 #'
 #' ## Parameter-Estimation ##
-#' params = Param_cox(Y, A, X, Subgrps = res_weibull$Subgrps.train, alpha_ovrl=0.05,
+#' params = param_cox(Y, A, X, Subgrps = res_weibull$Subgrps.train, alpha_ovrl=0.05,
 #'                    alpha_s=0.05)
 #' params
 #' }
@@ -43,7 +43,7 @@
 
 
 ### Cox Regression: Hazard Ratios ###
-Param_cox = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
+param_cox = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
 
   indata = data.frame(Y=Y, A=A, X)
   ## Overall estimate ##
