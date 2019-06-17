@@ -34,11 +34,11 @@
 #'
 #'\donttest{
 #' # Default #
-#' mod1 = PLE_causal_forest(train=train, Xtest=X)
+#' mod1 = ple_causal_forest(train=train, Xtest=X)
 #' summary(mod1$mu_train$PLE)
 #'
 #' # Tune hyper-parameters (uncomment to run) #
-#' mod2 = PLE_causal_forest(train=train, Xtest=X, tune=TRUE)
+#' mod2 = ple_causal_forest(train=train, Xtest=X, tune=TRUE)
 #' summary(mod2$mu_train$PLE)
 #'
 #' }
@@ -48,7 +48,7 @@
 #' @seealso \code{\link{PRISM}}, \code{\link{causal_forest}}
 
 #### Causal_forest ###
-PLE_causal_forest = function(Y, A, X, Xtest, tune=FALSE, num.trees=500, family="gaussian", ...){
+ple_causal_forest = function(Y, A, X, Xtest, tune=FALSE, num.trees=500, family="gaussian", ...){
 
   set.seed(5131)
   W = A
