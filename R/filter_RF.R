@@ -32,7 +32,7 @@
 #' A = dat_ctns$A
 #'
 #' \donttest{
-#' mod1 = Filter_RF(Y, A, X, K=200) # Same as default #
+#' mod1 = filter_RF(Y, A, X, K=200) # Same as default #
 #' mod1$filter.vars
 #' mod1$mod # summary of variable importance outputs
 #' }
@@ -43,7 +43,7 @@
 #' @seealso \code{\link{PRISM}}, \code{\link{ranger}}
 #'
 ##### RF Variable Importance ######
-Filter_RF = function(Y, A, X, b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thres=0.10,
+filter_RF = function(Y, A, X, b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thres=0.10,
                      family="gaussian", ...){
 
   if (DF2==TRUE){ #Generate the interaction covariates #
