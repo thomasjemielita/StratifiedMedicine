@@ -42,7 +42,7 @@
 #'
 
 ### AIPTW (Double-Robust) Param ###
-param_DR = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
+param_dr = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
 
   indata = data.frame(Y=Y, A=A, X)
   ## Overall Estimate ##
