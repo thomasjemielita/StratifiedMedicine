@@ -35,7 +35,7 @@
 #' res_lmtree = submod_lmtree(Y, A, X, Xtest=X)
 #'
 #' ## Parameter-estimation ##
-#' params = param_DR(Y, A, X, mu_hat = res_ranger$mu_train,
+#' params = param_dr(Y, A, X, mu_hat = res_ranger$mu_train,
 #'                   Subgrps = res_lmtree$Subgrps.train, alpha_ovrl=0.05,
 #'                   alpha_s=0.05)
 #' params
