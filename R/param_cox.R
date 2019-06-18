@@ -59,7 +59,8 @@ param_cox = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
   looper = function(s){
     ## Extract HR, SE, 95% CI, and p-value for Subgroup Specific Treatment Effect ##
     cox.mod = tryCatch( coxph(Y ~ A , data=indata[Subgrps==s,]),
-                        error = function(e) "param error" )
+                        error = function(e) "param error",
+                        warning = function(w) "convergence issues")
     if (is.character(cox.mod)){
       est = NA; SE = NA; pval = NA; LCL = NA; UCL = NA;
     }
