@@ -102,7 +102,6 @@ at each step.
 \examples{
 ## Load library ##
 library(StratifiedMedicine)
-library(ggplot2)
 
 ##### Examples: Continuous Outcome ###########
 
@@ -120,31 +119,38 @@ plot(res0) # Forest plot: overall/subgroup specific parameter estimates (CIs)
 
 ## With bootstrap (No filtering) ##
 \donttest{
-res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, verbose.resamp = TRUE)
-ggplot(res_boot$resamp.dist, aes(est)) + geom_density() +
-facet_wrap(~Subgrps) + ggtitle("Bootstrap Distribution of Overall/Subgroup Estimates")
+  res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, verbose.resamp = TRUE)
+  # Plot of distributions and P(est>0) #
+  plot(res_boot, type="resample")+geom_vline(xintercept = 0)
+  aggregate(I(est>0)~Subgrps, data=res_boot$resamp.dist, FUN="mean")
 }
 
 # Survival Data ##
 # Load TH.data (no treatment; generate treatment randomly to simulate null effect) ##
 \donttest{
-data("GBSG2", package = "TH.data")
-surv.dat = GBSG2
-# Design Matrices ###
-Y = with(surv.dat, Surv(time, cens))
-X = surv.dat[,!(colnames(surv.dat) \%in\% c("time", "cens")) ]
-A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
+  library(survival)
+  data("GBSG2", package = "TH.data")
+  surv.dat = GBSG2
+  # Design Matrices ###
+  Y = with(surv.dat, Surv(time, cens))
+  X = surv.dat[,!(colnames(surv.dat) \%in\% c("time", "cens")) ]
+  A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
 
-# Default: PRISM: glmnet ==> MOB (Weibull) ==> Cox; bootstrapping posterior prob/inference #
-res_weibull1 = PRISM(Y=Y, A=A, X=X, ple=NULL, resample="Bootstrap", R=100)
-plot(res_weibull1$Sub.mod)
-res_weibull1$param.dat
+  # Default: PRISM: glmnet ==> MOB (Weibull) ==> Cox; bootstrapping posterior prob/inference #
+  res_weibull1 = PRISM(Y=Y, A=A, X=X, ple=NULL, resample="Bootstrap", R=100,
+                       verbose.resamp = TRUE)
+  plot(res_weibull1$Sub.mod)
+  plot(res_weibull1)
+  plot(res_weibull1, type="resample")+geom_vline(xintercept = 1)
+  aggregate(I(est<1)~Subgrps, data=res_weibull1$resamp.dist, FUN="mean")
 
-# PRISM: ENET ==> CTREE ==> Cox; bootstrapping for posterior prob/inference #
-res_ctree1 = PRISM(Y=Y, A=A, X=X, ple=NULL, submod = "submod_ctree",
-                   resample="Bootstrap", R=100)
-plot(res_ctree1$Sub.mod)
-res_ctree1$param.dat
+  # PRISM: ENET ==> CTREE ==> Cox; bootstrapping for posterior prob/inference #
+  res_ctree1 = PRISM(Y=Y, A=A, X=X, ple=NULL, submod = "submod_ctree",
+                     resample="Bootstrap", R=100, verbose.resamp = TRUE)
+  plot(res_ctree1$Sub.mod)
+  plot(res_ctree1)
+  plot(res_ctree1, type="resample")+geom_vline(xintercept = 1)
+  aggregate(I(est<1)~Subgrps, data=res_ctree1$resamp.dist, FUN="mean")
 }
 
 }
