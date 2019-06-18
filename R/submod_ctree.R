@@ -18,14 +18,13 @@
 #'
 #' @import partykit
 #'
-#' @return CTREE model, predictions, identified subgroups, and subgroup rules/definitions.
+#' @return CTREE model, predictions, and identified subgroups.
 #'  \itemize{
 #'   \item mod - CTREE model object
 #'   \item Subgrps.train - Identified subgroups (training set)
 #'   \item Subgrps.test - Identified subgroups (test set)
 #'   \item pred.train - Predictions (training set)
 #'   \item pred.test - Predictions (test set)
-#'   \item Rules - Subgroups rules/definitions
 #' }
 #'
 #' @export
@@ -67,13 +66,6 @@ submod_ctree = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0
   ##  Predict Subgroups for Train/Test ##
   Subgrps.train = as.numeric( predict(mod, type="node") )
   Subgrps.test = as.numeric( predict(mod, type="node", newdata = Xtest) )
-  Rules = list_rules(mod)
-  if (length(unique(Subgrps.train))==1){
-    Rules = data.frame(Subgrps = unique(Subgrps.train), Rules = "All" )
-  }
-  if (length(unique(Subgrps.train))>1){
-    Rules = data.frame(Subgrps = as.numeric(names(Rules)), Rules = as.character(Rules) )
-  }
   ## Response Predictions ##
   if (family=="gaussian"){ type.fam = "response"   } # E(Y|X)
   if (family=="binomial"){ type.fam = "prob"   } # probability
@@ -82,5 +74,5 @@ submod_ctree = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0
   pred.test = predict( mod, newdata = data.frame(Xtest), type = type.fam )
   ## Return Results ##
   return(  list(mod=mod, Subgrps.train=Subgrps.train, Subgrps.test=Subgrps.test,
-                pred.train=pred.train, pred.test=pred.test, Rules=Rules) )
+                pred.train=pred.train, pred.test=pred.test) )
 }

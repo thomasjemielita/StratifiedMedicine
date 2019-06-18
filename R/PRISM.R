@@ -2,7 +2,7 @@
 #'
 #' PRISM algorithm. Given a data-set of (Y, X, A) (Outcome, covariates, treatment),
 #' the \code{PRISM} identifies potential subgroup along with point and variability metrics.
-#' This four step procedure (Filter, PLE, SubMod, Param) is flexible and accepts user-inputs
+#' This four step procedure (filter, ple, submod, param) is flexible and accepts user-inputs
 #' at each step.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
@@ -10,35 +10,35 @@
 #' @param X Covariate matrix. Must be numeric.
 #' @param Xtest Test set. Default is NULL which uses X (training set)
 #' @param family Outcome type. Options include "gaussion" (default), "binomial", and "survival".
-#' @param Filter Maps (Y,A,X) => (Y,A,X.star) where X.star has potentially less
+#' @param filter Maps (Y,A,X) => (Y,A,X.star) where X.star has potentially less
 #' covariates than X. Default is "Filter_ENET", NULL uses no filter.
-#' @param PLE PLE (Patient-Level Estimate) function. Maps the observed data to PLEs.
-#' (Y,A,X) ==> PLE(X). Default for "gaussian"/"binomial" is "ranger_PLE"
+#' @param ple PLE (Patient-Level Estimate) function. Maps the observed data to PLEs.
+#' (Y,A,X) ==> PLE(X). Default for "gaussian"/"binomial" is "ple_ranger"
 #' (treatment-specific random forest models). The default for "survival" is
-#' "cox_PLE" (elastic net cox regression).
-#' @param SubMod Subgroup identification model function. Maps the observed data and/or PLEs
-#' to subgroups. Default of "gaussian"/"binomial" is "SubMod_lmtree" (MOB with OLS loss).
-#' Default for "survival" is "SubMod_weibull" (MOB with weibull loss)
-#' @param Param Parameter estimation and inference function. Based on the discovered subgroups,
+#' "ple_glmnet" (elastic net (glmnet) cox regression).
+#' @param submod Subgroup identification model function. Maps the observed data and/or PLEs
+#' to subgroups. Default of "gaussian"/"binomial" is "submod_lmtree" (MOB with OLS loss).
+#' Default for "survival" is "submod_weibull" (MOB with weibull loss)
+#' @param param Parameter estimation and inference function. Based on the discovered subgroups,
 #' perform inference through the input function (by name). Default for "gaussian"/"binomial" is
-#' "Param_PLE." Default for "survival" is "Param_cox."
+#' "param_PLE", default for "survival" is "param_cox".
 #' @param alpha_ovrl Two-sided alpha level for overall population. Default=0.05
 #' @param alpha_s Two-sided alpha level at subgroup level. Default=0.05
-#' @param Filter.hyper Hyper-parameters for the Filter function (must be list). Default is NULL.
-#' @param PLE.hyper Hyper-parameters for the PLE function (must be list). Default is NULL.
-#' @param SubMod.hyper Hyper-parameters for the SubMod function (must be list). Default is NULL.
-#' @param SubMod2X Option to perform "double" subgroup identification; run SubMod once,
+#' @param filter.hyper Hyper-parameters for the Filter function (must be list). Default is NULL.
+#' @param ple.hyper Hyper-parameters for the PLE function (must be list). Default is NULL.
+#' @param submod.hyper Hyper-parameters for the SubMod function (must be list). Default is NULL.
+#' @param submod2X Option to perform "double" subgroup identification; run SubMod once,
 #' rank them into ordinal groups, re-run Submod (BETA). Default=FALSE
-#' @param Param.hyper Hyper-parameters for the Param function (must be list). Default is NULL.
-#' @param preFilter_resamp Option to filter the covariate space (based on Filter model) prior
+#' @param param.hyper Hyper-parameters for the Param function (must be list). Default is NULL.
+#' @param prefilter_resamp Option to filter the covariate space (based on filter model) prior
 #' to resampling. Default=FALSE.
-#' @param Resample Resampling method for resample-based estimates and variability metrics.
+#' @param resample Resampling method for resample-based estimates and variability metrics.
 #' Options include "Boostrap" and "Permutation." Default=NULL (No resampling).
 #' @param stratify Stratified resampling (Default=TRUE)
 #' @param R Number of resamples (default=100)
-#' @param Filter.resamp Filter function during resampling, default=NULL (use original Filter)
-#' @param PLE.resamp PLE function during resampling, default=NULL (use original PLE)
-#' @param SubMod.resamp SubMod function for resampling, default=NULL (use original SubMod)
+#' @param filter.resamp Filter function during resampling, default=NULL (use original Filter)
+#' @param ple.resamp PLE function during resampling, default=NULL (use original PLE)
+#' @param submod.resamp SubMod function for resampling, default=NULL (use original SubMod)
 #' @param verbose Detail progress of PRISM? Default=TRUE
 #' @param verbose.resamp Output iterations during resampling? Default=FALSE
 #'
@@ -78,7 +78,7 @@
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
-#' # Run Default: Filter_ENET, PLE_ranger, SubMod_lmtree, Param_PLE #
+#' # Run Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
 #' res0 = PRISM(Y=Y, A=A, X=X)
 #' hist(res0$mu_train$PLE) # distribution of PLEs
 #' plot(res0$Sub.mod) # Plot of subgroup model
@@ -87,7 +87,7 @@
 #'
 #' ## With bootstrap (No filtering) ##
 #' \donttest{
-#' res_boot = PRISM(Y=Y, A=A, X=X, Resample = "Bootstrap", R=50, verbose.resamp = TRUE)
+#' res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, verbose.resamp = TRUE)
 #' ggplot(res_boot$resamp.dist, aes(est)) + geom_density() +
 #' facet_wrap(~Subgrps) + ggtitle("Bootstrap Distribution of Overall/Subgroup Estimates")
 #' }
@@ -102,28 +102,28 @@
 #' X = surv.dat[,!(colnames(surv.dat) %in% c("time", "cens")) ]
 #' A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
 #'
-#' # Default: PRISM: ENET ==> MOB (Weibull) ==> Cox; bootstrapping posterior prob/inference #
-#' res_weibull1 = PRISM(Y=Y, A=A, X=X, PLE=NULL, Resample="Bootstrap", R=100)
+#' # Default: PRISM: glmnet ==> MOB (Weibull) ==> Cox; bootstrapping posterior prob/inference #
+#' res_weibull1 = PRISM(Y=Y, A=A, X=X, ple=NULL, resample="Bootstrap", R=100)
 #' plot(res_weibull1$Sub.mod)
 #' res_weibull1$param.dat
 #'
 #' # PRISM: ENET ==> CTREE ==> Cox; bootstrapping for posterior prob/inference #
-#' res_CTREE1 = PRISM(Y=Y, A=A, X=X, PLE=NULL, SubMod = "SubMod_CTREE",
-#'                    Resample="Bootstrap", R=100)
-#' plot(res_weibull1$Sub.mod)
-#' res_CTREE1$param.dat
+#' res_ctree1 = PRISM(Y=Y, A=A, X=X, ple=NULL, submod = "submod_ctree",
+#'                    resample="Bootstrap", R=100)
+#' plot(res_ctree1$Sub.mod)
+#' res_ctree1$param.dat
 #' }
 #'
 #' @references Jemielita and Mehrotra (2019 in progress)
 
 ##### PRISM: Patient Responder Identifiers for Stratified Medicine ########
 PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
-                 Filter="Filter_ENET", PLE=NULL, SubMod=NULL, Param=NULL,
+                 filter="filter_glmnet", ple=NULL, submod=NULL, param=NULL,
                  alpha_ovrl=0.05, alpha_s = 0.05,
-                 Filter.hyper=NULL, PLE.hyper=NULL, SubMod.hyper = NULL, SubMod2X=FALSE,
-                 Param.hyper = NULL, preFilter_resamp=FALSE, Resample = NULL, stratify=TRUE,
-                 R = 100, Filter.resamp = NULL, PLE.resamp = NULL,
-                 SubMod.resamp = NULL, verbose=TRUE,
+                 filter.hyper=NULL, ple.hyper=NULL, submod.hyper = NULL, submod2X=FALSE,
+                 param.hyper = NULL, prefilter_resamp=FALSE, resample = NULL, stratify=TRUE,
+                 R = 100, filter.resamp = NULL, ple.resamp = NULL,
+                 submod.resamp = NULL, verbose=TRUE,
                  verbose.resamp = FALSE){
 
   ## "Test" Set ##
@@ -139,55 +139,58 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
 
   ### Defaults: By Family (gaussian, binomial (Risk Difference), survival ) ##
   if (family=="gaussian" | family=="binomial"){
-    if (is.null(PLE) ){ PLE = "PLE_ranger" }
-    if (is.null(SubMod) ){ SubMod = "SubMod_lmtree" }
-    if (is.null(Param) ){ Param = "Param_PLE" }
+    if (is.null(ple) ){ ple = "ple_ranger" }
+    if (is.null(submod) ){ submod = "submod_lmtree" }
+    if (is.null(param) ){ param = "param_ple" }
   }
   if (family=="survival"){
-    if (is.null(PLE)){ PLE = "PLE_ENET" }
-    if (is.null(SubMod) ){ SubMod = "SubMod_weibull" }
-    if (is.null(Param) ){ Param = "Param_cox" }
+    if (is.null(ple) ){ ple = "ple_glmnet" }
+    if (is.null(submod) ){ submod = "submod_weibull" }
+    if (is.null(param) ){ param = "param_cox" }
   }
 
   ### Main Model Pipeline: Feeds into CV/Bootstrap/resamples procedures ##
-  main = function(Y, A, X, Xtest, PLE, Filter, SubMod, verbose){
+  main = function(Y, A, X, Xtest, ple, filter, submod, verbose){
     #### Step 1: Variable Filtering #####
     if ( !is.null(Filter) ){
-      if (verbose) message( paste("Filtering:", Filter, sep=" ") )
-      step1 = do.call( Filter, append(list(Y=Y, A=A, X=X, family=family), Filter.hyper)  )
+      if (verbose) message( paste("Filtering:", filter, sep=" ") )
+      step1 = do.call( filter, append(list(Y=Y, A=A, X=X, family=family), filter.hyper)  )
       filter.mod = step1$mod
       filter.vars = step1$filter.vars
     }
-    if ( is.null(Filter) ){
+    if ( is.null(filter) ){
       filter.mod = NULL; filter.vars = NULL;
     }
     # Drop variables depending on filter #
-    if ( is.null(Filter) ){ X.star = X; Xtest.star = Xtest }
-    if ( !is.null(Filter) ){
+    if ( is.null(filter) ){ X.star = X; Xtest.star = Xtest }
+    if ( !is.null(filter) ){
       if (length(filter.vars)==0){ X.star = X; Xtest.star = Xtest  }
       if (length(filter.vars) >0){
         X.star = X[, colnames(X) %in% c(filter.vars, "A", "Y"), drop=FALSE]
         Xtest.star = Xtest[, colnames(Xtest) %in% c(filter.vars, "A", "Y"), drop=FALSE] }
     }
     #### Step 2: PLE Estimation #####
-    if ( !is.null(PLE) ){
-      if (verbose) message( paste("PLE:", PLE, sep=" " ) )
-      step2 = do.call( PLE, append(list(Y=Y, A=A, X=X.star, Xtest=Xtest.star,
-                                        family=family), PLE.hyper) )
+    if ( !is.null(ple) ){
+      if (verbose) message( paste("PLE:", ple, sep=" " ) )
+      step2 = do.call( ple, append(list(Y=Y, A=A, X=X.star, Xtest=Xtest.star,
+                                        family=family), ple.hyper) )
+      ple.mods = step2$mods
       mu_train = step2$mu_train
       mu_test = step2$mu_test
     }
-    if ( is.null(PLE) ){
-      mu_train = NULL; mu_test = NULL;
+    if ( is.null(ple) ){
+      mods = NULL
+      mu_train = NULL
+      mu_test = NULL
     }
     ### Step 3: Subgroup Identification ###
-    if ( !is.null(SubMod) ){
+    if ( !is.null(submod) ){
       if (verbose) message( paste("Subgroup Identification:",
-                                SubMod, sep=" "))
-      step3 = do.call( SubMod, append( list(Y=Y, A=A, X=X.star, Xtest=Xtest.star,
-                                    mu_train = mu_train, family=family), SubMod.hyper) )
+                                submod, sep=" "))
+      step3 = do.call( submod, append( list(Y=Y, A=A, X=X.star, Xtest=Xtest.star,
+                                    mu_train = mu_train, family=family), submod.hyper) )
       # Option for "double" subgroup ==> Rank order subgroups by plug-in PLE #
-      if (SubMod2X){
+      if (submod2X){
         Rules = step3$Rules
         temp = aggregate( step3$pred.train~step3$Subgrps.train, FUN = "mean")
         # temp = aggregate(mu_train$PLE~step3$Subgrps.train, FUN="mean")
@@ -206,9 +209,9 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
         X.star.temp = data.frame(Rank=X_new[,"Rank"])
         Xtest.star.temp = data.frame(Rank=X_new_test[,"Rank"])
         ## Re-Fit Subgroup Model ##
-        step3X = do.call( SubMod, append(list(Y=Y, A=A, X=X.star.temp, Xtest=Xtest.star.temp,
+        step3X = do.call( submod, append(list(Y=Y, A=A, X=X.star.temp, Xtest=Xtest.star.temp,
                                               mu_train = mu_train, family=family),
-                                              SubMod.hyper) )
+                                              submod.hyper) )
         ## Obtain the "Merged" Rules ##
         temp.rules = Rules
         colnames(temp.rules) = c("Subgrps.temp", "Rules")
@@ -225,28 +228,28 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
       Subgrps.train = step3$Subgrps.train; Subgrps.test = step3$Subgrps.test
       Subpred.train = step3$pred.train; Subpred.test = step3$pred.test
     }
-    if ( is.null(SubMod) ){
+    if ( is.null(submod) ){
       Sub.mod = NULL; Rules=NULL;
       Subgrps.train = NULL; Subgrps.test = NULL;
       Subpred.train = NULL; Subpred.test = NULL
     }
     ### Step 4: Parameter Estimation and Inference ###
-    if (verbose){ message(paste("Parameter Estimation:", Param, sep=" ")) }
-    param.dat = do.call( Param, list(Y=Y, A=A, X=X.star, mu_hat = mu_train,
+    if (verbose){ message(paste("Parameter Estimation:", param, sep=" ")) }
+    param.dat = do.call( param, list(Y=Y, A=A, X=X.star, mu_hat = mu_train,
                                      Subgrps=Subgrps.train,
                                      alpha_ovrl=alpha_ovrl,
                                      alpha_s=alpha_s)  )
     ### Return Outputs ###
     return( list( mu_train = mu_train, mu_test = mu_test, filter.mod = filter.mod,
-                  filter.vars = filter.vars, Sub.mod=Sub.mod,
+                  filter.vars = filter.vars, ple.mods = ple.mods, Sub.mod=Sub.mod,
                   Subgrps.train = Subgrps.train, Subgrps.test=Subgrps.test,
                   Subpred.train = Subpred.train, Subpred.test = Subpred.test,
                   Rules = Rules, param.dat=param.dat) )
   }
   ## Run on Observed Data ##
   if (verbose){ message( "Observed Data" )   }
-  res0 = main(Y=Y, A=A, X=X, Xtest=Xtest, PLE=PLE, Filter=Filter,
-              SubMod = SubMod, verbose=verbose)
+  res0 = main(Y=Y, A=A, X=X, Xtest=Xtest, ple=ple, filter=filter,
+              submod = submod, verbose=verbose)
   Subgrps = res0$Subgrps.train
   mu_train = res0$mu_train
   param.dat = res0$param.dat
@@ -257,37 +260,37 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
 
   resamp_param = NULL ## Set to null (needed if no resampling)
 
-  if (!is.null(Resample)){
+  if (!is.null(resample)){
 
     ## Resampling: Auto-checks ##
-    if (is.null(Filter.resamp)) {  Filter.resamp = Filter  }
-    if (is.null(PLE.resamp)) {  PLE.resamp = PLE  }
-    if (is.null(SubMod.resamp)) {  SubMod.resamp = SubMod  }
+    if (is.null(filter.resamp)) {  filter.resamp = filter  }
+    if (is.null(ple.resamp)) {  ple.resamp = ple  }
+    if (is.null(submod.resamp)) {  submod.resamp = submod  }
 
     obs.data = data.frame(id = 1:nrow(X), Y=Y,A=A, X, Subgrps)
-    if (length(res0$filter.vars)>0 & preFilter_resamp == TRUE){
+    if (length(res0$filter.vars)>0 & prefilter_resamp == TRUE){
       obs.data = obs.data[, colnames(obs.data) %in%
                             c("id", "Y", "A", res0$filter.vars, "Subgrps")]
     }
     # Xtest.star = Xtest[,colnames(Xtest) %in% res0$filter.vars]
-    if (verbose){ message( paste(Resample, R, "resamples"))   }
+    if (verbose){ message( paste(resample, R, "resamples"))   }
 
     subject.counter = data.frame(id = obs.data$id )
 
     ### Resampling Wrapper ###
-    fetty_wop = function(R, stratify, obs.data, PLE, Filter, SubMod,
+    fetty_wop = function(R, stratify, obs.data, ple, filter, submod,
                          calibrate, verbose){
 
-      if (verbose) message( paste(Resample, "Sample", R) )
+      if (verbose) message( paste(resample, "Sample", R) )
       ### Permutation resampling (shuffle treatment assignment) ###
-      if (Resample=="Permutation"){
+      if (resample=="Permutation"){
         seedz = 5341+R
         set.seed(seedz)
         A_resamp = sample(obs.data$A, replace=FALSE)
         resamp.data = obs.data
         resamp.data$A = A_resamp
       }
-      if (Resample=="Bootstrap"){
+      if (resample=="Bootstrap"){
         ### Re-sample the data ##
         if (stratify){
           resamp.data = NULL
@@ -312,8 +315,8 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
       A.R = resamp.data$A
       X.R = resamp.data[!(colnames(resamp.data) %in% c("Subgrps", "id", "Y", "A"))]
       if (family=="survival"){ Y = Surv(Y.R[,1], Y.R[,2])  }
-      res.R = main(Y=Y.R, A=A.R, X=X.R, Xtest=Xtest, PLE=PLE, Filter=Filter,
-                   SubMod = SubMod, verbose=FALSE)
+      res.R = main(Y=Y.R, A=A.R, X=X.R, Xtest=Xtest, ple=ple, filter=filter,
+                   submod = submod, verbose=FALSE)
       Subgrps.R = res.R$Subgrps.train
       param.R = res.R$param.dat
       if (calibrate){
@@ -343,8 +346,8 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
 
     ### Run Resampling ##
     resamp.obj = lapply(1:R, fetty_wop, stratify=stratify, obs.data=obs.data,
-                        PLE=PLE.resamp, Filter=Filter.resamp,
-                        SubMod=SubMod.resamp, calibrate=FALSE,
+                        ple=ple.resamp, filter=filter.resamp,
+                        submod=submod.resamp, calibrate=FALSE,
                         verbose = verbose.resamp)
     ## Extract Resampling parameter estimates and subject-counters ##
     hold = do.call(rbind, resamp.obj)
@@ -360,10 +363,10 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
       final_ests = param.dat
       final_ests$est_resamp = NA
       final_ests$SE_resamp = NA
-      if (Resample=="Permutation"){
+      if (resample=="Permutation"){
         final_ests$pval_perm = NA
       }
-      if (Resample=="Bootstrap"){
+      if (resample=="Bootstrap"){
         final_ests$SE_bootS = NA
         final_ests$bias = NA
         final_ests$accel = NA
@@ -379,12 +382,12 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
         final_ests$est_resamp[final_ests$Subgrps==sub] = mean(est.vec)
         final_ests$SE_resamp[final_ests$Subgrps==sub] = sd( est.vec )
         ## Permutation p-value ##
-        if (Resample=="Permutation"){
+        if (resample=="Permutation"){
           final_ests$pval_perm[final_ests$Subgrps==sub] =
             (sum(abs(est.vec)>abs(est0)) + 1 ) / (length(est.vec)+1)
         }
         ## Bootstrap Covariance/acceleration/bias/smoothed SE ##
-        if (Resample=="Bootstrap"){
+        if (resample=="Bootstrap"){
           if (sub %in% c(-1, 0)){
             sub_subjs = as.matrix( resamp_counter  )
             alpha = alpha_ovrl
@@ -426,6 +429,7 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
   ### Return Results ##
   res = list( mu_train=res0$mu_train, mu_test=res0$mu_test,
               filter.mod = res0$filter.mod, filter.vars = res0$filter.vars,
+              ple.mod = res0$ple.mods,
               Sub.mod = res0$Sub.mod,
               out.train = data.frame(Y, A, X, Subgrps=res0$Subgrps.train),
               out.test = data.frame(Xtest, Subgrps=res0$Subgrps.test),

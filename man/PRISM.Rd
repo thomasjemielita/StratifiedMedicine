@@ -5,12 +5,12 @@
 \title{PRISM: Patient Responder Identifier for Stratified Medicine}
 \usage{
 PRISM(Y, A, X, Xtest = NULL, family = "gaussian",
-  Filter = "Filter_ENET", PLE = NULL, SubMod = NULL, Param = NULL,
-  alpha_ovrl = 0.05, alpha_s = 0.05, Filter.hyper = NULL,
-  PLE.hyper = NULL, SubMod.hyper = NULL, SubMod2X = FALSE,
-  Param.hyper = NULL, preFilter_resamp = FALSE, Resample = NULL,
-  stratify = TRUE, R = 100, Filter.resamp = NULL,
-  PLE.resamp = NULL, SubMod.resamp = NULL, verbose = TRUE,
+  filter = "filter_glmnet", ple = NULL, submod = NULL,
+  param = NULL, alpha_ovrl = 0.05, alpha_s = 0.05,
+  filter.hyper = NULL, ple.hyper = NULL, submod.hyper = NULL,
+  submod2X = FALSE, param.hyper = NULL, prefilter_resamp = FALSE,
+  resample = NULL, stratify = TRUE, R = 100, filter.resamp = NULL,
+  ple.resamp = NULL, submod.resamp = NULL, verbose = TRUE,
   verbose.resamp = FALSE)
 }
 \arguments{
@@ -24,52 +24,52 @@ PRISM(Y, A, X, Xtest = NULL, family = "gaussian",
 
 \item{family}{Outcome type. Options include "gaussion" (default), "binomial", and "survival".}
 
-\item{Filter}{Maps (Y,A,X) => (Y,A,X.star) where X.star has potentially less
+\item{filter}{Maps (Y,A,X) => (Y,A,X.star) where X.star has potentially less
 covariates than X. Default is "Filter_ENET", NULL uses no filter.}
 
-\item{PLE}{PLE (Patient-Level Estimate) function. Maps the observed data to PLEs.
-(Y,A,X) ==> PLE(X). Default for "gaussian"/"binomial" is "ranger_PLE"
+\item{ple}{PLE (Patient-Level Estimate) function. Maps the observed data to PLEs.
+(Y,A,X) ==> PLE(X). Default for "gaussian"/"binomial" is "ple_ranger"
 (treatment-specific random forest models). The default for "survival" is
-"cox_PLE" (elastic net cox regression).}
+"ple_glmnet" (elastic net (glmnet) cox regression).}
 
-\item{SubMod}{Subgroup identification model function. Maps the observed data and/or PLEs
-to subgroups. Default of "gaussian"/"binomial" is "SubMod_lmtree" (MOB with OLS loss).
-Default for "survival" is "SubMod_weibull" (MOB with weibull loss)}
+\item{submod}{Subgroup identification model function. Maps the observed data and/or PLEs
+to subgroups. Default of "gaussian"/"binomial" is "submod_lmtree" (MOB with OLS loss).
+Default for "survival" is "submod_weibull" (MOB with weibull loss)}
 
-\item{Param}{Parameter estimation and inference function. Based on the discovered subgroups,
+\item{param}{Parameter estimation and inference function. Based on the discovered subgroups,
 perform inference through the input function (by name). Default for "gaussian"/"binomial" is
-"Param_PLE." Default for "survival" is "Param_cox."}
+"param_PLE", default for "survival" is "param_cox".}
 
 \item{alpha_ovrl}{Two-sided alpha level for overall population. Default=0.05}
 
 \item{alpha_s}{Two-sided alpha level at subgroup level. Default=0.05}
 
-\item{Filter.hyper}{Hyper-parameters for the Filter function (must be list). Default is NULL.}
+\item{filter.hyper}{Hyper-parameters for the Filter function (must be list). Default is NULL.}
 
-\item{PLE.hyper}{Hyper-parameters for the PLE function (must be list). Default is NULL.}
+\item{ple.hyper}{Hyper-parameters for the PLE function (must be list). Default is NULL.}
 
-\item{SubMod.hyper}{Hyper-parameters for the SubMod function (must be list). Default is NULL.}
+\item{submod.hyper}{Hyper-parameters for the SubMod function (must be list). Default is NULL.}
 
-\item{SubMod2X}{Option to perform "double" subgroup identification; run SubMod once,
+\item{submod2X}{Option to perform "double" subgroup identification; run SubMod once,
 rank them into ordinal groups, re-run Submod (BETA). Default=FALSE}
 
-\item{Param.hyper}{Hyper-parameters for the Param function (must be list). Default is NULL.}
+\item{param.hyper}{Hyper-parameters for the Param function (must be list). Default is NULL.}
 
-\item{preFilter_resamp}{Option to filter the covariate space (based on Filter model) prior
+\item{prefilter_resamp}{Option to filter the covariate space (based on filter model) prior
 to resampling. Default=FALSE.}
 
-\item{Resample}{Resampling method for resample-based estimates and variability metrics.
+\item{resample}{Resampling method for resample-based estimates and variability metrics.
 Options include "Boostrap" and "Permutation." Default=NULL (No resampling).}
 
 \item{stratify}{Stratified resampling (Default=TRUE)}
 
 \item{R}{Number of resamples (default=100)}
 
-\item{Filter.resamp}{Filter function during resampling, default=NULL (use original Filter)}
+\item{filter.resamp}{Filter function during resampling, default=NULL (use original Filter)}
 
-\item{PLE.resamp}{PLE function during resampling, default=NULL (use original PLE)}
+\item{ple.resamp}{PLE function during resampling, default=NULL (use original PLE)}
 
-\item{SubMod.resamp}{SubMod function for resampling, default=NULL (use original SubMod)}
+\item{submod.resamp}{SubMod function for resampling, default=NULL (use original SubMod)}
 
 \item{verbose}{Detail progress of PRISM? Default=TRUE}
 
@@ -96,7 +96,7 @@ Return Filter, PLE, SubMod, and Param outputs.
 \description{
 PRISM algorithm. Given a data-set of (Y, X, A) (Outcome, covariates, treatment),
 the \code{PRISM} identifies potential subgroup along with point and variability metrics.
-This four step procedure (Filter, PLE, SubMod, Param) is flexible and accepts user-inputs
+This four step procedure (filter, ple, submod, param) is flexible and accepts user-inputs
 at each step.
 }
 \examples{
@@ -111,7 +111,7 @@ Y = dat_ctns$Y
 X = dat_ctns$X
 A = dat_ctns$A
 
-# Run Default: Filter_ENET, PLE_ranger, SubMod_lmtree, Param_PLE #
+# Run Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
 res0 = PRISM(Y=Y, A=A, X=X)
 hist(res0$mu_train$PLE) # distribution of PLEs
 plot(res0$Sub.mod) # Plot of subgroup model
@@ -120,7 +120,7 @@ plot(res0) # Forest plot: overall/subgroup specific parameter estimates (CIs)
 
 ## With bootstrap (No filtering) ##
 \donttest{
-res_boot = PRISM(Y=Y, A=A, X=X, Resample = "Bootstrap", R=50, verbose.resamp = TRUE)
+res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, verbose.resamp = TRUE)
 ggplot(res_boot$resamp.dist, aes(est)) + geom_density() +
 facet_wrap(~Subgrps) + ggtitle("Bootstrap Distribution of Overall/Subgroup Estimates")
 }
@@ -135,16 +135,16 @@ Y = with(surv.dat, Surv(time, cens))
 X = surv.dat[,!(colnames(surv.dat) \%in\% c("time", "cens")) ]
 A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
 
-# Default: PRISM: ENET ==> MOB (Weibull) ==> Cox; bootstrapping posterior prob/inference #
-res_weibull1 = PRISM(Y=Y, A=A, X=X, PLE=NULL, Resample="Bootstrap", R=100)
+# Default: PRISM: glmnet ==> MOB (Weibull) ==> Cox; bootstrapping posterior prob/inference #
+res_weibull1 = PRISM(Y=Y, A=A, X=X, ple=NULL, resample="Bootstrap", R=100)
 plot(res_weibull1$Sub.mod)
 res_weibull1$param.dat
 
 # PRISM: ENET ==> CTREE ==> Cox; bootstrapping for posterior prob/inference #
-res_CTREE1 = PRISM(Y=Y, A=A, X=X, PLE=NULL, SubMod = "SubMod_CTREE",
-                   Resample="Bootstrap", R=100)
-plot(res_weibull1$Sub.mod)
-res_CTREE1$param.dat
+res_ctree1 = PRISM(Y=Y, A=A, X=X, ple=NULL, submod = "submod_ctree",
+                   resample="Bootstrap", R=100)
+plot(res_ctree1$Sub.mod)
+res_ctree1$param.dat
 }
 
 }
