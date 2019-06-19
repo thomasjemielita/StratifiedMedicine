@@ -1,0 +1,73 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+# StratifiedMedicine
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The goal of StratifiedMedicine is to develop analytic and visualization tools to aid in stratified and personalized medicine. Stratified medicine aims to find subsets or subgroups of patients with similar treatment effects, for example responders vs non-responders, while personalized medicine aims to understand treatment effects at the individual level (does a specific individual respond to the study treatment?). Development of this package is ongoing.
+
+Currently, the main algorithm in this package is “PRISM” (Patient Responder Identifiers for Stratified Medicine; Jemielita and Mehrotra 2019 in progress). Given a data-structure of (Y,A,X) (outcome, treatments, covariates), PRISM is a five step procedure:
+
+0. **Estimand**: Determine the question or estimand of interest. For example, $\theta_0 = E(Y|A=1)-E(Y|A=0)$, where A is a binary treatment variable. While this isn't an explicit step in the PRISM function, the question of interest guides how to set up PRISM. 
+
+1. **Filter (filter)**: Reduce covariate space by removing variables unrelated to outcome/treatment.
+
+2. **Patient-level estimate (ple)**: Estimate counterfactual patient-level quantities, for example the individual treatment effect, $\theta(x) = E(Y|X=x,A=1)-E(Y|X=x,A=0)$.
+
+3. **Subgroup model (submod)**: Partition the data into subsets of patients (likely with similar treatment effects). 
+
+4. **Parameter estimation and inference (param)**: For the overall population and discovered subgroups, output point estimates and variability metrics. These outputs are crucial for Go-No-Go decision making.
+
+## Installation
+
+You can install the released version of StratifiedMedicine from [CRAN](https://CRAN.R-project.org) with:
+
+``` r
+install.packages("StratifiedMedicine")
+```
+
+And the development version from [GitHub](https://github.com/) with:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("thomasjemielita/StratifiedMedicine")
+```
+## Example: Continuous Outcome with Binary Treatment
+
+Suppose the estimand or question of interest is the average treatment effect, $\theta_0 = E(Y|A=1)-E(Y|A=0)$. The goal is to understand whether there is any treatment heterogeneity across patients and if there are any distinct subgroups with similar responses. 
+
+```{r example}
+library(StratifiedMedicine)
+## basic example code
+dat_ctns = generate_subgrp_data(family="gaussian")
+Y = dat_ctns$Y
+X = dat_ctns$X # 50 covariates, 46 are noise variables, X1 and X2 are truly predictive
+A = dat_ctns$A # binary treatment, 1:1 randomized 
+
+# PRISM Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
+res0 = PRISM(Y=Y, A=A, X=X)
+## Plot the distribution of PLEs ###
+hist(res0$mu_train$PLE, main="Distribution of PLEs",
+     xlab = "PLEs: E(Y|X=x, A=1)-E(Y|X=x,A=0)")
+## Plot of the subgroup model (lmtree) ##
+plot(res0$Sub.mod)
+## Overall/subgroup specific parameter estimates/inference
+res0$param.dat
+## Forest plot: Overall/subgroup specific parameter estimates (CIs)
+plot(res0)
+```
+
+Overall, PRISM provides information at the patient-level, the subgroup-level (if any), and the overall population. While there are defaults in place, the user can also input their own functions/model wrappers into the PRISM algorithm. For more details and more examples, we refer the reader to the vignette, [PRISM_vignette](https://cran.r-project.org/web/packages/StratifiedMedicine/vignettes/SM_PRISM.html). 
