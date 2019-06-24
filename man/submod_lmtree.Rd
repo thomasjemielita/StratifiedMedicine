@@ -26,13 +26,9 @@ Default = floor( dim(train)[1]*0.05  )}
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
-lmtree model, predictions, and identified subgroups.
+Trained lmtree model.
  \itemize{
   \item mod - lmtree model object
-  \item Subgrps.train - Identified subgroups (training set)
-  \item Subgrps.test - Identified subgroups (test set)
-  \item pred.train - Predictions (training set)
-  \item pred.test - Predictions (test set)
 }
 }
 \description{

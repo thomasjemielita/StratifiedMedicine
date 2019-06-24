@@ -28,17 +28,14 @@ Default = floor( dim(train)[1]*0.05  )}
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
-CTREE (OTR) model, predictions, and identified subgroups.
+Trained ctree (optimal treatment regime) model.
  \itemize{
-  \item mod - CTREE (OTR) model object
-  \item Subgrps.train - Identified subgroups (training set)
-  \item Subgrps.test - Identified subgroups (test set)
-  \item pred.train - Predictions (training set)
-  \item pred.test - Predictions (test set)
+  \item mod - tree (OTR) model object
 }
 }
 \description{
-For continuous, binary, or survival outcomes, regress I(PLE>thres)~X with weights=abs(PLE) in CTREE
+For continuous, binary, or survival outcomes, regress I(PLE>thres)~X with
+weights=abs(PLE) in CTREE.
 }
 \examples{
 library(StratifiedMedicine)
@@ -51,10 +48,10 @@ A = dat_ctns$A
 
 \donttest{
 ## Estimate PLEs (through Ranger) ##
-mod_ple = ple_ranger(Y, A, X, Xtest=X)
+res.ple = ple_model(Y, A, X, Xtest=X, family="gaussian", ple="ple_ranger")
 
 ## Fit OTR Subgroup Model ##
-res_otr = submod_otr(Y, A, X, Xtest=X, mu_train = mod_ple$mu_train)
+res_otr = submod_otr(Y, A, X, Xtest=X, mu_train = res.ple$mu_train)
 plot(res_otr$mod)
 }
 

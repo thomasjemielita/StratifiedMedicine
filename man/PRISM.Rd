@@ -2,7 +2,7 @@
 % Please edit documentation in R/PRISM.R
 \name{PRISM}
 \alias{PRISM}
-\title{PRISM: Patient Responder Identifier for Stratified Medicine}
+\title{PRISM: Patient Response Identifier for Stratified Medicine}
 \usage{
 PRISM(Y, A, X, Xtest = NULL, family = "gaussian",
   filter = "filter_glmnet", ple = NULL, submod = NULL,
@@ -51,7 +51,8 @@ perform inference through the input function (by name). Default for "gaussian"/"
 \item{submod.hyper}{Hyper-parameters for the SubMod function (must be list). Default is NULL.}
 
 \item{submod2X}{Option to perform "double" subgroup identification; run SubMod once,
-rank them into ordinal groups, re-run Submod (BETA). Default=FALSE}
+rank them into ordinal groups, re-run Submod (BETA). Default=FALSE. Based on the
+"pruning" step in 5-STAR (Marceau-West and Mehrotra 2019 in progress)}
 
 \item{param.hyper}{Hyper-parameters for the Param function (must be list). Default is NULL.}
 

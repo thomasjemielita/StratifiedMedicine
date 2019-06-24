@@ -26,11 +26,9 @@ with covariate space (X, A, X*A)}
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
-Patient-level estimates (E(Y|X,1), E(Y|X,0), E(Y|X,1)-E(Y|X,0)) for train/test sets.
+Trained random forest (ranger) model(s).
  \itemize{
   \item mods - trained model(s)
-  \item mu_train - Patient-level estimates (training set)
-  \item mu_test - Patient-level estimates (test set)
 }
 }
 \description{
@@ -50,11 +48,13 @@ A = dat_ctns$A
 \donttest{
 # Default (treatment-specific ranger models) #
 mod1 = ple_ranger(Y, A, X, Xtest=X)
-summary(mod1$mu_train$PLE)
+summary( predict(mod1, newdata=data.frame(A,X) ) ) # oob predictions for training
+summary( predict(mod1, newdata=data.frame(X) ) ) # new-predictions, no oob here
 
 # Generate A*X covariates (single ranger model) #
 mod2 = ple_ranger(Y, A, X, Xtest=X, byTrt=0)
-summary(mod2$mu_train$PLE)
+summary( predict(mod2, newdata=data.frame(A,X) ) ) # oob predictions for training
+summary( predict(mod2, newdata=data.frame(X) ) ) # new-predictions
 }
 
 ## Survival (TBD) ##

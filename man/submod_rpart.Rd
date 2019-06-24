@@ -31,18 +31,14 @@ Else use observed outcome Y}
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
-rpart model, predictions, and identified subgroups.
+Trained rpart (CART).
  \itemize{
   \item mod - rpart model as partykit object
-  \item Subgrps.train - Identified subgroups (training set)
-  \item Subgrps.test - Identified subgroups (test set)
-  \item pred.train - Predictions (training set)
-  \item pred.test - Predictions (test set)
 }
 }
 \description{
-Uses the CART algorithm (rpart) to identify subgroups. Usable for continuous and binary outcomes.
-Option to use the observed outcome or PLEs for subgroup identification.
+Uses the CART algorithm (rpart) to identify subgroups. Usable for continuous and binary
+outcomes. Option to use the observed outcome or PLEs for subgroup identification.
 }
 \examples{
 library(StratifiedMedicine)
@@ -53,8 +49,8 @@ Y = dat_ctns$Y
 X = dat_ctns$X
 A = dat_ctns$A
 
-res_rpart1 = submod_rpart(Y, A, X, Xtest=X, family="gaussian")
-res_rpart2 = submod_rpart(Y, A, X, Xtest=X, maxdepth=2, minbucket=100, family="gaussian")
+res_rpart1 = submod_rpart(Y, A, X, Xtest=X)
+res_rpart2 = submod_rpart(Y, A, X, Xtest=X, maxdepth=2, minbucket=100)
 plot(res_rpart1$mod)
 plot(res_rpart2$mod)
 

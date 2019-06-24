@@ -45,10 +45,10 @@ X = dat_ctns$X
 A = dat_ctns$A
 
 ## Estimate PLEs (ranger) ##
-res_ranger = ple_ranger(Y, A, X, Xtest=X)
+res_ranger = ple_train(Y, A, X, Xtest=X, ple="ple_ranger")
 
 ## Identify Subgroups: MOB (lmtree) ##
-res_lmtree = submod_lmtree(Y, A, X, Xtest=X)
+res_lmtree = submod_train(Y, A, X, Xtest=X, submod="submod_lmtree")
 
 ## Parameter-estimation ##
 params = param_dr(Y, A, X, mu_hat = res_ranger$mu_train,

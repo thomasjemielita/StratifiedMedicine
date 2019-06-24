@@ -26,13 +26,9 @@ Default = floor( dim(train)[1]*0.05  )}
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
-MOB (Weibull) model, predictions, and identified subgroups.
+Trained MOB (Weibull) model.
  \itemize{
   \item mod - MOB (Weibull) model object
-  \item Subgrps.train - Identified subgroups (training set)
-  \item Subgrps.test - Identified subgroups (test set)
-  \item pred.train - Predictions (training set)
-  \item pred.test - Predictions (test set)
 }
 }
 \description{

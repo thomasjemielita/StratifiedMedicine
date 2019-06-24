@@ -20,7 +20,8 @@ ple_bart(Y, A, X, Xtest, family = "gaussian", ...)
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
-Patient-level estimates (E(Y|X,1), E(Y|X,0), E(Y|X,1)-E(Y|X,0)) for train/test sets.
+Trained BART model(s) and patient-level estimates
+(E(Y|X,1), E(Y|X,0), E(Y|X,1)-E(Y|X,0)) for train/test sets.
  \itemize{
   \item mods - trained model(s)
   \item mu_train - Patient-level estimates (training set)
@@ -45,6 +46,8 @@ train = data.frame(Y, A, X)
 # BART #
 \donttest{
 mod1 = ple_bart(train=train, Xtest=X)
+summary(mod1$mu_train)
+summary(predict(mod1, newdata=X))
 
 summary(mod1$mu_train$PLE)
 }

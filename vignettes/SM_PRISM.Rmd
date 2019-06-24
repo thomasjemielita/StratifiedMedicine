@@ -92,6 +92,7 @@ Resampling is also a feature in PRISM. Both bootstrap (resample="Bootstrap") and
 
 ```{r default_boot}
 library(ggplot2)
+library(dplyr)
 res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, verbose=FALSE)
 # # Plot of distributions and P(est>0) #
 plot(res_boot, type="resample")+geom_vline(xintercept = 0)

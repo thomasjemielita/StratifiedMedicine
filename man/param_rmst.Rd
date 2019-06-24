@@ -41,7 +41,8 @@ library(StratifiedMedicine)
 ## Survival Data ##
 
 # MOB-Weibull Subgroup Model ##
-res_weibull = submod_weibull(Y, A, X, Xtest=X, family="survival")
+res_weibull = submod_train(Y, A, X, Xtest=X, family="survival",
+                           submod = "submod_weibull")
 plot(res_weibull$mod)
 
 ## Parameter-Estimation ##

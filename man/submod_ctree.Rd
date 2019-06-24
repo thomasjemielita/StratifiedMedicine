@@ -30,13 +30,9 @@ Default = floor( dim(train)[1]*0.05  )}
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
-CTREE model, predictions, and identified subgroups.
+Trained ctree model.
  \itemize{
-  \item mod - CTREE model object
-  \item Subgrps.train - Identified subgroups (training set)
-  \item Subgrps.test - Identified subgroups (test set)
-  \item pred.train - Predictions (training set)
-  \item pred.test - Predictions (test set)
+  \item mod - ctree model object
 }
 }
 \description{
