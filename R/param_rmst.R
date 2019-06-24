@@ -35,7 +35,8 @@
 #` # A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
 #'
 #' # MOB-Weibull Subgroup Model ##
-#' res_weibull = submod_weibull(Y, A, X, Xtest=X, family="survival")
+#' res_weibull = submod_train(Y, A, X, Xtest=X, family="survival",
+#'                            submod = "submod_weibull")
 #' plot(res_weibull$mod)
 #'
 #' ## Parameter-Estimation ##
@@ -71,6 +72,6 @@ param_rmst = function(Y, A, X, mu_hat, alpha_ovrl, alpha_s, Subgrps, ...){
   param.dat = lapply(S_levels, looper)
   param.dat = do.call(rbind, param.dat)
   param.dat = data.frame( S = S_levels, N=S_N, param.dat)
-  colnames(param.dat) = c("Subgrps", "N", "rmst (A=1)-(A=0)", "pval", "LCL", "UCL")
+  colnames(param.dat) = c("Subgrps", "N", "est", "pval", "LCL", "UCL")
   return( param.dat )
 }
