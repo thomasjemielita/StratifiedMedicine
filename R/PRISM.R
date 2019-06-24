@@ -1,4 +1,4 @@
-#' PRISM: Patient Responder Identifier for Stratified Medicine
+#' PRISM: Patient Response Identifier for Stratified Medicine
 #'
 #' PRISM algorithm. Given a data-set of (Y, X, A) (Outcome, covariates, treatment),
 #' the \code{PRISM} identifies potential subgroup along with point and variability metrics.
@@ -28,7 +28,8 @@
 #' @param ple.hyper Hyper-parameters for the PLE function (must be list). Default is NULL.
 #' @param submod.hyper Hyper-parameters for the SubMod function (must be list). Default is NULL.
 #' @param submod2X Option to perform "double" subgroup identification; run SubMod once,
-#' rank them into ordinal groups, re-run Submod (BETA). Default=FALSE
+#' rank them into ordinal groups, re-run Submod (BETA). Default=FALSE. Based on the
+#' "pruning" step in 5-STAR (Marceau-West and Mehrotra 2019 in progress)
 #' @param param.hyper Hyper-parameters for the Param function (must be list). Default is NULL.
 #' @param prefilter_resamp Option to filter the covariate space (based on filter model) prior
 #' to resampling. Default=FALSE.
@@ -159,7 +160,7 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
   ### Main Model Pipeline: Feeds into CV/Bootstrap/resamples procedures ##
   main = function(Y, A, X, Xtest, ple, filter, submod, verbose){
     #### Step 1: Variable Filtering #####
-    if ( !is.null(Filter) ){
+    if ( !is.null(filter) ){
       if (verbose) message( paste("Filtering:", filter, sep=" ") )
       step1 = do.call( filter, append(list(Y=Y, A=A, X=X, family=family), filter.hyper)  )
       filter.mod = step1$mod
@@ -179,8 +180,8 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
     #### Step 2: PLE Estimation #####
     if ( !is.null(ple) ){
       if (verbose) message( paste("PLE:", ple, sep=" " ) )
-      step2 = do.call( ple, append(list(Y=Y, A=A, X=X.star, Xtest=Xtest.star,
-                                        family=family), ple.hyper) )
+      step2 = ple_train(Y=Y,A=A,X=X.star,Xtest=Xtest.star,family=family, ple=ple,
+                        hyper = ple.hyper)
       ple.mods = step2$mods
       mu_train = step2$mu_train
       mu_test = step2$mu_test
@@ -194,9 +195,9 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
     if ( !is.null(submod) ){
       if (verbose) message( paste("Subgroup Identification:",
                                 submod, sep=" "))
-      step3 = do.call( submod, append( list(Y=Y, A=A, X=X.star, Xtest=Xtest.star,
-                                    mu_train = mu_train, family=family), submod.hyper) )
-      # Option for "double" subgroup ==> Rank order subgroups by plug-in PLE #
+      step3 = submod_train(Y=Y, A=A, X=X.star, Xtest=Xtest.star, mu_train=mu_train,
+                           family = family, submod=submod, hyper = submod.hyper)
+      # Option for "double" subgroup ==> Rank order subgroups by submod predictions #
       if (submod2X){
         Rules = step3$Rules
         temp = aggregate( step3$pred.train~step3$Subgrps.train, FUN = "mean")
@@ -204,8 +205,8 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
         colnames(temp) = c("Subgrps.temp", "Subgrps.est")
         temp$Rank = rank(temp$Subgrps.est)
         temp = temp[,-2]
-        levels_rank = temp %>% arrange(temp$Rank) %>% select(temp$Rank)
-        levels_rank = levels_rank[,1]
+        levels_rank = temp[order(temp$Rank),]
+        levels_rank = levels_rank$Rank
         # Merge into new design matrices #
         X_new = data.frame(Subgrps.temp = step3$Subgrps.train)
         X_new_test = data.frame(Subgrps.temp = step3$Subgrps.test)
@@ -216,17 +217,24 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
         X.star.temp = data.frame(Rank=X_new[,"Rank"])
         Xtest.star.temp = data.frame(Rank=X_new_test[,"Rank"])
         ## Re-Fit Subgroup Model ##
-        step3X = do.call( submod, append(list(Y=Y, A=A, X=X.star.temp, Xtest=Xtest.star.temp,
-                                              mu_train = mu_train, family=family),
-                                              submod.hyper) )
+        step3X = submod_train(Y=Y, A=A, X=X.star.temp, Xtest=Xtest.star.temp,
+                              mu_train=mu_train,family = family, submod=submod,
+                              hyper = submod.hyper)
         ## Obtain the "Merged" Rules ##
-        temp.rules = Rules
-        colnames(temp.rules) = c("Subgrps.temp", "Rules")
+        if (is.null(Rules)){ #if no definitions, use the numeric predictions #
+          temp.rules = data.frame(Subgrps.temp=temp$Subgrps.temp,
+                                  Rules = temp$Subgrps.temp)
+        }
+        if (!is.null(Rules)){
+          temp.rules = Rules
+          colnames(temp.rules) = c("Subgrps.temp", "Rules")
+        }
         rules.dat = data.frame(Subgrps.temp = step3$Subgrps.train,
                                Subgrps.new = step3X$Subgrps.train)
         rules.dat = left_join(rules.dat, temp.rules, by="Subgrps.temp")
         rules.dat = unique(rules.dat[,c("Subgrps.new", "Rules")])
-        rules.dat <- aggregate(Rules ~ Subgrps.new, data = rules.dat, paste, collapse = " , ")
+        rules.dat <- aggregate(Rules ~ Subgrps.new, data = rules.dat, paste,
+                               collapse = " , ")
         colnames(rules.dat) = c("Subgrps", "Rules")
         step3X$Rules = rules.dat
         step3 = step3X
