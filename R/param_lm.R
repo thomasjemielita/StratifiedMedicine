@@ -28,7 +28,7 @@
 #' A = dat_ctns$A
 #'
 #' ## Identify Subgroups: MOB (lmtree) ##
-#' res_lmtree = submod_lmtree(Y, A, X,  Xtest=X)
+#' res_lmtree = submod_train(Y, A, X,  Xtest=X, submod="submod_lmtree")
 #'
 #' ## Parameter-estimation ##
 #' params = param_lm(Y, A, X, Subgrps = res_lmtree$Subgrps.train, alpha_ovrl=0.05,
