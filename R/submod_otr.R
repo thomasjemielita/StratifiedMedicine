@@ -1,6 +1,7 @@
 #' Subgroup Identification: Optimal Treatment Regime (through CTREE)
 #'
-#' For continuous, binary, or survival outcomes, regress I(PLE>thres)~X with weights=abs(PLE) in CTREE
+#' For continuous, binary, or survival outcomes, regress I(PLE>thres)~X with
+#' weights=abs(PLE) in CTREE.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -15,13 +16,9 @@
 #'
 #' @import partykit
 #'
-#' @return CTREE (OTR) model, predictions, and identified subgroups.
+#' @return Trained ctree (optimal treatment regime) model.
 #'  \itemize{
-#'   \item mod - CTREE (OTR) model object
-#'   \item Subgrps.train - Identified subgroups (training set)
-#'   \item Subgrps.test - Identified subgroups (test set)
-#'   \item pred.train - Predictions (training set)
-#'   \item pred.test - Predictions (test set)
+#'   \item mod - tree (OTR) model object
 #' }
 #'
 #' @export
@@ -36,10 +33,10 @@
 #'
 #' \donttest{
 #' ## Estimate PLEs (through Ranger) ##
-#' mod_ple = ple_ranger(Y, A, X, Xtest=X)
+#' res.ple = ple_model(Y, A, X, Xtest=X, family="gaussian", ple="ple_ranger")
 #'
 #' ## Fit OTR Subgroup Model ##
-#' res_otr = submod_otr(Y, A, X, Xtest=X, mu_train = mod_ple$mu_train)
+#' res_otr = submod_otr(Y, A, X, Xtest=X, mu_train = res.ple$mu_train)
 #' plot(res_otr$mod)
 #' }
 #'
@@ -55,13 +52,61 @@ submod_otr = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.0
   mod <- suppressWarnings( ctree(ind_PLE ~ ., data = hold, weights = w_PLE,
                                  control = ctree_control(minbucket=minbucket,
                                                          maxdepth=maxdepth)) )
-  ##  Predict Subgroups for Train/Test ##
-  Subgrps.train = as.numeric( predict(mod, type="node") )
-  Subgrps.test = as.numeric( predict(mod, type="node", newdata = Xtest) )
-  ## Predict E(Y|X=x, A=1)-E(Y|X=x,A=0) ##
-  pred.train = as.numeric( predict(mod) )
-  pred.test = as.numeric( predict(mod, newdata = Xtest) )
+
+  res = list(mod=mod)
+  class(res) = "submod_otr"
   ## Return Results ##
-  return(  list(mod=mod, Subgrps.train=Subgrps.train, Subgrps.test=Subgrps.test,
-                pred.train=pred.train, pred.test=pred.test) )
+  return(  res )
 }
+
+#' Predict submod: OTR CTREE
+#'
+#' Predict subgroups and obtain subgroup-specific estimates, P(PLE>thres), for a
+#' trained ctree OTR model.
+#'
+#' @param object Trained ctree model.
+#' @param newdata Data-set to make predictions at.
+#' @param ... Any additional parameters, not currently passed through.
+#'
+#' @import partykit
+#'
+#' @return Identified subgroups with subgroup-specific predictions of P(PLE>thres).
+#' \itemize{
+#'   \item Subgrps - Identified subgroups
+#'   \item pred - Predictions, P(PLE>thres) by identified subgroup.
+#'}
+#' @examples
+#' library(StratifiedMedicine)
+#'
+#' ## Continuous ##
+#' dat_ctns = generate_subgrp_data(family="gaussian")
+#' Y = dat_ctns$Y
+#' X = dat_ctns$X
+#' A = dat_ctns$A
+#'
+#' \donttest{
+#' ## Estimate PLEs (through Ranger) ##
+#' res.ple = ple_model(Y, A, X, Xtest=X, family="gaussian", ple="ple_ranger")
+#'
+#' ## Fit OTR Subgroup Model ##
+#' res_otr = submod_otr(Y, A, X, Xtest=X, mu_train = res.ple$mu_train)
+#' out = predict(res_otr, newdata=X)
+#' plot(res_otr$mod)
+#' }
+#'
+#' @method predict submod_otr
+#' @export
+#'
+predict.submod_otr = function(object, newdata, ...){
+
+  # Extract mod/family #
+  mod = object$mod
+  family = object$family
+  ##  Predict Subgroups ##
+  Subgrps = as.numeric( predict(mod, type="node", newdata = newdata) )
+  ## Predict P(PLE>thres|X) ##
+  pred = as.numeric( predict(mod, newdata = newdata) )
+  ## Return Results ##
+  return(  list(Subgrps=Subgrps, pred=pred) )
+}
+

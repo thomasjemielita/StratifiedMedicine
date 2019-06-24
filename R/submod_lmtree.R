@@ -15,13 +15,9 @@
 #'
 #' @import partykit
 #'
-#' @return lmtree model, predictions, and identified subgroups.
+#' @return Trained lmtree model.
 #'  \itemize{
 #'   \item mod - lmtree model object
-#'   \item Subgrps.train - Identified subgroups (training set)
-#'   \item Subgrps.test - Identified subgroups (test set)
-#'   \item pred.train - Predictions (training set)
-#'   \item pred.test - Predictions (test set)
 #' }
 #'
 #' @export
@@ -49,15 +45,55 @@ submod_lmtree = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0.
 
   ## Fit Model ##
   mod <- lmtree(Y~A | ., data = X, maxdepth = maxdepth, minsize=minsize)
-  ##  Predict Subgroups for Train/Test ##
-  Subgrps.train = as.numeric( predict(mod, type="node") )
-  Subgrps.test = as.numeric( predict(mod, type="node", newdata = Xtest) )
-  ## Predict E(Y|X=x, A=1)-E(Y|X=x,A=0) ##
-  pred.train = predict( mod, newdata = data.frame(A=1, X) ) -
-    predict( mod, newdata = data.frame(A=0, X) )
-  pred.test =  predict( mod, newdata = data.frame(A=1, Xtest) ) -
-    predict( mod, newdata = data.frame(A=0, Xtest) )
+
+  res = list(mod=mod)
+  class(res) = "submod_lmtree"
   ## Return Results ##
-  return(  list(mod=mod, Subgrps.train=Subgrps.train, Subgrps.test=Subgrps.test,
-                pred.train=pred.train, pred.test=pred.test) )
+  return(  res )
+}
+
+#' Predict submod: lmtree
+#'
+#' Predict subgroups and obtain subgroup-specific estimates of E(Y|A=1)-E(Y|A=0).
+#'
+#' @param object Trained lmtree model.
+#' @param newdata Data-set to make predictions at.
+#' @param ... Any additional parameters, not currently passed through.
+#'
+#' @import partykit
+#'
+#' @return Identified subgroups with subgroup-specific predictions of E(Y|A=1)-E(Y|A=0).
+#' \itemize{
+#'   \item Subgrps - Identified subgroups
+#'   \item pred - Predictions, E(Y|A=1)-E(Y|A=0) by subgroup.
+#'}
+#' @examples
+#' library(StratifiedMedicine)
+#'
+#' ## Continuous ##
+#' dat_ctns = generate_subgrp_data(family="gaussian")
+#' Y = dat_ctns$Y
+#' X = dat_ctns$X
+#' A = dat_ctns$A
+#'
+#' res_lmtree1 = submod_lmtree(Y, A, X, Xtest=X)
+#' # Predict subgroups / estimates #
+#' out = predict(res_lmtree1, newdata=X)
+#'
+#'
+#' @method predict submod_lmtree
+#' @export
+#'
+predict.submod_lmtree = function(object, newdata, ...){
+
+  # Extract mod #
+  mod = object$mod
+  ##  Predict Subgroups ##
+  Subgrps = as.numeric( predict(mod, type="node", newdata = newdata) )
+  ## Predict E(Y|X=x, A=1)-E(Y|X=x,A=0) ##
+  pred =  predict( mod, newdata = data.frame(A=1, newdata) ) -
+          predict( mod, newdata = data.frame(A=0, newdata) )
+
+  ## Return Results ##
+  return(  list(Subgrps=Subgrps, pred=pred) )
 }

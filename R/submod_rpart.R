@@ -1,7 +1,7 @@
 #' Subgroup Identification: CART (rpart)
 #'
-#' Uses the CART algorithm (rpart) to identify subgroups. Usable for continuous and binary outcomes.
-#' Option to use the observed outcome or PLEs for subgroup identification.
+#' Uses the CART algorithm (rpart) to identify subgroups. Usable for continuous and binary
+#' outcomes. Option to use the observed outcome or PLEs for subgroup identification.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -18,13 +18,9 @@
 #'
 #' @import rpart
 #'
-#' @return rpart model, predictions, and identified subgroups.
+#' @return Trained rpart (CART).
 #'  \itemize{
 #'   \item mod - rpart model as partykit object
-#'   \item Subgrps.train - Identified subgroups (training set)
-#'   \item Subgrps.test - Identified subgroups (test set)
-#'   \item pred.train - Predictions (training set)
-#'   \item pred.test - Predictions (test set)
 #' }
 #'
 #' @export
@@ -37,8 +33,8 @@
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
-#' res_rpart1 = submod_rpart(Y, A, X, Xtest=X, family="gaussian")
-#' res_rpart2 = submod_rpart(Y, A, X, Xtest=X, maxdepth=2, minbucket=100, family="gaussian")
+#' res_rpart1 = submod_rpart(Y, A, X, Xtest=X)
+#' res_rpart2 = submod_rpart(Y, A, X, Xtest=X, maxdepth=2, minbucket=100)
 #' plot(res_rpart1$mod)
 #' plot(res_rpart2$mod)
 #'
@@ -56,15 +52,55 @@ submod_rpart = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0
   mod <- rpart(Y ~ ., data = X,
                control = rpart.control(minbucket=minbucket, maxdepth=maxdepth))
   mod = as.party(mod)
-  ##  Predict Subgroups for Train/Test ##
-  Subgrps.train = as.numeric( predict(mod, type="node") )
-  Subgrps.test = as.numeric( predict(mod, type="node", newdata = Xtest) )
+  res = list(mod=mod, family=family)
+  class(res) = "submod_rpart"
+  ## Return Results ##
+  return(  res )
+}
+
+#' Predict submod: rpart
+#'
+#' Predict subgroups and obtain subgroup-specific estimates, E(Y|X) or PLE(X), for a
+#' trained ctree model (depends on if outcome_PLE argument)
+#'
+#' @param object Trained ctree model.
+#' @param newdata Data-set to make predictions at.
+#' @param ... Any additional parameters, not currently passed through.
+#'
+#' @import partykit
+#'
+#' @return Identified subgroups with subgroup-specific predictions of E(Y|X) or PLE(X).
+#' \itemize{
+#'   \item Subgrps - Identified subgroups
+#'   \item pred - Predictions, E(Y|X) or PLE(X) by subgroup.
+#'}
+#' @examples
+#' library(StratifiedMedicine)
+#'
+#' ## Continuous ##
+#' dat_ctns = generate_subgrp_data(family="gaussian")
+#' Y = dat_ctns$Y
+#' X = dat_ctns$X
+#' A = dat_ctns$A
+#'
+#' res_rpart = submod_rpart(Y, A, X, Xtest=X)
+#' # Predict subgroups / estimates #
+#' out = predict(res_rpart, newdata=X)
+#'
+#' @method predict submod_rpart
+#' @export
+#'
+predict.submod_rpart = function(object, newdata, ...){
+
+  # Extract mod/family #
+  mod = object$mod
+  family = object$family
+  ##  Predict Subgroups ##
+  Subgrps = as.numeric( predict(mod, type="node", newdata = newdata) )
   ## Response Predictions ##
   if (family=="gaussian"){ type.fam = "response"   } # E(Y|X)
   if (family=="binomial"){ type.fam = "prob"   } # probability
-  pred.train = predict( mod, newdata = data.frame(X), type = type.fam )
-  pred.test = predict( mod, newdata = data.frame(Xtest), type = type.fam )
+  pred = predict( mod, newdata = newdata, type = type.fam )
   ## Return Results ##
-  return(  list(mod=mod, Subgrps.train=Subgrps.train, Subgrps.test=Subgrps.test,
-                pred.train=pred.train, pred.test=pred.test) )
+  return(  list(Subgrps=Subgrps, pred=pred) )
 }
