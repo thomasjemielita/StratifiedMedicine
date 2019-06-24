@@ -15,13 +15,9 @@
 #'
 #' @import survival
 #'
-#' @return MOB (Weibull) model, predictions, and identified subgroups.
+#' @return Trained MOB (Weibull) model.
 #'  \itemize{
 #'   \item mod - MOB (Weibull) model object
-#'   \item Subgrps.train - Identified subgroups (training set)
-#'   \item Subgrps.test - Identified subgroups (test set)
-#'   \item pred.train - Predictions (training set)
-#'   \item pred.test - Predictions (test set)
 #' }
 #'
 #' @export
@@ -59,19 +55,59 @@ submod_weibull = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0
   mod <- mob(Y ~ A | ., data = X,
              fit = wbreg, control = mob_control(parm=1:3, minsize=minsize,
                                                 maxdepth=maxdepth))
-  ##  Predict Subgroups for Train/Test ##
-  Subgrps.train = as.numeric( predict(mod, type="node") )
-  Subgrps.test = as.numeric( predict(mod, type="node", newdata = Xtest) )
-  # ## Predict Hazard Ratio across subgroups ##
-  # for (sub in unique(Subgrps.train)){
-  #   # Extract Model #
-  #   mod.s = summary(mod)[]
-  #
-  # }
-  ## Predict E(Y|X=x, A=1)-E(Y|X=x,A=0) ##
-  pred.train = NA
-  pred.test =  NA
+
+  res = list(mod=mod)
+  class(res) = "submod_weibull"
   ## Return Results ##
-  return(  list(mod=mod, Subgrps.train=Subgrps.train, Subgrps.test=Subgrps.test,
-                pred.train=pred.train, pred.test=pred.test) )
+  return(  res  )
 }
+
+#' Predict submod: Model-based partitioning (Weibull)
+#'
+#' Predict subgroups and obtain subgroup-specific point-estimates (in pprogress).
+#'
+#' @param object Trained MOB (Weibull) model.
+#' @param newdata Data-set to make predictions at.
+#' @param ... Any additional parameters, not currently passed through.
+#'
+#' @import partykit
+#'
+#' @return Identified subgroups with subgroup-specific predictions.
+#' \itemize{
+#'   \item Subgrps - Identified subgroups
+#'   \item pred - Predictions, by subgroup.
+#'}
+#' @examples
+#' library(StratifiedMedicine)
+#'
+#'
+#' \donttest{
+#' ## Load TH.data (no treatment; generate treatment randomly to simulate null effect) ##
+#' data("GBSG2", package = "TH.data", envir = e <- new.env() )
+#' surv.dat = e$GBSG2
+#' ## Design Matrices ###
+#' Y = with(surv.dat, Surv(time, cens))
+#' X = surv.dat[,!(colnames(surv.dat) %in% c("time", "cens")) ]
+#' A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
+#' res_weibull = submod_weibull(Y, A, X, Xtest=X, family="survival")
+#' out = predict(res_weibull, newdata=X)
+#' plot(res_weibull$mod)
+#' }
+#'
+#'
+#' @method predict submod_weibull
+#' @export
+#'
+predict.submod_weibull = function(object, newdata, ...){
+
+  # Extract mod #
+  mod = object$mod
+  ##  Predict Subgroups ##
+  Subgrps = as.numeric( predict(mod, type="node", newdata = newdata) )
+  ## What should we predict? TBD in progress ##
+  pred =  NA
+
+  ## Return Results ##
+  return(  list(Subgrps=Subgrps, pred=pred) )
+}
+
