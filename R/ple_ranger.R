@@ -17,11 +17,9 @@
 #'
 #' @import ranger
 #'
-#' @return Patient-level estimates (E(Y|X,1), E(Y|X,0), E(Y|X,1)-E(Y|X,0)) for train/test sets.
+#' @return Trained random forest (ranger) model(s).
 #'  \itemize{
 #'   \item mods - trained model(s)
-#'   \item mu_train - Patient-level estimates (training set)
-#'   \item mu_test - Patient-level estimates (test set)
 #' }
 #' @examples
 #' library(StratifiedMedicine)
@@ -34,11 +32,13 @@
 #' \donttest{
 #' # Default (treatment-specific ranger models) #
 #' mod1 = ple_ranger(Y, A, X, Xtest=X)
-#' summary(mod1$mu_train$PLE)
+#' summary( predict(mod1, newdata=data.frame(A,X) ) ) # oob predictions for training
+#' summary( predict(mod1, newdata=data.frame(X) ) ) # new-predictions, no oob here
 #'
 #' # Generate A*X covariates (single ranger model) #
 #' mod2 = ple_ranger(Y, A, X, Xtest=X, byTrt=0)
-#' summary(mod2$mu_train$PLE)
+#' summary( predict(mod2, newdata=data.frame(A,X) ) ) # oob predictions for training
+#' summary( predict(mod2, newdata=data.frame(X) ) ) # new-predictions
 #' }
 #'
 #' ## Survival (TBD) ##
@@ -61,20 +61,6 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussi
     mod1 <- ranger(Y ~ ., data = train1, seed=2, min.node.size = min.node.pct*dim(train1)[1])
 
     mods = list(mod0=mod0, mod1=mod1)
-    if (family %in% c("gaussian", "binomial")){
-      ## Predictions: Train/Test ##
-      mu_train = data.frame( mu1 =  predict(mod1, data = X)$predictions,
-                             mu0 = predict(mod0, data = X)$predictions)
-      mu_train$PLE = with(mu_train, mu1 - mu0 )
-
-      mu_test = data.frame( mu1 =  predict(mod1, data = Xtest)$predictions,
-                            mu0 = predict(mod0, data = Xtest)$predictions)
-      mu_test$PLE = with(mu_test, mu1 - mu0 )
-    }
-    if (family=="survival"){
-      ## Predict Difference in RMST (can restrict up to time-point) ##
-      ## TBD ##
-    }
   }
   ## Single Random Forest Model: Generate A*X interactions manually ##
   if (byTrt==0){
@@ -93,22 +79,82 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussi
     colnames(Xtest0) = c( "A", colnames(Xtest), paste(colnames(Xtest), "_A", sep="") )
     Xtest1 = data.frame(1, Xtest, Xtest*1)
     colnames(Xtest1) = c( "A", colnames(Xtest), paste(colnames(Xtest), "_A", sep="") )
-
     ## Fit RF ##
     mod.inter <- ranger(Y ~ ., data = train.inter, seed=5,
                  min.node.size = min.node.pct*dim(train.inter)[1])
-
-    ## Predictions: Train/Test ##
-    mu_train = data.frame( mu1 =  predict(mod.inter, data = Xtrain1)$predictions,
-                           mu0 = predict(mod.inter, data = Xtrain0)$predictions)
-    mu_train$PLE = with(mu_train, mu1 - mu0 )
-
-    mu_test = data.frame( mu1 =  predict(mod.inter, data = Xtest1)$predictions,
-                          mu0 = predict(mod.inter, data = Xtest0)$predictions)
-    mu_test$PLE = with(mu_test, mu1 - mu0 )
     mods = list(mod.inter=mod.inter)
   }
-
+  res = list(mods=mods)
+  class(res) = "ple_ranger"
   ## Return Results ##
-  return( list(mods=mods, mu_train = mu_train, mu_test = mu_test) )
+  return( res )
 }
+
+#' Predict Patient-level Estimates: Ranger
+#'
+#' Get estimates of (E(Y|X,A=1), E(Y|X,A=0), E(Y|X,A=1)-E(Y|X,A=0)) using trained random
+#' forest (ranger) model(s).
+#'
+#' @param object Trained random forest (ranger) model(s).
+#' @param newdata Data-set to make predictions at. For training data, should
+#' include covariates (X) and treatment (A) for oob predictions.
+#' @param oob Use out-of-bag predictions (default=TRUE unless newdata does not contain
+#' treatment variable A).
+#' @param ... Any additional parameters, not currently passed through.
+#'
+#' @import ranger
+#'
+#' @return Data-frame with predictions of (E(Y|X,A=1), E(Y|X,A=0), E(Y|X,A=1)-E(Y|X,A=0))
+#'
+#' @examples
+#' library(StratifiedMedicine)
+#' ## Continuous ##
+#' dat_ctns = generate_subgrp_data(family="gaussian")
+#' Y = dat_ctns$Y
+#' X = dat_ctns$X
+#' A = dat_ctns$A
+#'
+#'
+#' # Default (treatment-specific ranger models) #
+#' mod1 = ple_ranger(Y, A, X, Xtest=X)
+#' summary( predict(mod1, newdata=data.frame(A,X) ) ) # oob predictions for training
+#' summary( predict(mod1, newdata=data.frame(X) ) ) # new-predictions, no oob here
+#'
+#'
+#' @method predict ple_ranger
+#' @export
+#'
+#### Counterfactual Forest: Ranger ####
+predict.ple_ranger = function(object, newdata, oob=TRUE, ...){
+
+  if ( !("A" %in% names(newdata)) ){
+    oob = FALSE
+  }
+  A = newdata$A
+  X = newdata[,!(colnames(newdata) %in% "A") ]
+  ## Treatment-specific ranger models ##
+  if (length(object$mods)>1){
+    mu1_hat = predict( object$mods[["mod1"]], X )$predictions
+    mu0_hat = predict( object$mods[["mod0"]], X )$predictions
+    if (oob){
+      mu1_hat = ifelse(A==1, object$mods[["mod1"]]$predictions, mu1_hat)
+      mu0_hat = ifelse(A==0, object$mods[["mod0"]]$predictions, mu0_hat)
+    }
+  }
+  ## X*A interactions included (one ranger model) ##
+  if (length(object$mods)==1){
+    X0 = data.frame(0, X, X*0)
+    colnames(X0) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
+    X1 = data.frame(1, X, X*1)
+    colnames(X1) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
+    mu1_hat = predict( object$mods[["mod.inter"]], X1 )$predictions
+    mu0_hat = predict( object$mods[["mod.inter"]], X0 )$predictions
+    if (oob){
+      mu1_hat = ifelse(A==1, object$mods[["mod.inter"]]$predictions, mu1_hat)
+      mu0_hat = ifelse(A==0, object$mods[["mod.inter"]]$predictions, mu0_hat)
+    }
+  }
+  mu_hat = data.frame(mu1 = mu1_hat, mu0 = mu0_hat, PLE = mu1_hat-mu0_hat)
+  return( mu_hat  )
+}
+
