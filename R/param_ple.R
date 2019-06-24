@@ -33,7 +33,7 @@
 #' res_ranger = ple_ranger(Y, A, X, Xtest=X)
 #'
 #' ## Identify Subgroups: MOB (lmtree) ##
-#' res_lmtree = submod_lmtree(Y, A, X, Xtest=X)
+#' res_lmtree = submod_train(Y, A, X, Xtest=X, submod="submod_lmtree")
 #'
 #' ## Parameter-estimation ##
 #' params = param_ple(Y, A, X, mu_hat = res_ranger$mu_train,
