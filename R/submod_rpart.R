@@ -16,8 +16,6 @@
 #' @param family Outcome type ("gaussian", "binomial"), default is "gaussian"
 #' @param ... Any additional parameters, not currently passed through.
 #'
-#' @import rpart
-#'
 #' @return Trained rpart (CART).
 #'  \itemize{
 #'   \item mod - rpart model as partykit object
@@ -25,6 +23,8 @@
 #'
 #' @export
 #' @examples
+#'
+#' \donttest{
 #' library(StratifiedMedicine)
 #'
 #' ## Continuous ##
@@ -33,24 +33,29 @@
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
+#' require(rpart)
 #' res_rpart1 = submod_rpart(Y, A, X, Xtest=X)
 #' res_rpart2 = submod_rpart(Y, A, X, Xtest=X, maxdepth=2, minbucket=100)
 #' plot(res_rpart1$mod)
 #' plot(res_rpart2$mod)
+#' }
 #'
-#' @seealso \code{\link{PRISM}}, \code{\link{rpart}}
 #'
 ## CART(rpart) ###
 submod_rpart = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.05  ),
                        maxdepth = 4, outcome_PLE=FALSE, family="gaussian", ...){
+
+  if (!requireNamespace("rpart", quietly = TRUE)) {
+    stop("Package rpart needed for submod_rpart. Please install.")
+  }
 
   ## Use PLE as outcome? #
   if (outcome_PLE==TRUE){
     Y = mu_train$PLE
   }
   ## Fit Model ##
-  mod <- rpart(Y ~ ., data = X,
-               control = rpart.control(minbucket=minbucket, maxdepth=maxdepth))
+  mod <- rpart::rpart(Y ~ ., data = X,
+               control = rpart::rpart.control(minbucket=minbucket, maxdepth=maxdepth))
   mod = as.party(mod)
   res = list(mod=mod, family=family)
   class(res) = "submod_rpart"
@@ -75,6 +80,8 @@ submod_rpart = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0
 #'   \item pred - Predictions, E(Y|X) or PLE(X) by subgroup.
 #'}
 #' @examples
+#'
+#' \donttest{
 #' library(StratifiedMedicine)
 #'
 #' ## Continuous ##
@@ -86,6 +93,7 @@ submod_rpart = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0
 #' res_rpart = submod_rpart(Y, A, X, Xtest=X)
 #' # Predict subgroups / estimates #
 #' out = predict(res_rpart, newdata=X)
+#' }
 #'
 #' @method predict submod_rpart
 #' @export

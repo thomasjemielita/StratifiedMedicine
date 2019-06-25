@@ -41,6 +41,8 @@ Uses the CART algorithm (rpart) to identify subgroups. Usable for continuous and
 outcomes. Option to use the observed outcome or PLEs for subgroup identification.
 }
 \examples{
+
+\donttest{
 library(StratifiedMedicine)
 
 ## Continuous ##
@@ -49,12 +51,12 @@ Y = dat_ctns$Y
 X = dat_ctns$X
 A = dat_ctns$A
 
+require(rpart)
 res_rpart1 = submod_rpart(Y, A, X, Xtest=X)
 res_rpart2 = submod_rpart(Y, A, X, Xtest=X, maxdepth=2, minbucket=100)
 plot(res_rpart1$mod)
 plot(res_rpart2$mod)
-
 }
-\seealso{
-\code{\link{PRISM}}, \code{\link{rpart}}
+
+
 }
