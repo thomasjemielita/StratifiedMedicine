@@ -60,12 +60,11 @@
 #'   \item Rules - Subgroups rules/definitions
 #' }
 #' @export
-#' @importFrom stats aggregate coef lm model.matrix p.adjust pnorm
+#' @importFrom stats aggregate coef lm model.matrix p.adjust pnorm confint
 #' @importFrom stats predict pt qnorm qt quantile sd weighted.mean
 #' @import dplyr
 #' @import ggplot2
 #' @import survival
-#' @import coin
 #'
 #' @examples
 #' ## Load library ##
@@ -94,15 +93,15 @@
 #' }
 #'
 #' # Survival Data ##
-#' # Load TH.data (no treatment; generate treatment randomly to simulate null effect) ##
-#`
 #' \donttest{
 #'   library(survival)
+#'   require(TH.data); require(coin)
 #'   data("GBSG2", package = "TH.data")
 #'   surv.dat = GBSG2
 #'   # Design Matrices ###
 #'   Y = with(surv.dat, Surv(time, cens))
 #'   X = surv.dat[,!(colnames(surv.dat) %in% c("time", "cens")) ]
+#'   set.seed(513)
 #'   A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
 #'
 #'   # Default: PRISM: glmnet ==> MOB (Weibull) ==> Cox; bootstrapping posterior prob/inference #

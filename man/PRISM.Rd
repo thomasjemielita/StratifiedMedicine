@@ -127,14 +127,15 @@ plot(res0) # Forest plot: overall/subgroup specific parameter estimates (CIs)
 }
 
 # Survival Data ##
-# Load TH.data (no treatment; generate treatment randomly to simulate null effect) ##
 \donttest{
   library(survival)
+  require(TH.data); require(coin)
   data("GBSG2", package = "TH.data")
   surv.dat = GBSG2
   # Design Matrices ###
   Y = with(surv.dat, Surv(time, cens))
   X = surv.dat[,!(colnames(surv.dat) \%in\% c("time", "cens")) ]
+  set.seed(513)
   A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
 
   # Default: PRISM: glmnet ==> MOB (Weibull) ==> Cox; bootstrapping posterior prob/inference #
