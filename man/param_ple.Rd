@@ -24,16 +24,16 @@ param_ple(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...)
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
-Data-set with parameter estimates and corresponding
-variability metrics, for overall and subgroups.
+Data-set with parameter estimates and corresponding variability metrics,
+for overall and subgroups. Subgrps=0 corresponds to the overall population by default.
  \itemize{
-  \item param.dat - Parameter estimates and variability metrics.
-  By convention, Subgrps=0 corresponds to overall population.
+  \item param.dat - Parameter estimates and variability metrics (est, SE,
+  LCL/UCL = lower/upper confidence limits, pval = p-value).
   }
 }
 \description{
-Parameter estimation and inference through patient-level estimates.
-Usable for continuous and binary outcomes.
+Parameter estimation and inference through patient-level estimates. Usable for continuous
+and binary outcomes (possibly survival, needs further evaluation).
 }
 \examples{
 library(StratifiedMedicine)
@@ -46,7 +46,7 @@ A = dat_ctns$A
 train = data.frame(Y, A, X)
 
 ## Estimate PLEs (ranger) ##
-res_ranger = ple_ranger(Y, A, X, Xtest=X)
+res_ranger = ple_train(Y, A, X, Xtest=X, ple = "ple_ranger")
 
 ## Identify Subgroups: MOB (lmtree) ##
 res_lmtree = submod_train(Y, A, X, Xtest=X, submod="submod_lmtree")
