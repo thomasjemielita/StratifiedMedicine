@@ -1,7 +1,7 @@
-#' Filter: Elastic Net (glmnet) Variable Importance
+#' Filter: Elastic Net (glmnet)
 #'
-#' Filter variables through elastic net. Variables with zero coefficients
-#' (depending on lambda choice; default is lambda.min) are filtered.
+#' Filter variables through elastic net (Zou and Hastie 2005). Variables with estimated
+#' coefficients of zero (depends on lambda choice; default is lambda.min) are filtered.
 #' Usable for continuous, binary, and survival outcomes.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
@@ -34,9 +34,6 @@
 #' mod1$filter.vars
 #' mod2$filter.vars
 #' mod3$filter.vars
-
-
-#' @seealso \code{\link{PRISM}}, \code{\link{glmnet}}
 
 ##### Elastic net (glmnet): Y~X ######
 filter_glmnet = function(Y, A, X, lambda="lambda.min", family="gaussian", ...){

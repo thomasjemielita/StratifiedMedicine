@@ -2,7 +2,7 @@
 % Please edit documentation in R/filter_glmnet.R
 \name{filter_glmnet}
 \alias{filter_glmnet}
-\title{Filter: Elastic Net (glmnet) Variable Importance}
+\title{Filter: Elastic Net (glmnet)}
 \usage{
 filter_glmnet(Y, A, X, lambda = "lambda.min", family = "gaussian", ...)
 }
@@ -28,8 +28,8 @@ Filter model and variables that remain after filtering.
 }
 }
 \description{
-Filter variables through elastic net. Variables with zero coefficients
-(depending on lambda choice; default is lambda.min) are filtered.
+Filter variables through elastic net (Zou and Hastie 2005). Variables with estimated
+coefficients of zero (depends on lambda choice; default is lambda.min) are filtered.
 Usable for continuous, binary, and survival outcomes.
 }
 \examples{
@@ -48,7 +48,4 @@ mod3 = filter_glmnet(Y, A, X, lambda = "lambda.1se")
 mod1$filter.vars
 mod2$filter.vars
 mod3$filter.vars
-}
-\seealso{
-\code{\link{PRISM}}, \code{\link{glmnet}}
 }
