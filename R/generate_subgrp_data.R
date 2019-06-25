@@ -10,7 +10,6 @@
 #' @importFrom stats rbinom rnorm time
 #' @importFrom utils data
 #' @import mvtnorm
-#' @import TH.data
 #' @return Simulation data set (Y=outcome, A=treatment, X=covariates)
 #' @export
 #'
