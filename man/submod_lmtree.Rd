@@ -32,8 +32,8 @@ Trained lmtree model.
 }
 }
 \description{
-Uses the lmtree (model-based partitioning, OLS) algorithm to identify subgroups.
-Usable for continuous and binary outcomes.
+Uses the lmtree (model-based partitioning, OLS) algorithm to identify subgroups
+(Zeileis, Hothorn, Hornik 2008). Usable for continuous and binary outcomes.
 }
 \examples{
 library(StratifiedMedicine)
@@ -51,7 +51,5 @@ res_lmtree2 = submod_lmtree(Y, A, X, Xtest=X, maxdepth=2, minsize=100)
 plot(res_lmtree1$mod)
 plot(res_lmtree2$mod)
 
-}
-\seealso{
-\code{\link{PRISM}}, \code{\link{lmtree}}
+
 }

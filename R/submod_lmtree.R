@@ -1,7 +1,7 @@
 #' Subgroup Identification: Model-based partitioning (lmtree)
 #'
-#' Uses the lmtree (model-based partitioning, OLS) algorithm to identify subgroups.
-#' Usable for continuous and binary outcomes.
+#' Uses the lmtree (model-based partitioning, OLS) algorithm to identify subgroups
+#' (Zeileis, Hothorn, Hornik 2008). Usable for continuous and binary outcomes.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -37,7 +37,6 @@
 #' plot(res_lmtree1$mod)
 #' plot(res_lmtree2$mod)
 #'
-#' @seealso \code{\link{PRISM}}, \code{\link{lmtree}}
 #'
 #### lmtree (MOB) ###
 submod_lmtree = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0.05  ),
