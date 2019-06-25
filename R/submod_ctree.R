@@ -1,7 +1,7 @@
-#' Subgroup Identification: Conditional Inference Trees (CTREE)
+#' Subgroup Identification: Conditional Inference Trees (ctree)
 #'
-#' Uses the CTREE (conditional inference trees) algorithm to identify subgroups.
-#' Usable for continuous and binary outcomes.
+#' Uses the ctree (conditional inference trees) algorithm to identify subgroups
+#' (Hothorn, Hornik, Zeileis 2006). Usable for continuous, binary, or survival outcomes.
 #' Option to use the observed outcome or PLEs for subgroup identification.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
@@ -38,15 +38,6 @@
 #' plot(res_ctree1$mod)
 #' plot(res_ctree2$mod)
 #'
-#' # Survival #
-#' dat_surv = generate_subgrp_data(family="survival")
-#' Y = dat_surv$Y
-#' X = dat_surv$X
-#' A = dat_surv$A
-#' res_ctree3 = submod_ctree(Y, A, X, Xtest=X, family="survival")
-#' plot(res_ctree3$mod)
-#'
-#' @seealso \code{\link{PRISM}}, \code{\link{ctree}}
 #'
 #### CTREE ###
 submod_ctree = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.05  ),
