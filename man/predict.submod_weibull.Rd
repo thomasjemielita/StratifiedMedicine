@@ -17,24 +17,26 @@
 Identified subgroups with subgroup-specific predictions.
 \itemize{
   \item Subgrps - Identified subgroups
-  \item pred - Predictions, by subgroup.
+  \item pred - Predictions, based on weibull regression fit, estimate hazard ratio
+  by subgroup.
 }
 }
 \description{
 Predict subgroups and obtain subgroup-specific point-estimates (in pprogress).
 }
 \examples{
-library(StratifiedMedicine)
-
 
 \donttest{
-## Load TH.data (no treatment; generate treatment randomly to simulate null effect) ##
-data("GBSG2", package = "TH.data", envir = e <- new.env() )
-surv.dat = e$GBSG2
-## Design Matrices ###
+library(StratifiedMedicine)
+# Survival Data #
+require(TH.data); require(coin)
+data("GBSG2", package = "TH.data")
+surv.dat = GBSG2
+# Design Matrices #
 Y = with(surv.dat, Surv(time, cens))
 X = surv.dat[,!(colnames(surv.dat) \%in\% c("time", "cens")) ]
-A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
+A = rbinom( n = dim(X)[1], size=1, prob=0.5  ) ## simulate null treatment
+
 res_weibull = submod_weibull(Y, A, X, Xtest=X, family="survival")
 out = predict(res_weibull, newdata=X)
 plot(res_weibull$mod)

@@ -1,7 +1,8 @@
 #' Subgroup Identification: Model-based partitioning (Weibull)
 #'
-#' Uses the MOB (with weibull loss function) algorithm to identify subgroups.
-#' Usable for survival outcomes.
+#' Uses the MOB (with weibull loss function) algorithm to identify subgroups
+#' (Zeileis, Hothorn, Hornik 2008; Seibold, Zeileis, Hothorn 2016). Usable for
+#' survival outcomes.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -37,7 +38,6 @@
 #' plot(res_weibull$mod)
 #' }
 #'
-#' @seealso \code{\link{PRISM}}, \code{\link{mob}}
 #'
 ## MOB: Weibull ##
 submod_weibull = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0.05  ),
@@ -71,24 +71,27 @@ submod_weibull = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #' @import partykit
+#' @importFrom stats coefficients
 #'
 #' @return Identified subgroups with subgroup-specific predictions.
 #' \itemize{
 #'   \item Subgrps - Identified subgroups
-#'   \item pred - Predictions, by subgroup.
+#'   \item pred - Predictions, based on weibull regression fit, estimate hazard ratio
+#'   by subgroup.
 #'}
 #' @examples
-#' library(StratifiedMedicine)
-#'
 #'
 #' \donttest{
-#' ## Load TH.data (no treatment; generate treatment randomly to simulate null effect) ##
-#' data("GBSG2", package = "TH.data", envir = e <- new.env() )
-#' surv.dat = e$GBSG2
-#' ## Design Matrices ###
+#' library(StratifiedMedicine)
+#' # Survival Data #
+#' require(TH.data); require(coin)
+#' data("GBSG2", package = "TH.data")
+#' surv.dat = GBSG2
+#' # Design Matrices #
 #' Y = with(surv.dat, Surv(time, cens))
 #' X = surv.dat[,!(colnames(surv.dat) %in% c("time", "cens")) ]
-#' A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
+#' A = rbinom( n = dim(X)[1], size=1, prob=0.5  ) ## simulate null treatment
+#'
 #' res_weibull = submod_weibull(Y, A, X, Xtest=X, family="survival")
 #' out = predict(res_weibull, newdata=X)
 #' plot(res_weibull$mod)
@@ -105,7 +108,20 @@ predict.submod_weibull = function(object, newdata, ...){
   ##  Predict Subgroups ##
   Subgrps = as.numeric( predict(mod, type="node", newdata = newdata) )
   ## What should we predict? TBD in progress ##
-  pred =  NA
+  pred =  predict(mod, type="node", newdata = newdata)
+  pred =  predict( mod, newdata = data.frame(A=1, newdata), type = "response" ) -
+    predict( mod, newdata = data.frame(A=0, newdata), type="response" )
+
+  ### Predict Hazard Ratio (based on weibull model predictions) ##
+  hold.dat = data.frame(Subgrps = Subgrps, pred = NA)
+  for (s in unique(Subgrps)){
+    hold = summary(mod)[[as.character(s)]]
+    b0 = as.numeric( coefficients(hold)[1] )
+    b1 = as.numeric( coefficients(hold)[2] )
+    scale = hold$scale
+    hold.dat$pred[hold.dat$Subgrps==s] = exp( -b1 / scale )
+  }
+  pred = hold.dat$pred
 
   ## Return Results ##
   return(  list(Subgrps=Subgrps, pred=pred) )
