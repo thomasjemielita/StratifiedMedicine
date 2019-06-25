@@ -18,7 +18,9 @@ treatment variable A).}
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
-Data-frame with predictions of (E(Y|X,A=1), E(Y|X,A=0), E(Y|X,A=1)-E(Y|X,A=0))
+Data-frame with predictions of (E(Y|X,A=1), E(Y|X,A=0), E(Y|X,A=1)-E(Y|X,A=0)) or
+survival probabilities and difference in restricted mean survival time (RMST),
+(S(T|X,A=1), S(T|X,A=0), RMST(A=1,X)-RMST(A=0,X) )
 }
 \description{
 Get estimates of (E(Y|X,A=1), E(Y|X,A=0), E(Y|X,A=1)-E(Y|X,A=0)) using trained random
