@@ -4,7 +4,8 @@
 \alias{param_lm}
 \title{Parameter Estimation: Linear Regression}
 \usage{
-param_lm(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...)
+param_lm(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s,
+  combine = "adaptive", ...)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
@@ -21,18 +22,24 @@ param_lm(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...)
 
 \item{alpha_s}{Two-sided alpha level at subgroup}
 
+\item{combine}{For overall population, method of combining subgroup-specific results.
+Default is "adaptive", "SS" corresponds to sample size weighting.}
+
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
 Data-set with parameter estimates (average treatment effect) and corresponding
-variability metrics, for overall and subgroups.
+variability metrics, for overall and subgroups. Subgrps=0 corresponds to the overall
+population by default.
  \itemize{
-  \item param.dat - Parameter estimates and variability metrics.
-  By convention, Subgrps=0 corresponds to overall population.
+  \item param.dat - Parameter estimates and variability metrics (est, SE,
+  LCL/UCL = lower/upper confidence limits, pval = p-value).
   }
 }
 \description{
-For each identified subgroups and in the overall population, fit separate linear regressions.
+For each identified subgroup, fit separate linear regression models. Point-estimates and
+variability metrics in the overall population are obtained by aggregating subgroup
+specific results (adaptive weighting or sample size weighting).
 }
 \examples{
 library(StratifiedMedicine)
@@ -51,5 +58,7 @@ params = param_lm(Y, A, X, Subgrps = res_lmtree$Subgrps.train, alpha_ovrl=0.05,
                   alpha_s=0.05)
 params
 
-
+}
+\seealso{
+\code{\link{param_combine}}
 }

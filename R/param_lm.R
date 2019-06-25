@@ -1,6 +1,8 @@
 #' Parameter Estimation: Linear Regression
 #'
-#'For each identified subgroups and in the overall population, fit separate linear regressions.
+#' For each identified subgroup, fit separate linear regression models. Point-estimates and
+#' variability metrics in the overall population are obtained by aggregating subgroup
+#' specific results (adaptive weighting or sample size weighting).
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -9,13 +11,16 @@
 #' @param Subgrps Identified subgroups (can be the overall population)
 #' @param alpha_ovrl Two-sided alpha level for overall population
 #' @param alpha_s Two-sided alpha level at subgroup
+#' @param combine For overall population, method of combining subgroup-specific results.
+#' Default is "adaptive", "SS" corresponds to sample size weighting.
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #' @return Data-set with parameter estimates (average treatment effect) and corresponding
-#' variability metrics, for overall and subgroups.
+#' variability metrics, for overall and subgroups. Subgrps=0 corresponds to the overall
+#' population by default.
 #'  \itemize{
-#'   \item param.dat - Parameter estimates and variability metrics.
-#'   By convention, Subgrps=0 corresponds to overall population.
+#'   \item param.dat - Parameter estimates and variability metrics (est, SE,
+#'   LCL/UCL = lower/upper confidence limits, pval = p-value).
 #'   }
 #' @export
 #' @examples
@@ -35,20 +40,13 @@
 #'                   alpha_s=0.05)
 #' params
 #'
+#' @seealso \code{\link{param_combine}}
 #'
 ### Linear Regression: E(Y|A=1) - E(Y|A=0) ###
-param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
+param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="adaptive",
+                    ...){
 
   indata = data.frame(Y=Y,A=A, X)
-  ## Overall estimate ##
-  mod.ovrl = lm(Y ~ A , data=indata)
-  param.dat0 = data.frame( Subgrps=0, N = dim(indata)[1],
-                           est = summary(mod.ovrl)$coefficients[2,1],
-                           SE = summary(mod.ovrl)$coefficients[2,2],
-                           LCL =  confint(mod.ovrl, level=1-alpha_ovrl)[2,1],
-                           UCL =  confint(mod.ovrl, level=1-alpha_ovrl)[2,2],
-                           pval = summary(mod.ovrl)$coefficients[2,4])
-
   ## Subgroup Specific Estimate ##
   looper = function(s){
     lm.mod = tryCatch( lm(Y ~ A , data=indata[Subgrps==s,]),
@@ -71,6 +69,9 @@ param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
   param.dat = do.call(rbind, param.dat)
   param.dat = data.frame( S = S_levels, N=S_N, param.dat)
   colnames(param.dat) = c("Subgrps", "N", "est", "SE", "LCL", "UCL", "pval")
-  param.dat = rbind( param.dat0, param.dat)
+  # Combine results and estimate effect in overall population #
+  param.dat0 = param_combine(param.dat = param.dat, alpha_ovrl=alpha_ovrl,
+                             combine=combine)
+  param.dat = rbind(param.dat0, param.dat)
   return( param.dat )
 }
