@@ -37,8 +37,8 @@ family="gaussian" or "binomial", output estimates of
 }
 }
 \description{
-Wrapper function to train a patient-level estimate (ple) model. Used directly in PRISM and
-can be used to directly fit a ple model by name.
+Wrapper function to train a patient-level estimate (ple) model. Used directly in PRISM
+and can be used to directly fit a ple model by name.
 }
 \examples{
 library(StratifiedMedicine)

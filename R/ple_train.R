@@ -1,7 +1,7 @@
 #' Patient-level Estimates: Train Model
 #'
-#' Wrapper function to train a patient-level estimate (ple) model. Used directly in PRISM and
-#' can be used to directly fit a ple model by name.
+#' Wrapper function to train a patient-level estimate (ple) model. Used directly in PRISM
+#' and can be used to directly fit a ple model by name.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
