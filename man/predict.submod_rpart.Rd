@@ -25,6 +25,8 @@ Predict subgroups and obtain subgroup-specific estimates, E(Y|X) or PLE(X), for 
 trained ctree model (depends on if outcome_PLE argument)
 }
 \examples{
+
+\donttest{
 library(StratifiedMedicine)
 
 ## Continuous ##
@@ -36,5 +38,6 @@ A = dat_ctns$A
 res_rpart = submod_rpart(Y, A, X, Xtest=X)
 # Predict subgroups / estimates #
 out = predict(res_rpart, newdata=X)
+}
 
 }
