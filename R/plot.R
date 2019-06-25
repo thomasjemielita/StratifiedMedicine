@@ -11,6 +11,7 @@ globalVariables(c("Rules", "est", "LCL", "UCL"))
 #' @method plot PRISM
 #' @export
 #' @importFrom stats reorder
+#' @seealso \code{\link{PRISM}}
 
 
 plot.PRISM = function(x, type="CI", ...){

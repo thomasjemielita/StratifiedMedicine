@@ -20,3 +20,6 @@ Plot (ggplot2) object
 \description{
 Plots PRISM results, either forest plot (estimate with CIs) or resampling distribution.
 }
+\seealso{
+\code{\link{PRISM}}
+}
