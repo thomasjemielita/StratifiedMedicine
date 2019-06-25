@@ -1,8 +1,9 @@
 #' Filter: Random Forest (ranger) Variable Importance
 #'
-#' Filtering through Random Forest Variable Importance with p-values.
-#' Default is to remove variables with p-values >= 0.10.
-#' Used for continuous, binary, or survival outcomes
+#' Filtering through Random Forest Variable Importance with p-values. P-values are obtained
+#' through subsampling based T-statistics, as described in Ishwaran and Lu 2017. Default is
+#' to remove variables with p-values >= 0.10. Used for continuous, binary, or survival
+#' outcomes.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -37,10 +38,6 @@
 #' mod1$mod # summary of variable importance outputs
 #' }
 #'
-#'
-#' ## Survival (TBD) ##
-#'
-#' @seealso \code{\link{PRISM}}, \code{\link{ranger}}
 #'
 ##### RF Variable Importance ######
 filter_ranger = function(Y, A, X, b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thres=0.10,

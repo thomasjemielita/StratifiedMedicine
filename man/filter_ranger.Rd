@@ -36,9 +36,10 @@ Filter model and variables that remain after filtering.
 }
 }
 \description{
-Filtering through Random Forest Variable Importance with p-values.
-Default is to remove variables with p-values >= 0.10.
-Used for continuous, binary, or survival outcomes
+Filtering through Random Forest Variable Importance with p-values. P-values are obtained
+through subsampling based T-statistics, as described in Ishwaran and Lu 2017. Default is
+to remove variables with p-values >= 0.10. Used for continuous, binary, or survival
+outcomes.
 }
 \examples{
 library(StratifiedMedicine)
@@ -56,9 +57,4 @@ mod1$mod # summary of variable importance outputs
 }
 
 
-## Survival (TBD) ##
-
-}
-\seealso{
-\code{\link{PRISM}}, \code{\link{ranger}}
 }
