@@ -1,8 +1,7 @@
 #' Patient-level Estimates: Causal Forest
 #'
-#' Uses the causal forest algorithm (grf R package) to obtain patient-level estimates.
-#' Used for continuous or binary outcomes, with output estimates of
-#' E(Y|X,A=a) and E(Y|X,A=1)-E(Y|X,A=0) (PLE).
+#' Uses the causal forest algorithm (Athey, Tibshirani, and Wager 2019; grf R package) to
+#' obtain patient-level estimates. Used for continuous or binary outcomes.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -15,7 +14,6 @@
 #' If mod.A="RF", estimate P(A|X) using regression_forest (applicable for non-RCTs).
 #' @param ... Any additional parameters, not currently passed through.
 #'
-#' @import grf
 #'
 #' @return Trained causal_forest and regression_forest models.
 #'  \itemize{
@@ -31,7 +29,7 @@
 #' A = dat_ctns$A
 #'
 #'\donttest{
-#' # Default #
+#' require(grf)
 #' mod1 = ple_causal_forest(Y, A, X, Xtest=X)
 #' summary(mod1$mu_train)
 #'
@@ -39,26 +37,29 @@
 #'
 #'
 #' @export
-#' @seealso \code{\link{PRISM}}, \code{\link{causal_forest}}
 
 #### Causal_forest ###
 ple_causal_forest = function(Y, A, X, Xtest, tune=FALSE, num.trees=500, family="gaussian",
                              mod.A = "mean", ...){
 
+  if (!requireNamespace("grf", quietly = TRUE)) {
+    stop("Package grf needed for ple_causal_forest. Please install.")
+  }
   set.seed(5131)
   ## Regression Forest: Y~X ##
-  forest.Y = regression_forest(X, Y, ci.group.size=1, num.trees = min(500, num.trees) )
+  forest.Y = grf::regression_forest(X, Y, ci.group.size=1,
+                                    num.trees = min(500, num.trees) )
   Y.hat.train = predict(forest.Y)$predictions
   Y.hat.test = predict(forest.Y, newdata=Xtest)$predictions
   ## Regression Forest: W~X, If RCT ==> W is independent of X; use sample mean ##
   forest.A = mean(A)
   A.hat.train = rep( mean(A), dim(X)[1] )
   A.hat.test = rep( mean(A), dim(Xtest)[1] )
-  # forest.A = regression_forest(X, W, ci.group.size=1, num.trees = min(500, num.trees) )
+  # forest.A = grf::regression_forest(X, W, ci.group.size=1, num.trees = min(500, num.trees) )
   # A.hat.train = predict(forest.A)$predictions
   # A.hat.test = predict(forest.A, newdata=Xtest)$predictions
   ## Causal Forest ##
-  forest.CF = causal_forest(X, Y, W=A, tune.parameters = tune, num.trees=num.trees,
+  forest.CF = grf::causal_forest(X, Y, W=A, tune.parameters = tune, num.trees=num.trees,
                         W.hat=A.hat.train, Y.hat=Y.hat.train)
 
   res = list(mods = list(forest.Y=forest.Y, forest.A=forest.A, forest.CF=forest.CF) )
@@ -77,7 +78,6 @@ ple_causal_forest = function(Y, A, X, Xtest, tune=FALSE, num.trees=500, family="
 #' include covariates (X) and treatment (A) for oob predictions.
 #' @param ... Any additional parameters, not currently passed through.
 #'
-#' @import grf
 #'
 #' @return Data-frame with predictions of (E(Y|X,1), E(Y|X,0), E(Y|X,1)-E(Y|X,0))
 #'

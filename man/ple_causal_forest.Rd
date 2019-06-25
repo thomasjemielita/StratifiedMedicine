@@ -34,9 +34,8 @@ Trained causal_forest and regression_forest models.
 }
 }
 \description{
-Uses the causal forest algorithm (grf R package) to obtain patient-level estimates.
-Used for continuous or binary outcomes, with output estimates of
-E(Y|X,A=a) and E(Y|X,A=1)-E(Y|X,A=0) (PLE).
+Uses the causal forest algorithm (Athey, Tibshirani, and Wager 2019; grf R package) to
+obtain patient-level estimates. Used for continuous or binary outcomes.
 }
 \examples{
 library(StratifiedMedicine)
@@ -48,14 +47,11 @@ X = dat_ctns$X
 A = dat_ctns$A
 
 \donttest{
-# Default #
+require(grf)
 mod1 = ple_causal_forest(Y, A, X, Xtest=X)
 summary(mod1$mu_train)
 
 }
 
 
-}
-\seealso{
-\code{\link{PRISM}}, \code{\link{causal_forest}}
 }
