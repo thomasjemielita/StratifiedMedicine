@@ -1,9 +1,7 @@
 #' Patient-level Estimates: Ranger
 #'
-#' Estimate patient-level estimates (PLEs) through treatment-specific
-#' (or with explicit X*A interactions) random forest models (ranger).
-#' Used for continuous or binary outcomes, with output estimates of E(Y|X,A=a) and
-#' E(Y|X,A=1)-E(Y|X,A=0) (PLE).
+#' Uses treatment-specific (or with explicit X*A interactions) random forest models (ranger)
+#' to obtain patient-level estimates. Used for continuous, binary, or survival outcomes.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -20,6 +18,7 @@
 #' @return Trained random forest (ranger) model(s).
 #'  \itemize{
 #'   \item mods - trained model(s)
+#'   \item family - outcome family
 #' }
 #' @examples
 #' library(StratifiedMedicine)
@@ -29,17 +28,10 @@
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
-#' \donttest{
-#' # Default (treatment-specific ranger models) #
+#' # Counter-factual Random Forest (treatment-specific ranger models) #
 #' mod1 = ple_ranger(Y, A, X, Xtest=X)
 #' summary( predict(mod1, newdata=data.frame(A,X) ) ) # oob predictions for training
 #' summary( predict(mod1, newdata=data.frame(X) ) ) # new-predictions, no oob here
-#'
-#' # Generate A*X covariates (single ranger model) #
-#' mod2 = ple_ranger(Y, A, X, Xtest=X, byTrt=0)
-#' summary( predict(mod2, newdata=data.frame(A,X) ) ) # oob predictions for training
-#' summary( predict(mod2, newdata=data.frame(X) ) ) # new-predictions
-#' }
 #'
 #' ## Survival (TBD) ##
 #'
@@ -84,7 +76,7 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussi
                  min.node.size = min.node.pct*dim(train.inter)[1])
     mods = list(mod.inter=mod.inter)
   }
-  res = list(mods=mods)
+  res = list(mods=mods, family=family)
   class(res) = "ple_ranger"
   ## Return Results ##
   return( res )
@@ -104,7 +96,9 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussi
 #'
 #' @import ranger
 #'
-#' @return Data-frame with predictions of (E(Y|X,A=1), E(Y|X,A=0), E(Y|X,A=1)-E(Y|X,A=0))
+#' @return Data-frame with predictions of (E(Y|X,A=1), E(Y|X,A=0), E(Y|X,A=1)-E(Y|X,A=0)) or
+#' survival probabilities and difference in restricted mean survival time (RMST),
+#' (S(T|X,A=1), S(T|X,A=0), RMST(A=1,X)-RMST(A=0,X) )
 #'
 #' @examples
 #' library(StratifiedMedicine)
@@ -127,34 +121,79 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussi
 #### Counterfactual Forest: Ranger ####
 predict.ple_ranger = function(object, newdata, oob=TRUE, ...){
 
+  mods = object$mods
+  family = object$family
   if ( !("A" %in% names(newdata)) ){
     oob = FALSE
   }
   A = newdata$A
   X = newdata[,!(colnames(newdata) %in% "A") ]
-  ## Treatment-specific ranger models ##
-  if (length(object$mods)>1){
-    mu1_hat = predict( object$mods[["mod1"]], X )$predictions
-    mu0_hat = predict( object$mods[["mod0"]], X )$predictions
-    if (oob){
-      mu1_hat = ifelse(A==1, object$mods[["mod1"]]$predictions, mu1_hat)
-      mu0_hat = ifelse(A==0, object$mods[["mod0"]]$predictions, mu0_hat)
+  ### E(Y|X,A=1) - E(Y|X,A=0) ###
+  if (family!="survival"){
+    ## Treatment-specific ranger models ##
+    if (length(object$mods)>1){
+      mu1_hat = predict( object$mods[["mod1"]], X )$predictions
+      mu0_hat = predict( object$mods[["mod0"]], X )$predictions
+      if (oob){
+        mu1_hat = ifelse(A==1, object$mods[["mod1"]]$predictions, mu1_hat)
+        mu0_hat = ifelse(A==0, object$mods[["mod0"]]$predictions, mu0_hat)
+      }
     }
-  }
-  ## X*A interactions included (one ranger model) ##
-  if (length(object$mods)==1){
-    X0 = data.frame(0, X, X*0)
-    colnames(X0) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
-    X1 = data.frame(1, X, X*1)
-    colnames(X1) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
-    mu1_hat = predict( object$mods[["mod.inter"]], X1 )$predictions
-    mu0_hat = predict( object$mods[["mod.inter"]], X0 )$predictions
-    if (oob){
-      mu1_hat = ifelse(A==1, object$mods[["mod.inter"]]$predictions, mu1_hat)
-      mu0_hat = ifelse(A==0, object$mods[["mod.inter"]]$predictions, mu0_hat)
+    ## X*A interactions included (one ranger model) ##
+    if (length(object$mods)==1){
+      X0 = data.frame(0, X, X*0)
+      colnames(X0) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
+      X1 = data.frame(1, X, X*1)
+      colnames(X1) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
+      mu1_hat = predict( object$mods[["mod.inter"]], X1 )$predictions
+      mu0_hat = predict( object$mods[["mod.inter"]], X0 )$predictions
+      if (oob){
+        mu1_hat = ifelse(A==1, object$mods[["mod.inter"]]$predictions, mu1_hat)
+        mu0_hat = ifelse(A==0, object$mods[["mod.inter"]]$predictions, mu0_hat)
+      }
     }
+    ple_hat = mu1_hat-mu0_hat
   }
-  mu_hat = data.frame(mu1 = mu1_hat, mu0 = mu0_hat, PLE = mu1_hat-mu0_hat)
+  ## Predict Difference in RMST (can restrict up to time-point) ##
+  if (family=="survival"){
+    if (!requireNamespace("zoo", quietly = TRUE)) {
+      stop("Package zoo needed for ranger RMST predictions. Please install.")
+    }
+    if (length(object$mods)>1){
+      out0 = predict(mods[["mod0"]], data=X)
+      out1 = predict(mods[["mod1"]], data=X)
+    }
+    if (length(object$mods)==1){
+      X0 = data.frame(0, X, X*0)
+      colnames(X0) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
+      X1 = data.frame(1, X, X*1)
+      colnames(X1) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
+      out0 = predict(mods[["mod.inter"]], data=X)
+      out1 = predict(mods[["mod.inter"]], data=X)
+    }
+    times0 = out0$unique.death.times
+    mu0_hat = out0$survival
+    times1 = out1$unique.death.times
+    mu1_hat = out1$survival
+    # Order times and calculate RMST (A=1 vs A=0) #
+    id1 <- order(times1)
+    id0 <- order(times0)
+    ple_hat = NULL
+    for (ii in 1:dim(newdata)[1]){
+      ## Trt 1 ##
+      y <- mu1_hat[ii,]
+      rmst1 <- sum(diff(times1[id1])*zoo::rollmean(y[id1],2))
+      ## Trt 0 ##
+      y <- mu0_hat[ii,]
+      rmst0 <- sum(diff(times0[id0])*zoo::rollmean(y[id0],2))
+      # Store #
+      ple_hat = c(ple_hat, (rmst1-rmst0) )
+    }
+    ## take average of individual survival probabilities for mu1_hat and mu0_hat ##
+    mu1_hat = apply(mu1_hat, 1, mean)
+    mu0_hat = apply(mu0_hat, 1, mean)
+  }
+  mu_hat = data.frame(mu1 = mu1_hat, mu0 = mu0_hat, PLE = ple_hat)
   return( mu_hat  )
 }
 

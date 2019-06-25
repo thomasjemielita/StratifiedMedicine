@@ -29,13 +29,12 @@ with covariate space (X, A, X*A)}
 Trained random forest (ranger) model(s).
  \itemize{
   \item mods - trained model(s)
+  \item family - outcome family
 }
 }
 \description{
-Estimate patient-level estimates (PLEs) through treatment-specific
-(or with explicit X*A interactions) random forest models (ranger).
-Used for continuous or binary outcomes, with output estimates of E(Y|X,A=a) and
-E(Y|X,A=1)-E(Y|X,A=0) (PLE).
+Uses treatment-specific (or with explicit X*A interactions) random forest models (ranger)
+to obtain patient-level estimates. Used for continuous, binary, or survival outcomes.
 }
 \examples{
 library(StratifiedMedicine)
@@ -45,17 +44,10 @@ Y = dat_ctns$Y
 X = dat_ctns$X
 A = dat_ctns$A
 
-\donttest{
-# Default (treatment-specific ranger models) #
+# Counter-factual Random Forest (treatment-specific ranger models) #
 mod1 = ple_ranger(Y, A, X, Xtest=X)
 summary( predict(mod1, newdata=data.frame(A,X) ) ) # oob predictions for training
 summary( predict(mod1, newdata=data.frame(X) ) ) # new-predictions, no oob here
-
-# Generate A*X covariates (single ranger model) #
-mod2 = ple_ranger(Y, A, X, Xtest=X, byTrt=0)
-summary( predict(mod2, newdata=data.frame(A,X) ) ) # oob predictions for training
-summary( predict(mod2, newdata=data.frame(X) ) ) # new-predictions
-}
 
 ## Survival (TBD) ##
 
