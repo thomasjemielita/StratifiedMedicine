@@ -19,23 +19,11 @@ LazyData: true4
 Depends: 
   R (>= 3.1),
 Imports:
-  dplyr,
-  partykit,
-  rpart,
-  ranger,
-  BART,
-  grf,
-  survival,
-  survRM2,
-  glmnet,
-  ggplot2,
-  mvtnorm,
-  coin,
-  TH.data
+  dplyr, partykit, ranger, survival,
+  glmnet, ggplot2, mvtnorm
 RoxygenNote: 6.1.1
 URL: https://github.com/thomasjemielita/StratifiedMedicine
 Suggests: 
-    knitr,
-    rmarkdown,
-    MASS
+    knitr, rmarkdown, MASS, zoo, BART, grf, 
+    survRM2, TH.data, coin, rpart
 VignetteBuilder: knitr
