@@ -2,7 +2,7 @@
 % Please edit documentation in R/submod_otr.R
 \name{submod_otr}
 \alias{submod_otr}
-\title{Subgroup Identification: Optimal Treatment Regime (through CTREE)}
+\title{Subgroup Identification: Optimal Treatment Regime (through ctree)}
 \usage{
 submod_otr(Y, A, X, Xtest, mu_train, minbucket = floor(dim(X)[1] * 0.05),
   maxdepth = 4, thres = 0, ...)
@@ -35,7 +35,7 @@ Trained ctree (optimal treatment regime) model.
 }
 \description{
 For continuous, binary, or survival outcomes, regress I(PLE>thres)~X with
-weights=abs(PLE) in CTREE.
+weights=abs(PLE) in ctree.
 }
 \examples{
 library(StratifiedMedicine)
@@ -55,7 +55,4 @@ res_otr = submod_otr(Y, A, X, Xtest=X, mu_train = res.ple$mu_train)
 plot(res_otr$mod)
 }
 
-}
-\seealso{
-\code{\link{PRISM}}, \code{\link{ctree}}
 }

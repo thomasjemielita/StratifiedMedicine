@@ -1,7 +1,7 @@
-#' Subgroup Identification: Optimal Treatment Regime (through CTREE)
+#' Subgroup Identification: Optimal Treatment Regime (through ctree)
 #'
 #' For continuous, binary, or survival outcomes, regress I(PLE>thres)~X with
-#' weights=abs(PLE) in CTREE.
+#' weights=abs(PLE) in ctree.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -40,7 +40,6 @@
 #' plot(res_otr$mod)
 #' }
 #'
-#' @seealso \code{\link{PRISM}}, \code{\link{ctree}}
 
 #### OTR: I(PLE>thres) ~ X, weights = abs(PLE) ###
 submod_otr = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.05  ),
