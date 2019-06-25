@@ -1,8 +1,7 @@
 #' Patient-level Estimates: Elastic Net (glmnet)
 #'
-#' Uses the elastic net (glmnet R package) to obtain patient-level estimates.
-#' For continuous/binary, output estimates of E(Y|X,A=a) and E(Y|X,A=1)-E(Y|X,A=0) (PLE).
-#' For survival, output estimates of HR(X,A=a) and HR(X, A=1)-HR(X, A=0) (PLE).
+#' Uses the elastic net (glmnet R package) to obtain patient-level estimates. Usable for
+#' continuous, binary, or survival outcomes.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -32,8 +31,6 @@
 #' mod1 = ple_glmnet(Y, A, X, Xtest=X, family="gaussian")
 #' summary(mod1$mu_train$PLE)
 #'
-#'
-#' @seealso \code{\link{PRISM}}, \code{\link{glmnet}}
 
 ##### Elastic net (glmnet): Y~(A,X,A*X) ==> PLEs ######
 ple_glmnet = function(Y, A, X, Xtest, lambda="lambda.min", family, ...){

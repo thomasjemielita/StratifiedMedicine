@@ -29,9 +29,8 @@ Trained glmnet model(s).
 }
 }
 \description{
-Uses the elastic net (glmnet R package) to obtain patient-level estimates.
-For continuous/binary, output estimates of E(Y|X,A=a) and E(Y|X,A=1)-E(Y|X,A=0) (PLE).
-For survival, output estimates of HR(X,A=a) and HR(X, A=1)-HR(X, A=0) (PLE).
+Uses the elastic net (glmnet R package) to obtain patient-level estimates. Usable for
+continuous, binary, or survival outcomes.
 }
 \examples{
 library(StratifiedMedicine)
@@ -45,8 +44,4 @@ A = dat_ctns$A
 mod1 = ple_glmnet(Y, A, X, Xtest=X, family="gaussian")
 summary(mod1$mu_train$PLE)
 
-
-}
-\seealso{
-\code{\link{PRISM}}, \code{\link{glmnet}}
 }
