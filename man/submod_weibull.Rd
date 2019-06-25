@@ -32,8 +32,9 @@ Trained MOB (Weibull) model.
 }
 }
 \description{
-Uses the MOB (with weibull loss function) algorithm to identify subgroups.
-Usable for survival outcomes.
+Uses the MOB (with weibull loss function) algorithm to identify subgroups
+(Zeileis, Hothorn, Hornik 2008; Seibold, Zeileis, Hothorn 2016). Usable for
+survival outcomes.
 }
 \examples{
 library(StratifiedMedicine)
@@ -51,7 +52,5 @@ res_weibull = submod_weibull(Y, A, X, Xtest=X, family="survival")
 plot(res_weibull$mod)
 }
 
-}
-\seealso{
-\code{\link{PRISM}}, \code{\link{mob}}
+
 }
