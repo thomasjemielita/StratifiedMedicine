@@ -1,7 +1,8 @@
 #' Parameter Estimation: Double-robust estimator
 #'
-#'For each identified subgroups and in the overall population, use the double robust estimator.
-#'Usable for continuous and binary outcomes.
+#' For each identified subgroup and in the overall population, use the double robust
+#' estimator (Funk et al 2011). Usable for continuous and binary outcomes, specifically
+#' for the estimand E(Y|X,A=1)-E(Y|X,A=0).
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -13,10 +14,11 @@
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #' @return Data-set with parameter estimates (average treatment effect) and corresponding
-#' variability metrics, for overall and subgroups.
+#' variability metrics, for overall and subgroups. Subgrps=0 corresponds to the overall
+#' population by default.
 #'  \itemize{
-#'   \item param.dat - Parameter estimates and variability metrics.
-#'   By convention, Subgrps=0 corresponds to overall population.
+#'   \item param.dat - Parameter estimates and variability metrics (est, SE,
+#'   LCL/UCL = lower/upper confidence limits, pval = p-value).
 #'   }
 #' @export
 #' @examples
@@ -45,29 +47,13 @@
 param_dr = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
 
   indata = data.frame(Y=Y, A=A, X)
-  ## Overall Estimate ##
-  Y.p = indata$Y
-  A.p = indata$A
-  n = dim(indata)[1]
-  probA = mean(A.p)
-  mu = mu_hat
-  # EIF ###
-  eif = ( A.p*Y.p - (A.p-probA)*mu$mu1 )/ probA -
-    ( (1-A.p)*Y.p + (A.p-probA)*mu$mu0 ) / (1-probA)
-  est0 = mean(eif, na.rm=TRUE)
-  eif = eif - est0
-  SE0 = sqrt( n^(-2) * sum( eif^2 )  )
-  LCL0 = est0-qt( (1-alpha_ovrl/2), df=n-1 )*SE0
-  UCL0 = est0+qt( (1-alpha_ovrl/2), df=n-1 )*SE0
-  param.dat0 = data.frame(Subgrps=0, N=n, est=est0, SE=SE0, LCL=LCL0, UCL=UCL0)
-  param.dat0$pval = with(param.dat0, 2*pt(-abs(est/SE), df=N-1) )
-
+  # Subgroup and overall estimates #
   looper = function(s){
-    Y.s = indata$Y[Subgrps==s]
-    A.s = indata$A[Subgrps==s]
+    Y.s = indata$Y[Subgrps %in% s]
+    A.s = indata$A[Subgrps %in% s]
     n.s = length(Y.s)
     probA = mean(A.s)
-    mu.s = mu_hat[Subgrps==s,]
+    mu.s = mu_hat[Subgrps %in% s,]
     # EIF ###
     eif = ( A.s*Y.s - (A.s-probA)*mu.s$mu1 )/ probA -
       ( (1-A.s)*Y.s + (A.s-probA)*mu.s$mu0 ) / (1-probA)
@@ -79,14 +65,18 @@ param_dr = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
     LCL = est-qt( (1-alpha_s/2), df=n.s-1 )*SE
     UCL = est+qt( (1-alpha_s/2), df=n.s-1 )*SE
     pval = 2*pt(-abs(est/SE), df=n.s-1)
-    return( c(est, SE, LCL, UCL, pval) )
+    return( c(n.s, est, SE, LCL, UCL, pval) )
   }
+  ## Across subgroups ##
   S_levels = as.numeric( names(table(Subgrps)) )
   S_N = as.numeric( table(Subgrps) )
   param.dat = lapply(S_levels, looper)
   param.dat = do.call(rbind, param.dat)
-  param.dat = data.frame( S = S_levels, N=S_N, param.dat)
+  param.dat = data.frame( S = S_levels, param.dat)
+  # Overall #
+  param.dat0 = looper(s = S_levels)
+  param.dat0 = c(0, param.dat0)
+  param.dat = rbind(param.dat0, param.dat)
   colnames(param.dat) = c("Subgrps", "N", "est", "SE", "LCL", "UCL", "pval")
-  param.dat = rbind( param.dat0, param.dat  )
   return( param.dat )
 }

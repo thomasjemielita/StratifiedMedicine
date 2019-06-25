@@ -25,15 +25,17 @@ param_dr(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...)
 }
 \value{
 Data-set with parameter estimates (average treatment effect) and corresponding
-variability metrics, for overall and subgroups.
+variability metrics, for overall and subgroups. Subgrps=0 corresponds to the overall
+population by default.
  \itemize{
-  \item param.dat - Parameter estimates and variability metrics.
-  By convention, Subgrps=0 corresponds to overall population.
+  \item param.dat - Parameter estimates and variability metrics (est, SE,
+  LCL/UCL = lower/upper confidence limits, pval = p-value).
   }
 }
 \description{
-For each identified subgroups and in the overall population, use the double robust estimator.
-Usable for continuous and binary outcomes.
+For each identified subgroup and in the overall population, use the double robust
+estimator (Funk et al 2011). Usable for continuous and binary outcomes, specifically
+for the estimand E(Y|X,A=1)-E(Y|X,A=0).
 }
 \examples{
 library(StratifiedMedicine)
