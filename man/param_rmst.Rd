@@ -2,9 +2,10 @@
 % Please edit documentation in R/param_rmst.R
 \name{param_rmst}
 \alias{param_rmst}
-\title{Parameter Estimation: RMST}
+\title{Parameter Estimation: Restricted Mean Survival Time (RMST)}
 \usage{
-param_rmst(Y, A, X, mu_hat, alpha_ovrl, alpha_s, Subgrps, ...)
+param_rmst(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s,
+  combine = "adaptive", ...)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
@@ -15,11 +16,14 @@ param_rmst(Y, A, X, mu_hat, alpha_ovrl, alpha_s, Subgrps, ...)
 
 \item{mu_hat}{Patient-level estimates (See PLE_models)}
 
+\item{Subgrps}{Identified subgroups (can be the overall population)}
+
 \item{alpha_ovrl}{Two-sided alpha level for overall population}
 
 \item{alpha_s}{Two-sided alpha level at subgroup}
 
-\item{Subgrps}{Identified subgroups (can be the overall population)}
+\item{combine}{For overall population, method of combining subgroup-specific results.
+Default is "adaptive", "SS" corresponds to sample size weighting.}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
@@ -31,25 +35,37 @@ variability metrics, for overall and subgroups.
   }
 }
 \description{
-For each identified subgroups and in the overall population, estimate the restricted
-mean survival time (RMST). IN PROGRESS
+For each identified subgroup, estimate the restricted mean survival time (RMST), based
+on the method described in the R package "survRM2". Point-estimates and
+variability metrics in the overall population are obtained by aggregating subgroup
+specific results (adaptive weighting or sample size weighting).
 }
 \examples{
 
 \donttest{
 library(StratifiedMedicine)
-## Survival Data ##
+# Survival Data #
+require(TH.data); require(coin)
+data("GBSG2", package = "TH.data")
+surv.dat = GBSG2
+# Design Matrices ###
+Y = with(surv.dat, Surv(time, cens))
+X = surv.dat[,!(colnames(surv.dat) \%in\% c("time", "cens")) ]
+A = rbinom( n = dim(X)[1], size=1, prob=0.5  ) ## simulate null treatment
 
 # MOB-Weibull Subgroup Model ##
 res_weibull = submod_train(Y, A, X, Xtest=X, family="survival",
                            submod = "submod_weibull")
 plot(res_weibull$mod)
 
-## Parameter-Estimation ##
+# Parameter-Estimation ##
+require(survRM2)
 params = param_rmst(Y, A, X, Subgrps = res_weibull$Subgrps.train, alpha_ovrl=0.05,
                    alpha_s=0.05)
 params
 }
 
-
+}
+\seealso{
+\code{\link{param_combine}}
 }
