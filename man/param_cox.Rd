@@ -4,7 +4,8 @@
 \alias{param_cox}
 \title{Parameter Estimation: Cox Regression}
 \usage{
-param_cox(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...)
+param_cox(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s,
+  combine = "adaptive", ...)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
@@ -21,22 +22,30 @@ param_cox(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...)
 
 \item{alpha_s}{Two-sided alpha level at subgroup}
 
+\item{combine}{For overall population, method of combining subgroup-specific results.
+Default is "adaptive", "SS" corresponds to sample size weighting.}
+
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
 Data-set with parameter estimates (hazard ratio) and corresponding
-variability metrics, for overall and subgroups.
+variability metrics, for overall and subgroups. Subgrps=0 corresponds to the overall
+population by default.
  \itemize{
-  \item param.dat - Parameter estimates and variability metrics
+  \item param.dat - Parameter estimates and variability metrics (est=HR, SE=SE(logHR),
+  LCL/UCL = lower/upper confidence limit on HR scale, pval = p-value).
   }
 }
 \description{
-For each identified subgroups and in the overall population, fit separate cox regression models.
+For each identified subgroup, fit separate cox regression models. Point-estimates and
+variability metrics in the overall population are obtained by aggregating subgroup
+specific results (adaptive weighting or sample size weighting).
 }
 \examples{
 \donttest{
 library(StratifiedMedicine)
-## Survival Data ##
+# Survival Data #
+require(TH.data); require(coin)
 
 # MOB-Weibull Subgroup Model ##
 res_weibull = submod_train(Y, A, X, Xtest=X, family="survival",
@@ -49,4 +58,7 @@ params = param_cox(Y, A, X, Subgrps = res_weibull$Subgrps.train, alpha_ovrl=0.05
 params
 }
 
+}
+\seealso{
+\code{\link{param_combine}}
 }
