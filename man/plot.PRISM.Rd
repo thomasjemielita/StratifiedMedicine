@@ -4,13 +4,23 @@
 \alias{plot.PRISM}
 \title{plot.PRISM}
 \usage{
-\method{plot}{PRISM}(x, type = "CI", ...)
+\method{plot}{PRISM}(x, type = "forest", grid.data = NULL,
+  grid.thres = ">0", ...)
 }
 \arguments{
 \item{x}{PRISM object}
 
-\item{type}{Type of plot (default="CI"). Alternatively, if the PRISM object used resampling,
-type="resample" plots the resampling distributions.}
+\item{type}{Type of plot (default="forest", forest plot for overall and subgroups). Other
+options include "PLE:waterfall" (waterfall plot of PLEs), "PLE:density" (density plot
+of PLEs), "resample" (resampling distribution of parameter estimates for overall
+and subgroups), and "heatmap" (heatmap of ple estimates/probabilities).}
+
+\item{grid.data}{Input grid of values for 2-3 covariates (if 3, last variable cannot
+be continuous). This is required for type="heatmap". Default=NULL.}
+
+\item{grid.thres}{Threshold for PLE, ex: I(PLE>thres). Used to estimate P(PLE>thres) for
+type="heatmap". Default is ">0". Direction can be reversed and can include equality
+sign (ex: "<=").}
 
 \item{...}{Additional arguments (currently ignored).}
 }
