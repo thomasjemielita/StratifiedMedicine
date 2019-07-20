@@ -7,7 +7,7 @@
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
-#' @param X Covariate matrix. Must be numeric.
+#' @param X Covariate space.
 #' @param b Subsample size (n^b)
 #' @param K Number of samples (default=200)
 #' @param DF2 2-DF test statistic (default=FALSE)

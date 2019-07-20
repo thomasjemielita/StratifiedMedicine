@@ -4,19 +4,24 @@
 \alias{filter_glmnet}
 \title{Filter: Elastic Net (glmnet)}
 \usage{
-filter_glmnet(Y, A, X, lambda = "lambda.min", family = "gaussian", ...)
+filter_glmnet(Y, A, X, lambda = "lambda.min", family = "gaussian",
+  interaction = FALSE, ...)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
 
 \item{A}{Treatment variable. (a=1,...A)}
 
-\item{X}{Covariate matrix. Must be numeric.}
+\item{X}{Covariate space.}
 
 \item{lambda}{Lambda for elastic net model (default="lambda.min"). Other options include
 "lambda.1se" and fixed values}
 
 \item{family}{Outcome type ("gaussian", "binomial", "survival"), default is "gaussian"}
+
+\item{interaction}{Regress Y~X+A+A*X (interaction between covariates and treatment)?
+Default is FALSE. If TRUE, variables with zero coefficients (both X and X*A terms)
+are filtered.}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
@@ -28,9 +33,10 @@ Filter model and variables that remain after filtering.
 }
 }
 \description{
-Filter variables through elastic net (Zou and Hastie 2005). Variables with estimated
-coefficients of zero (depends on lambda choice; default is lambda.min) are filtered.
-Usable for continuous, binary, and survival outcomes.
+Filter variables through elastic net (Zou and Hastie 2005). Default is to regress
+Y~X (search for prognostic variables). Variables with estimated coefficients of zero
+(depends on lambda choice; default is lambda.min) are filtered. Usable for continuous,
+binary, and survival outcomes.
 }
 \examples{
 
@@ -42,10 +48,15 @@ Y = dat_ctns$Y
 X = dat_ctns$X
 A = dat_ctns$A
 
+# Default: Regress Y~X (search for prognostic factors) #
 mod1 = filter_glmnet(Y, A, X)
 mod2 = filter_glmnet(Y, A, X, lambda = "lambda.min") # same as default
 mod3 = filter_glmnet(Y, A, X, lambda = "lambda.1se")
 mod1$filter.vars
 mod2$filter.vars
 mod3$filter.vars
+
+# Interaction=TRUE; Regress Y~X+A+X*A (search for prognostic and/or predictive) #
+mod4 = filter_glmnet(Y, A, X, interaction=TRUE)
+mod4$filter.vars
 }
