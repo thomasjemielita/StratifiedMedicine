@@ -5,13 +5,14 @@
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
-#' @param X Covariate matrix. Must be numeric.
+#' @param X Covariate space.
 #' @param Xtest Test set
 #' @param mu_train Patient-level estimates (See PLE_models)
 #' @param minbucket Minimum number of observations in a tree node.
 #' Default = floor( dim(train)[1]*0.05  )
 #' @param maxdepth Maximum depth of any node in the tree (default=4)
-#' @param thres Threshold for I(PLE>thres) (default=0)
+#' @param thres Threshold for PLE, ex: I(PLE>thres). Default is ">0". Direction can be
+#' reversed and can include equality sign (ex: "<=")
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #' @import partykit
@@ -43,11 +44,12 @@
 
 #### OTR: I(PLE>thres) ~ X, weights = abs(PLE) ###
 submod_otr = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.05  ),
-                      maxdepth = 4, thres=0, ...){
+                      maxdepth = 4, thres=">0", ...){
   ## Set up data ##
-  ind_PLE = ifelse(mu_train$PLE>thres, 1, 0)
+  ind_PLE = eval(parse(text=paste("ifelse(mu_train$PLE", thres, ", 1, 0)")))
   w_PLE = abs(mu_train$PLE)
   hold = data.frame(ind_PLE, X)
+  # Fit Model #
   mod <- suppressWarnings( ctree(ind_PLE ~ ., data = hold, weights = w_PLE,
                                  control = ctree_control(minbucket=minbucket,
                                                          maxdepth=maxdepth)) )
@@ -64,7 +66,8 @@ submod_otr = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.0
 #' trained ctree OTR model.
 #'
 #' @param object Trained ctree model.
-#' @param newdata Data-set to make predictions at.
+#' @param newdata Data-set to make predictions at (Default=NULL, predictions correspond
+#' to training data).
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #' @import partykit
@@ -85,7 +88,7 @@ submod_otr = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.0
 #'
 #' \donttest{
 #' ## Estimate PLEs (through Ranger) ##
-#' res.ple = ple_model(Y, A, X, Xtest=X, family="gaussian", ple="ple_ranger")
+#' res.ple = ple_train(Y, A, X, Xtest=X, family="gaussian", ple="ple_ranger")
 #'
 #' ## Fit OTR Subgroup Model ##
 #' res_otr = submod_otr(Y, A, X, Xtest=X, mu_train = res.ple$mu_train)
@@ -96,7 +99,7 @@ submod_otr = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.0
 #' @method predict submod_otr
 #' @export
 #'
-predict.submod_otr = function(object, newdata, ...){
+predict.submod_otr = function(object, newdata=NULL, ...){
 
   # Extract mod/family #
   mod = object$mod
