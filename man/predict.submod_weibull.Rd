@@ -4,12 +4,13 @@
 \alias{predict.submod_weibull}
 \title{Predict submod: Model-based partitioning (Weibull)}
 \usage{
-\method{predict}{submod_weibull}(object, newdata, ...)
+\method{predict}{submod_weibull}(object, newdata = NULL, ...)
 }
 \arguments{
 \item{object}{Trained MOB (Weibull) model.}
 
-\item{newdata}{Data-set to make predictions at.}
+\item{newdata}{Data-set to make predictions at (Default=NULL, predictions correspond
+to training data).}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
@@ -38,7 +39,7 @@ X = surv.dat[,!(colnames(surv.dat) \%in\% c("time", "cens")) ]
 A = rbinom( n = dim(X)[1], size=1, prob=0.5  ) ## simulate null treatment
 
 res_weibull = submod_weibull(Y, A, X, Xtest=X, family="survival")
-out = predict(res_weibull, newdata=X)
+out = predict(res_weibull)
 plot(res_weibull$mod)
 }
 
