@@ -43,11 +43,12 @@ Ultimately, PRISM provides information at the patient-level, the subgroup-level 
 
 # Example: Continuous Outcome with Binary Treatment
 
-Next, we demonstrate PRISM for a continuous outcome with a binary treatment. The estimand of interest is the average treatment effect, $\theta_0 = E(Y|A=1)-E(Y|A=0)$. First, we simulate continuous data where roughly 30\% of the patients receive no treatment-benefit for using $A=1$ vs $A=0$. Responders vs non-responders are defined by the continuous predictive covariates $X_1$ and $X_2$.
+Consider a continuous outcome (ex: % change in tumor size) with a binary treatment (study drug vs standard of care). The estimand of interest is the average treatment effect, $\theta_0 = E(Y|A=1)-E(Y|A=0)$. First, we simulate continuous data where roughly 30\% of the patients receive no treatment-benefit for using $A=1$ vs $A=0$. Responders vs non-responders are defined by the continuous predictive covariates $X_1$ and $X_2$.
 
 ```{r sim_ctns}
+library(ggplot2)
 library(StratifiedMedicine)
-dat_ctns = generate_subgrp_data(family="gaussian")
+dat_ctns = generate_subgrp_data(family="gaussian", seed=65532)
 Y = dat_ctns$Y
 X = dat_ctns$X # 50 covariates, 46 are noise variables, X1 and X2 are truly predictive
 A = dat_ctns$A # binary treatment, 1:1 randomized 
@@ -55,7 +56,8 @@ length(Y)
 table(A)
 dim(X)
 ```
-Next, we run the default PRISM setting for continuous data: filter_glmnet (elastic net), ple_ranger (treatment-specific random forest models), submod_lmtree (model-based partitioning with OLS loss), and param_ple (parameter estimation/inference through the PLEs). Jemielita and Mehrotra 2019 (in progress) show that this configuration performs quite well in terms of bias, efficiency, coverage, and selecting the right predictive covariates.
+For continuous data (family="gaussian"), the default PRISM configuration is: filter_glmnet (elastic
+net), ple_ranger (treatment-specific random forest models), submod_lmtree (model-based partitioning with OLS loss), and param_ple (parameter estimation/inference through the PLEs). Jemielita and Mehrotra 2019 (in progress) show that this configuration performs quite well in terms of bias, efficiency, coverage, and selecting the right predictive covariates. To run PRISM, at a minimum, the outcome (Y), treatment (A), and covariates (X) must be provided. See below. 
 
 ```{r default_ctns}
 # PRISM Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
@@ -63,18 +65,39 @@ res0 = PRISM(Y=Y, A=A, X=X)
 ## This is the same as running ##
 res1 = PRISM(Y=Y, A=A, X=X, family="gaussian", filter="filter_glmnet", 
              ple = "ple_ranger", submod = "submod_lmtree", param="param_ple")
-## Plot the distribution of PLEs ###
-hist(res0$mu_train$PLE, main="Estimated Distribution of PLEs",
-     xlab = "Estimated PLEs: E(Y|X=x, A=1)-E(Y|X=x,A=0)")
-## Plot of the subgroup model (lmtree) ##
-plot(res0$Sub.mod)
+```
+Let's now review the core PRISM outputs. Results relating to the filter include "filter.mod" (model output) and "filter.vars" (variables that pass the filter).
+```{r default_ctns_filter}
+# elastic net model: loss by lambda #
+plot(res0$filter.mod)
+## Variables that remain after filtering ##
+res0$filter.vars
+# All predictive variables (X1,X2) and prognostic variables (X3,X5, X7) remains.
+```
+Results relating to the PLE model include "ple.mod" (model output), "mu.train" (training predictions), and "mu.test" (test predictions) where predictions are of E(Y|X,A=a) and E(Y|X,A=1)-E(Y|X,A=0). The PLEs, or individual treatment effects, are informative of the overall treatment heterogeneity. For example, 
+```{r default_ctns_ple}
+print( paste("% of Patients with Positive Treatment Effects:", 
+             mean(I(res0$mu_train$PLE>0))*100, "%") )
+# Density Plot #
+ggplot(res0$mu_train, aes(PLE)) + geom_density() +
+      ggtitle("Distribution of PLEs") + xlab("PLEs: E(Y|X=x, A=1)-E(Y|X=x,A=0)") +
+      geom_vline(xintercept = 0) +
+      theme_bw()
+```
+Next, the subgroup model (lmtree), identifies 4-subgroups based on with varying treatment effects. By plotting the subgroup model object ("submod.fit\$mod")", we see that partitions are made through X1 (predictive), X2 (predictive), and X31 (noise). At each node, parameter estimates for node (subgroup) specific OLS models, $Y\sim \beta_0+\beta_1*A$. For example, patients in nodes 4 and 6 have estimated treatment effects of 0.47 and 0.06 respectively. Subgroup predictions for the train/test set can be found in the "out.train" and "out.test" data-sets.
+```{r default_ctns_submod}
+plot(res0$submod.fit$mod, terminal_panel = NULL)
+table(res0$out.train$Subgrps)
+table(res0$out.test$Subgrps)
+```
+These estimates tend to be overly positive or negative, as the same data that trains the subgroup model is used to estimate the treatment effects. Resampling, such as bootstrapping, can generally be used for"de-biased"treatment effect estimates and obtain valid inference. An alternative approach without resampling is the use the PLEs for parameter estimation and inference (param="param_ple"). For any of the provided "param" options, a key output is the object "param.dat". By default, "param.dat" contain point-estimates, standard errors, lower/upper confidence intervals (depends on alpha_s and alpha_ovrl) and p-values. The plot() function then creates a forest plot based on the "param.dat" object.
+```{r default_ctns2}
 ## Overall/subgroup specific parameter estimates/inference
 res0$param.dat
 ## Forest plot: Overall/subgroup specific parameter estimates (CIs)
 plot(res0)
+# plot(res0, type="CI") # same as above 
 ```
-
-A key output of PRISM is the object "param.dat", which includes point-estimates and variability metrics. Lower confidence limits (LC) and upper confidence limits (UCL) are formed based on inputs alpha_ovrl (overall) and alpha_s (subgroups); default is 0.05 for both. The plot() function creates a forest plot based on the "param.dat" object. 
 
 The hyper-parameters for the individual steps of PRISM can also be easily modified. For example, "filter_glmnet" by default selects covariates based on "lambda.min", "ple_ranger" requires nodes to contain at least 10% of the total observations, and "submod_lmtree" requires nodes to contain at least 5% of the total observations. To modify this:
 
@@ -84,8 +107,8 @@ The hyper-parameters for the individual steps of PRISM can also be easily modifi
 res_new_hyper = PRISM(Y=Y, A=A, X=X, filter.hyper = list(lambda="lambda.1se"),
                       ple.hyper = list(min.node.pct=0.05), 
                       submod.hyper = list(minsize=200))
-plot(res_new_hyper$Sub.mod) # Plot subgroup model results
-plot(res_new_hyper)
+plot(res_new_hyper$submod.fit$mod) # Plot subgroup model results
+plot(res_new_hyper) # Forest plot 
 ```
 
 Resampling is also a feature in PRISM. Both bootstrap (resample="Bootstrap") and permutation (resample="Permutation") based-resampling are included; this can be stratified by the discovered subgroups (default: stratify=TRUE). Resampling can be useful for obtaining valid inference and estimating posterior probabilities. 
@@ -102,7 +125,7 @@ aggregate(I(est>0)~Subgrps, data=res_boot$resamp.dist, FUN="mean")
 
 # Example: Survival Outcome with Binary Treatment
 
-Survival outcomes are also allowed in PRISM. The default settings use glmnet to filter ("filter_glmnet"") and estimate patient-level hazard ratios ("ple_glmnet""), "submod_weibull"" (MOB with weibull loss function) for subgroup identification, and param_cox (subgroup-specific cox regression models). Another subgroup option is to use "submod_ctree"", which uses the conditional inference tree (CTREE) algorithm to find subgroups; this looks for partitions irrespective of treatment assignment and thus corresponds to finding prognostic effects. 
+Survival outcomes are also allowed in PRISM. The default settings use glmnet to filter ("filter_glmnet") and estimate patient-level hazard ratios ("ple_glmnet""), "submod_weibull"" (MOB with weibull loss function) for subgroup identification, and param_cox (subgroup-specific cox regression models). Another subgroup option is to use "submod_ctree"", which uses the conditional inference tree (ctree) algorithm to find subgroups; this looks for partitions irrespective of treatment assignment and thus corresponds to finding prognostic effects. 
 
 ```{r default_surv}
 library(survival)
@@ -117,12 +140,12 @@ A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
 
 # Default: filter_glmnet ==> submod_weibull (MOB with Weibull) ==> param_cox (Cox regression)
 res_weibull1 = PRISM(Y=Y, A=A, X=X, ple=NULL)
-plot(res_weibull1$Sub.mod)
+plot(res_weibull1$submod.fit$mod)
 plot(res_weibull1)+ylab("HR [95% CI]")
 
 # PRISM: filter_glmnet ==> submod_ctree ==> param_cox (Cox regression) #
 res_ctree1 = PRISM(Y=Y, A=A, X=X, ple=NULL, submod = "submod_ctree")
-plot(res_ctree1$Sub.mod)
+plot(res_ctree1$submod.fit$mod)
 plot(res_ctree1)+ylab("HR [95% CI]")
 
 ```
@@ -256,7 +279,7 @@ res_user1 = PRISM(Y=Y, A=A, X=X, family="gaussian", filter="filter_lasso",
 ## variables that remain after filtering ##
 res_user1$filter.vars
 ## Subgroup model: lmtree searching for predictive only ##
-plot(res_user1$Sub.mod)
+plot(res_user1$submod.fit$mod)
 ## Parameter estimates/inference
 res_user1$param.dat
 ## Forest Plot (95% CI) ##
