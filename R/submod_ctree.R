@@ -6,7 +6,7 @@
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
-#' @param X Covariate matrix. Must be numeric.
+#' @param X Covariate space.
 #' @param Xtest Test set
 #' @param mu_train Patient-level estimates (See PLE_models)
 #' @param minbucket Minimum number of observations in a tree node.
@@ -63,7 +63,8 @@ submod_ctree = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0
 #' trained ctree model (depends on if outcome_PLE argument)
 #'
 #' @param object Trained ctree model.
-#' @param newdata Data-set to make predictions at.
+#' @param newdata Data-set to make predictions at (Default=NULL, predictions correspond
+#' to training data).
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #' @import partykit
@@ -89,7 +90,7 @@ submod_ctree = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0
 #' @method predict submod_ctree
 #' @export
 #'
-predict.submod_ctree = function(object, newdata, ...){
+predict.submod_ctree = function(object, newdata=NULL, ...){
 
   # Extract mod/family #
   mod = object$mod
