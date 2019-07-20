@@ -11,7 +11,7 @@ ple_train(Y, A, X, Xtest, family = "gaussian", ple, hyper = NULL, ...)
 
 \item{A}{Treatment variable. (a=1,...A)}
 
-\item{X}{Covariate matrix. Must be numeric.}
+\item{X}{Covariate space.}
 
 \item{Xtest}{Test set}
 
