@@ -5,7 +5,7 @@
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
-#' @param X Covariate matrix. Must be numeric.
+#' @param X Covariate space.
 #' @param Xtest Test set
 #' @param mu_train Patient-level estimates (See PLE_models)
 #' @param minsize Minimum number of observations in a tree node.
@@ -56,7 +56,8 @@ submod_lmtree = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0.
 #' Predict subgroups and obtain subgroup-specific estimates of E(Y|A=1)-E(Y|A=0).
 #'
 #' @param object Trained lmtree model.
-#' @param newdata Data-set to make predictions at.
+#' @param newdata Data-set to make predictions at (Default=NULL, predictions correspond
+#' to training data).
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #' @import partykit
@@ -77,21 +78,25 @@ submod_lmtree = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0.
 #'
 #' res_lmtree1 = submod_lmtree(Y, A, X, Xtest=X)
 #' # Predict subgroups / estimates #
-#' out = predict(res_lmtree1, newdata=X)
+#' out = predict(res_lmtree1)
 #'
 #'
 #' @method predict submod_lmtree
 #' @export
 #'
-predict.submod_lmtree = function(object, newdata, ...){
+predict.submod_lmtree = function(object, newdata=NULL, ...){
 
-  # Extract mod #
+  # Extract model #
   mod = object$mod
   ##  Predict Subgroups ##
   Subgrps = as.numeric( predict(mod, type="node", newdata = newdata) )
-  ## Predict E(Y|X=x, A=1)-E(Y|X=x,A=0) ##
-  pred =  predict( mod, newdata = data.frame(A=1, newdata) ) -
-          predict( mod, newdata = data.frame(A=0, newdata) )
+  ### Predict E(Y|A=1,S=s)-E(Y|A=0,S=s) (based on lmtree) ##
+  hold.dat = data.frame(Subgrps = Subgrps, pred = NA)
+  for (s in unique(Subgrps)){
+    hold = summary(mod)[[as.character(s)]]
+    hold.dat$pred[hold.dat$Subgrps==s] = coefficients(hold)[2,1]
+  }
+  pred = hold.dat$pred
 
   ## Return Results ##
   return(  list(Subgrps=Subgrps, pred=pred) )
