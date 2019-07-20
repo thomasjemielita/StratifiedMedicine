@@ -4,12 +4,13 @@
 \alias{predict.ple_bart}
 \title{Predict Patient-level Estimates: BART}
 \usage{
-\method{predict}{ple_bart}(object, newdata, ...)
+\method{predict}{ple_bart}(object, newdata = NULL, ...)
 }
 \arguments{
 \item{object}{Trained BART model(s).}
 
-\item{newdata}{Data-set to make predictions at.}
+\item{newdata}{Data-set to make predictions at (Default=NULL, predictions correspond
+to training data).}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
@@ -31,7 +32,7 @@ A = dat_ctns$A
 \donttest{
 mod1 = ple_bart(Y, A, X, Xtest=X)
 summary(mod1$mu_train)
-summary(predict(mod1, newdata=data.frame(A,X)))
-summary(predict(mod1, newdata=data.frame(X)))
+summary(predict(mod1)) # Training set predictions #
+summary(predict(mod1, newdata=X)) # Test set, MCMC needs to re-run #
 }
 }

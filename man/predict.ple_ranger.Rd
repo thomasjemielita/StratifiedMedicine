@@ -4,16 +4,16 @@
 \alias{predict.ple_ranger}
 \title{Predict Patient-level Estimates: Ranger}
 \usage{
-\method{predict}{ple_ranger}(object, newdata, oob = TRUE, ...)
+\method{predict}{ple_ranger}(object, newdata = NULL, oob = TRUE, ...)
 }
 \arguments{
 \item{object}{Trained random forest (ranger) model(s).}
 
-\item{newdata}{Data-set to make predictions at. For training data, should
-include covariates (X) and treatment (A) for oob predictions.}
+\item{newdata}{Data-set to make predictions at (Default=NULL, predictions correspond
+to training data).}
 
-\item{oob}{Use out-of-bag predictions (default=TRUE unless newdata does not contain
-treatment variable A).}
+\item{oob}{Use out-of-bag predictions (default=TRUE). Only applicable for training data
+(newdata=NULL).}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
@@ -37,8 +37,8 @@ A = dat_ctns$A
 
 # Default (treatment-specific ranger models) #
 mod1 = ple_ranger(Y, A, X, Xtest=X)
-summary( predict(mod1, newdata=data.frame(A,X) ) ) # oob predictions for training
-summary( predict(mod1, newdata=data.frame(X) ) ) # new-predictions, no oob here
+summary( predict(mod1 ) ) # oob predictions for training
+summary( predict(mod1, newdata=X ) ) # new-predictions, no oob here
 
 
 }

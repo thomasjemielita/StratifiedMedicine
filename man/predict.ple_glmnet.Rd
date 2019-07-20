@@ -4,12 +4,13 @@
 \alias{predict.ple_glmnet}
 \title{Predict Patient-level Estimates: glmnet}
 \usage{
-\method{predict}{ple_glmnet}(object, newdata, ...)
+\method{predict}{ple_glmnet}(object, newdata = NULL, ...)
 }
 \arguments{
 \item{object}{Trained glmnet model(s).}
 
-\item{newdata}{Data-set to make predictions at.}
+\item{newdata}{Data-set to make predictions at (Default=NULL, predictions correspond
+to training data).}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
@@ -34,7 +35,7 @@ A = dat_ctns$A
 
 mod1 = ple_glmnet(Y, A, X, Xtest=X, family="gaussian")
 summary(mod1$mu_train)
-summary(predict(mod1, newdata=data.frame(A,X)))
-summary(predict(mod1, newdata=data.frame(X)))
+summary(predict(mod1)) # Training set predictions, newdata=NULL
+summary(predict(mod1, newdata=X)) # Test set predictions
 
 }

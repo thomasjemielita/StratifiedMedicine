@@ -4,12 +4,13 @@
 \alias{predict.submod_ctree}
 \title{Predict submod: CTREE}
 \usage{
-\method{predict}{submod_ctree}(object, newdata, ...)
+\method{predict}{submod_ctree}(object, newdata = NULL, ...)
 }
 \arguments{
 \item{object}{Trained ctree model.}
 
-\item{newdata}{Data-set to make predictions at.}
+\item{newdata}{Data-set to make predictions at (Default=NULL, predictions correspond
+to training data).}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }

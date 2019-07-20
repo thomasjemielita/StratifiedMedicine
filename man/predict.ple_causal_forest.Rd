@@ -4,13 +4,13 @@
 \alias{predict.ple_causal_forest}
 \title{Predict Patient-level Estimates: Causal Forest}
 \usage{
-\method{predict}{ple_causal_forest}(object, newdata, ...)
+\method{predict}{ple_causal_forest}(object, newdata = NULL, ...)
 }
 \arguments{
 \item{object}{Trained random forest (ranger) model(s).}
 
-\item{newdata}{Data-set to make predictions at. For training data, should
-include covariates (X) and treatment (A) for oob predictions.}
+\item{newdata}{Data-set to make predictions at (Default=NULL, predictions correspond
+to training data).}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
@@ -33,8 +33,8 @@ A = dat_ctns$A
 \donttest{
 mod1 = ple_causal_forest(Y, A, X, Xtest=X)
 summary(mod1$mu_train)
-summary(predict(mod1, newdata=data.frame(A,X)))
-summary(predict(mod1, newdata=data.frame(X)))
+summary(predict(mod1)) # Training set predictions (oob) #
+summary(predict(mod1, newdata=X)) # Test data, no oob #
 }
 
 }

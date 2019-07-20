@@ -4,12 +4,13 @@
 \alias{predict.submod_otr}
 \title{Predict submod: OTR CTREE}
 \usage{
-\method{predict}{submod_otr}(object, newdata, ...)
+\method{predict}{submod_otr}(object, newdata = NULL, ...)
 }
 \arguments{
 \item{object}{Trained ctree model.}
 
-\item{newdata}{Data-set to make predictions at.}
+\item{newdata}{Data-set to make predictions at (Default=NULL, predictions correspond
+to training data).}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
@@ -35,7 +36,7 @@ A = dat_ctns$A
 
 \donttest{
 ## Estimate PLEs (through Ranger) ##
-res.ple = ple_model(Y, A, X, Xtest=X, family="gaussian", ple="ple_ranger")
+res.ple = ple_train(Y, A, X, Xtest=X, family="gaussian", ple="ple_ranger")
 
 ## Fit OTR Subgroup Model ##
 res_otr = submod_otr(Y, A, X, Xtest=X, mu_train = res.ple$mu_train)

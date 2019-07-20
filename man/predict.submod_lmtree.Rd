@@ -4,12 +4,13 @@
 \alias{predict.submod_lmtree}
 \title{Predict submod: lmtree}
 \usage{
-\method{predict}{submod_lmtree}(object, newdata, ...)
+\method{predict}{submod_lmtree}(object, newdata = NULL, ...)
 }
 \arguments{
 \item{object}{Trained lmtree model.}
 
-\item{newdata}{Data-set to make predictions at.}
+\item{newdata}{Data-set to make predictions at (Default=NULL, predictions correspond
+to training data).}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
@@ -34,7 +35,7 @@ A = dat_ctns$A
 
 res_lmtree1 = submod_lmtree(Y, A, X, Xtest=X)
 # Predict subgroups / estimates #
-out = predict(res_lmtree1, newdata=X)
+out = predict(res_lmtree1)
 
 
 }
