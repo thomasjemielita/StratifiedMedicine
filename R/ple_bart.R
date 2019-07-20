@@ -6,7 +6,7 @@
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
-#' @param X Covariate matrix. Must be numeric.
+#' @param X Covariate space.
 #' @param Xtest Test set
 #' @param family Outcome type ("gaussian", "binomial"), default is "gaussian"
 #' @param ... Any additional parameters, not currently passed through.
@@ -87,7 +87,8 @@ ple_bart = function(Y, A, X, Xtest, family="gaussian", ...){
 #' BART model(s).
 #'
 #' @param object Trained BART model(s).
-#' @param newdata Data-set to make predictions at.
+#' @param newdata Data-set to make predictions at (Default=NULL, predictions correspond
+#' to training data).
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #'
@@ -104,28 +105,32 @@ ple_bart = function(Y, A, X, Xtest, family="gaussian", ...){
 #' \donttest{
 #' mod1 = ple_bart(Y, A, X, Xtest=X)
 #' summary(mod1$mu_train)
-#' summary(predict(mod1, newdata=data.frame(A,X)))
-#' summary(predict(mod1, newdata=data.frame(X)))
+#' summary(predict(mod1)) # Training set predictions #
+#' summary(predict(mod1, newdata=X)) # Test set, MCMC needs to re-run #
 #' }
 #' @method predict ple_bart
 #' @export
 #'
 #### Predict: ple_bart ####
-predict.ple_bart = function(object, newdata, ...){
+predict.ple_bart = function(object, newdata=NULL, ...){
 
-  ### Remove Treatment variable if in newdata ##
-  X = newdata[,!(colnames(newdata) %in% "A")  ]
-  ## Generate the covariate by treatment interactions ##
-  X_0 = data.frame(0, X, X*0)
-  colnames(X_0) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
-  X_1 = data.frame(1, X, X*1)
-  colnames(X_1) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
-  X.FULL = rbind( X_0, X_1 )
-  preds = predict(object$mods, newdata=X.FULL)
-  preds = apply(preds, 2, mean)
-  n = dim(X)[1]
-  ### PLE Predictions: Train/Test ###
-  mu_hat = data.frame(mu1 = preds[(n+1):(2*n)], mu0 = preds[1:n])
-  mu_hat$PLE = with(mu_hat, mu1-mu0)
+  if (is.null(newdata)){
+    mu_hat = object$mu_train
+  }
+  if (!is.null(newdata)){
+    X = newdata
+    ## Generate the covariate by treatment interactions ##
+    X_0 = data.frame(0, X, X*0)
+    colnames(X_0) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
+    X_1 = data.frame(1, X, X*1)
+    colnames(X_1) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
+    X.FULL = rbind( X_0, X_1 )
+    preds = predict(object$mods, newdata=X.FULL)
+    preds = apply(preds, 2, mean)
+    n = dim(X)[1]
+    ### PLE Predictions: Train/Test ###
+    mu_hat = data.frame(mu1 = preds[(n+1):(2*n)], mu0 = preds[1:n])
+    mu_hat$PLE = with(mu_hat, mu1-mu0)
+  }
   return( mu_hat  )
 }
