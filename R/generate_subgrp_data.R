@@ -35,8 +35,8 @@ generate_subgrp_data = function(n=800, seed=513413, family, ...){
   subgrps = ifelse( X1_cut==1 & X2_cut==1, "[X1+ X2+]", subgrps)
   if (family=="gaussian"){
     ## Mean Function ##
-    mu.e = with(X, 1.5 +   A*( 0.40*ifelse(subgrps=="[X1+ X2+]", 1, 0)+
-                                 0.35*ifelse(subgrps=="[X1+ X2-]", 1, 0)+
+    mu.e = with(X, 1.5 +   A*( 0.65*ifelse(subgrps=="[X1+ X2+]", 1, 0)+
+                                 0.45*ifelse(subgrps=="[X1+ X2-]", 1, 0)+
                                  0.25*ifelse(subgrps=="[X1- X2+]", 1, 0) )+
                   0.15*(X1-mean(X1))/sd(X1) + 0.20*(X2-mean(X2) )/sd(X2) +
                   0.10*(X3-mean(X3))/sd(X3)+
