@@ -12,7 +12,7 @@ submod_train(Y, A, X, Xtest, mu_train = NULL, family = "gaussian",
 
 \item{A}{Treatment variable. (a=1,...A)}
 
-\item{X}{Covariate matrix. Must be numeric.}
+\item{X}{Covariate space.}
 
 \item{Xtest}{Test set}
 
@@ -31,12 +31,12 @@ PLEs to subgroups.}
 Trained subgroup model and subgroup predictions/estimates for train/test sets.
 
  \itemize{
-  \item mod - trained subgroup model
+  \item fit - trained subgroup model
   \item Subgrps.train - Identified subgroups (training set)
   \item Subgrps.test - Identified subgroups (test set)
   \item pred.train - Predictions (training set)
   \item pred.test - Predictions (test set)
-  \item Rules - Definitions for subgroups, if provided in submod output.
+  \item Rules - Definitions for subgroups, if provided in fitted submod output.
 }
 }
 \description{
@@ -57,7 +57,7 @@ plot(mod1$mod)
 
 # Fit through submod_train wrapper #
 mod2 = submod_train(Y=Y, A=A, X=X, Xtest=X, submod="submod_lmtree")
-plot(mod2$mod)
+plot(mod2$fit$mod)
 
 
 }
