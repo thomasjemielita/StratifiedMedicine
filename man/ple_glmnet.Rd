@@ -11,7 +11,7 @@ ple_glmnet(Y, A, X, Xtest, lambda = "lambda.min", family, ...)
 
 \item{A}{Treatment variable. (a=1,...A)}
 
-\item{X}{Covariate matrix. Must be numeric.}
+\item{X}{Covariate space.}
 
 \item{Xtest}{Test set}
 
@@ -26,6 +26,8 @@ ple_glmnet(Y, A, X, Xtest, lambda = "lambda.min", family, ...)
 Trained glmnet model(s).
  \itemize{
   \item mods - trained model(s)
+  \item lambda - Lambda used for elastic-net (passes to prediction function)
+  \item X - Covariate Space (in model matrix form)
 }
 }
 \description{

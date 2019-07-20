@@ -5,7 +5,7 @@
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
-#' @param X Covariate matrix. Must be numeric.
+#' @param X Covariate space.
 #' @param Xtest Test set
 #' @param lambda Lambda for elastic-net (default = "lambda.min"). Other options include
 #' "lambda.1se" or  fixed values
@@ -17,6 +17,8 @@
 #' @return Trained glmnet model(s).
 #'  \itemize{
 #'   \item mods - trained model(s)
+#'   \item lambda - Lambda used for elastic-net (passes to prediction function)
+#'   \item X - Covariate Space (in model matrix form)
 #' }
 #' @export
 #' @examples
@@ -35,9 +37,8 @@
 ##### Elastic net (glmnet): Y~(A,X,A*X) ==> PLEs ######
 ple_glmnet = function(Y, A, X, Xtest, lambda="lambda.min", family, ...){
 
-  ## Extract covariate space ###
+  ## Model matrix the covariate space ###
   X = model.matrix(~. -1, data = X )
-  Xtest = model.matrix(~. -1, data = Xtest )
   ## Generate the interaction covariates ###
   X_inter = X*A
   colnames(X_inter) = paste(colnames(X), "_A", sep="")
@@ -46,7 +47,7 @@ ple_glmnet = function(Y, A, X, Xtest, lambda="lambda.min", family, ...){
   set.seed(6134)
   if (family=="survival") { family = "cox"  }
   mod <- cv.glmnet(x = W, y = Y, alpha=0.5, family=family)
-  res = list(mods = mod, lambda=lambda)
+  res = list(mods = mod, lambda=lambda, X=X)
   class(res) = "ple_glmnet"
   ## Return Results ##
   return( res )
@@ -59,7 +60,8 @@ ple_glmnet = function(Y, A, X, Xtest, lambda="lambda.min", family, ...){
 #' (HR(X,A=1), HR(X,A=0), HR(X, A=1)-HR(X, A=0)).
 #'
 #' @param object Trained glmnet model(s).
-#' @param newdata Data-set to make predictions at.
+#' @param newdata Data-set to make predictions at (Default=NULL, predictions correspond
+#' to training data).
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #' @import glmnet
@@ -79,24 +81,26 @@ ple_glmnet = function(Y, A, X, Xtest, lambda="lambda.min", family, ...){
 #'
 #' mod1 = ple_glmnet(Y, A, X, Xtest=X, family="gaussian")
 #' summary(mod1$mu_train)
-#' summary(predict(mod1, newdata=data.frame(A,X)))
-#' summary(predict(mod1, newdata=data.frame(X)))
+#' summary(predict(mod1)) # Training set predictions, newdata=NULL
+#' summary(predict(mod1, newdata=X)) # Test set predictions
 #'
 #' @method predict ple_glmnet
 #' @export
 #'
 #### Predict: ple_glmnet ####
-predict.ple_glmnet = function(object, newdata, ...){
+predict.ple_glmnet = function(object, newdata=NULL, ...){
 
   mod = object$mods
   lambda = object$lambda
-  # Extract design matrix (no treatment A) #
-  X = newdata[,!(colnames(newdata) %in% "A")]
-  X = model.matrix(~. -1, data = X )
+  X = object$X
+  if (!is.null(newdata)){
+    X = newdata
+    X = model.matrix(~. -1, data = X )
+  }
   ### Predictions (Counterfactuals) ###
   mu_hat = data.frame( mu1 =  as.numeric(predict(mod,
                                                    newx = cbind(X, 1, X*1), s=lambda)),
-                         mu0 =  as.numeric(predict(mod,
+                       mu0 =  as.numeric(predict(mod,
                                                    newx = cbind(X, 0, X*0), s=lambda)) )
   mu_hat$PLE = with(mu_hat, mu1 - mu0 )
   return( mu_hat  )
