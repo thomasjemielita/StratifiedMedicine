@@ -12,7 +12,7 @@ ple_causal_forest(Y, A, X, Xtest, tune = FALSE, num.trees = 500,
 
 \item{A}{Treatment variable. (a=1,...A)}
 
-\item{X}{Covariate matrix. Must be numeric.}
+\item{X}{Covariate space.}
 
 \item{Xtest}{Test set}
 

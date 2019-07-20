@@ -5,7 +5,7 @@
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
-#' @param X Covariate matrix. Must be numeric.
+#' @param X Covariate space.
 #' @param Xtest Test set
 #' @param tune If TRUE, use grf automatic hyper-parameter tuning. If FALSE (default), no tuning.
 #' @param num.trees Number of trees (default=500)
@@ -74,8 +74,8 @@ ple_causal_forest = function(Y, A, X, Xtest, tune=FALSE, num.trees=500, family="
 #' regression_forest and causal_forest model(s).
 #'
 #' @param object Trained random forest (ranger) model(s).
-#' @param newdata Data-set to make predictions at. For training data, should
-#' include covariates (X) and treatment (A) for oob predictions.
+#' @param newdata Data-set to make predictions at (Default=NULL, predictions correspond
+#' to training data).
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #'
@@ -93,21 +93,21 @@ ple_causal_forest = function(Y, A, X, Xtest, tune=FALSE, num.trees=500, family="
 #' \donttest{
 #' mod1 = ple_causal_forest(Y, A, X, Xtest=X)
 #' summary(mod1$mu_train)
-#' summary(predict(mod1, newdata=data.frame(A,X)))
-#' summary(predict(mod1, newdata=data.frame(X)))
+#' summary(predict(mod1)) # Training set predictions (oob) #
+#' summary(predict(mod1, newdata=X)) # Test data, no oob #
 #' }
 #'
 #' @method predict ple_causal_forest
 #' @export
 #'
 #### Predict: ple_causal_forest ####
-predict.ple_causal_forest = function(object, newdata, ...){
+predict.ple_causal_forest = function(object, newdata=NULL, ...){
 
   forest.Y = object$mods$forest.Y
   forest.A = object$mods$forest.A
   forest.CF = object$mods$forest.CF
   ## Use oob if possible (relevant for training data) ##
-  if ( "A" %in% names(newdata) ){
+  if (is.null(newdata)){
     Y_hat = forest.Y$predictions
     ## Regression Forest: W~X, If RCT ==> W is independent of X; use sample mean ##
     if (is.numeric(forest.A)){
@@ -118,7 +118,7 @@ predict.ple_causal_forest = function(object, newdata, ...){
     }
     PLE_hat = forest.CF$predictions
   }
-  if (!("A" %in% names(newdata))){
+  if (!is.null(newdata)){
     # newdata = newdata[,!(colnames(newdata) %in% "A") ]
     Y_hat = predict(forest.Y, newdata)$predictions
     ## Regression Forest: W~X, If RCT ==> W is independent of X; use sample mean ##
