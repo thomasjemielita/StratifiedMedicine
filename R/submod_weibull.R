@@ -6,7 +6,7 @@
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
-#' @param X Covariate matrix. Must be numeric.
+#' @param X Covariate space.
 #' @param Xtest Test set
 #' @param mu_train Patient-level estimates (See PLE_models)
 #' @param minsize Minimum number of observations in a tree node.
@@ -67,7 +67,8 @@ submod_weibull = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0
 #' Predict subgroups and obtain subgroup-specific point-estimates (in pprogress).
 #'
 #' @param object Trained MOB (Weibull) model.
-#' @param newdata Data-set to make predictions at.
+#' @param newdata Data-set to make predictions at (Default=NULL, predictions correspond
+#' to training data).
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #' @import partykit
@@ -93,7 +94,7 @@ submod_weibull = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0
 #' A = rbinom( n = dim(X)[1], size=1, prob=0.5  ) ## simulate null treatment
 #'
 #' res_weibull = submod_weibull(Y, A, X, Xtest=X, family="survival")
-#' out = predict(res_weibull, newdata=X)
+#' out = predict(res_weibull)
 #' plot(res_weibull$mod)
 #' }
 #'
@@ -101,16 +102,12 @@ submod_weibull = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0
 #' @method predict submod_weibull
 #' @export
 #'
-predict.submod_weibull = function(object, newdata, ...){
+predict.submod_weibull = function(object, newdata=NULL, ...){
 
   # Extract mod #
   mod = object$mod
   ##  Predict Subgroups ##
   Subgrps = as.numeric( predict(mod, type="node", newdata = newdata) )
-  ## What should we predict? TBD in progress ##
-  pred =  predict(mod, type="node", newdata = newdata)
-  pred =  predict( mod, newdata = data.frame(A=1, newdata), type = "response" ) -
-    predict( mod, newdata = data.frame(A=0, newdata), type="response" )
 
   ### Predict Hazard Ratio (based on weibull model predictions) ##
   hold.dat = data.frame(Subgrps = Subgrps, pred = NA)
