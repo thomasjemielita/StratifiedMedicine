@@ -1,14 +1,19 @@
 #' PRISM: Patient Response Identifier for Stratified Medicine
 #'
-#' PRISM algorithm. Given a data-set of (Y, X, A) (Outcome, covariates, treatment),
+#' PRISM algorithm. Given a data-set of (Y, A, X) (Outcome, treatment, covariates),
 #' the \code{PRISM} identifies potential subgroup along with point and variability metrics.
 #' This four step procedure (filter, ple, submod, param) is flexible and accepts user-inputs
 #' at each step.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
-#' @param A Treatment variable. (a=1,...A)
-#' @param X Covariate matrix. Must be numeric.
-#' @param Xtest Test set. Default is NULL which uses X (training set)
+#' @param A Treatment variable. (ex: a=1,...,A or a="control","new")
+#' @param X Covariate space. Variables types (ex: numeric, factor, ordinal) should be set
+#' to align with subgroup model (submod argument). For example, for lmtree, binary variables
+#' coded as numeric (ex: 0, 1) are treated differently than the corresponding factor version
+#' (ex: "A", "B"). Filter and PLE models provided in the StratifiedMedicine package can
+#' accomodate all variable types.
+#' @param Xtest Test set. Default is NULL which uses X (training set). Variable types should
+#' match X.
 #' @param family Outcome type. Options include "gaussion" (default), "binomial", and "survival".
 #' @param filter Maps (Y,A,X) => (Y,A,X.star) where X.star has potentially less
 #' covariates than X. Default is "Filter_ENET", NULL uses no filter.
@@ -27,9 +32,10 @@
 #' @param filter.hyper Hyper-parameters for the Filter function (must be list). Default is NULL.
 #' @param ple.hyper Hyper-parameters for the PLE function (must be list). Default is NULL.
 #' @param submod.hyper Hyper-parameters for the SubMod function (must be list). Default is NULL.
-#' @param submod2X Option to perform "double" subgroup identification; run SubMod once,
-#' rank them into ordinal groups, re-run Submod (BETA). Default=FALSE. Based on the
-#' "pruning" step in 5-STAR (Marceau-West and Mehrotra 2019 in progress)
+#' @param submod.prune Pruning option for subgroup model. Current options include "OTR"
+#' (feed initial discovered subgroups into submod_otr) and "2X" which feeds the initial
+#' subgroups into submod (based on 5-STAR, Marceau-West and Mehrotra 2019 in progress).
+#' Default=NULL (no pruning).
 #' @param param.hyper Hyper-parameters for the Param function (must be list). Default is NULL.
 #' @param prefilter_resamp Option to filter the covariate space (based on filter model) prior
 #' to resampling. Default=FALSE.
@@ -43,21 +49,19 @@
 #' @param verbose Detail progress of PRISM? Default=TRUE
 #' @param verbose.resamp Output iterations during resampling? Default=FALSE
 #'
-#' @return Return Filter, PLE, SubMod, and Param outputs.
+#' @return Trained PRISM object. Includes filter, ple, submod, and param outputs.
 #'  \itemize{
-#'   \item mu_train - Patient-level estimates (train)
-#'   \item mu_test - Patient-level estimates (test)
 #'   \item filter.mod - Filter model
 #'   \item filter.vars - Variables remaining after filtering
-#'   \item Sub.mod - Subgroup model
+#'   \item ple.fit - Fitted ple model (model fit, other fit outputs)
+#'   \item mu_train - Patient-level estimates (train)
+#'   \item mu_test - Patient-level estimates (test)
+#'   \item submod.fit - Fitted submod model (model fit, other fit outputs)
 #'   \item out.train - Training data-set with identified subgroups
 #'   \item out.test - Test data-set with identified subgroups
-#'   \item Subpred.train - Training predictions (based on SubMod)
-#'   \item Subpred.test - Test predictions (based on SubMod)
 #'   \item Rules - Subgroup rules / definitions
-#'   \item param.dat - Parameter estimates and variablity metrics
+#'   \item param.dat - Parameter estimates and variablity metrics (depends on param)
 #'   \item resamp.dist - Resampling distributions (NULL if no resampling is done)
-#'   \item Rules - Subgroups rules/definitions
 #' }
 #' @export
 #' @importFrom stats aggregate coef lm model.matrix p.adjust pnorm confint
@@ -79,10 +83,17 @@
 #'
 #' # Run Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
 #' res0 = PRISM(Y=Y, A=A, X=X)
-#' hist(res0$mu_train$PLE) # distribution of PLEs
-#' plot(res0$Sub.mod) # Plot of subgroup model
+#' res0$filter.vars # variables that pass the filter
+#' plot(res0, type="PLE:density") # distribution of PLEs
+#' plot(res0, type="PLE:waterfall") # PLE waterfall plot
+#' plot(res0$submod.fit$mod) # Plot of subgroup model
 #' res0$param.dat # overall/subgroup specific parameter estimates/inference
 #' plot(res0) # Forest plot: overall/subgroup specific parameter estimates (CIs)
+#'
+#' # Without filtering #
+#' res1 = PRISM(Y=Y, A=A, X=X, filter=NULL)
+#' plot(res1$submod.fit$mod)
+#' plot(res1)
 #'
 #' ## With bootstrap (No filtering) ##
 #' \donttest{
@@ -107,7 +118,7 @@
 #'   # Default: PRISM: glmnet ==> MOB (Weibull) ==> Cox; bootstrapping posterior prob/inference #
 #'   res_weibull1 = PRISM(Y=Y, A=A, X=X, ple=NULL, resample="Bootstrap", R=100,
 #'                        verbose.resamp = TRUE)
-#'   plot(res_weibull1$Sub.mod)
+#'   plot(res_weibull1$submod.fit$mod)
 #'   plot(res_weibull1)
 #'   plot(res_weibull1, type="resample")+geom_vline(xintercept = 1)
 #'   aggregate(I(est<1)~Subgrps, data=res_weibull1$resamp.dist, FUN="mean")
@@ -115,7 +126,7 @@
 #'   # PRISM: ENET ==> CTREE ==> Cox; bootstrapping for posterior prob/inference #
 #'   res_ctree1 = PRISM(Y=Y, A=A, X=X, ple=NULL, submod = "submod_ctree",
 #'                      resample="Bootstrap", R=100, verbose.resamp = TRUE)
-#'   plot(res_ctree1$Sub.mod)
+#'   plot(res_ctree1$submod.fit$submod.fit$mod)
 #'   plot(res_ctree1)
 #'   plot(res_ctree1, type="resample")+geom_vline(xintercept = 1)
 #'   aggregate(I(est<1)~Subgrps, data=res_ctree1$resamp.dist, FUN="mean")
@@ -127,8 +138,9 @@
 PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
                  filter="filter_glmnet", ple=NULL, submod=NULL, param=NULL,
                  alpha_ovrl=0.05, alpha_s = 0.05,
-                 filter.hyper=NULL, ple.hyper=NULL, submod.hyper = NULL, submod2X=FALSE,
-                 param.hyper = NULL, prefilter_resamp=FALSE, resample = NULL, stratify=TRUE,
+                 filter.hyper=NULL, ple.hyper=NULL, submod.hyper = NULL,
+                 submod.prune=NULL, param.hyper = NULL, prefilter_resamp=FALSE,
+                 resample = NULL, stratify=TRUE,
                  R = 100, filter.resamp = NULL, ple.resamp = NULL,
                  submod.resamp = NULL, verbose=TRUE,
                  verbose.resamp = FALSE){
@@ -181,7 +193,7 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
       if (verbose) message( paste("PLE:", ple, sep=" " ) )
       step2 = ple_train(Y=Y,A=A,X=X.star,Xtest=Xtest.star,family=family, ple=ple,
                         hyper = ple.hyper)
-      ple.mods = step2$mods
+      ple.fit = step2$fit
       mu_train = step2$mu_train
       mu_test = step2$mu_test
     }
@@ -196,56 +208,22 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
                                 submod, sep=" "))
       step3 = submod_train(Y=Y, A=A, X=X.star, Xtest=Xtest.star, mu_train=mu_train,
                            family = family, submod=submod, hyper = submod.hyper)
-      # Option for "double" subgroup ==> Rank order subgroups by submod predictions #
-      if (submod2X){
-        Rules = step3$Rules
-        temp = aggregate( step3$pred.train~step3$Subgrps.train, FUN = "mean")
-        # temp = aggregate(mu_train$PLE~step3$Subgrps.train, FUN="mean")
-        colnames(temp) = c("Subgrps.temp", "Subgrps.est")
-        temp$Rank = rank(temp$Subgrps.est)
-        temp = temp[,-2]
-        levels_rank = temp[order(temp$Rank),]
-        levels_rank = levels_rank$Rank
-        # Merge into new design matrices #
-        X_new = data.frame(Subgrps.temp = step3$Subgrps.train)
-        X_new_test = data.frame(Subgrps.temp = step3$Subgrps.test)
-        X_new = left_join(X_new, temp, by="Subgrps.temp")
-        X_new_test = left_join(X_new_test, temp, by="Subgrps.temp")
-        X_new$Rank = factor(X_new$Rank, ordered = TRUE, levels = levels_rank )
-        X_new_test$Rank = factor(X_new_test$Rank, ordered = TRUE, levels = levels_rank )
-        X.star.temp = data.frame(Rank=X_new[,"Rank"])
-        Xtest.star.temp = data.frame(Rank=X_new_test[,"Rank"])
-        ## Re-Fit Subgroup Model ##
-        step3X = submod_train(Y=Y, A=A, X=X.star.temp, Xtest=Xtest.star.temp,
-                              mu_train=mu_train,family = family, submod=submod,
+
+      # Option for subgroup pruning: experimental ##
+      if (!is.null(submod.prune)){
+
+        step3X = submod_prune(Y=Y, A=A, X=X.star, Xtest=Xtest.star, submod0 = step3,
+                              submod=submod, mu_train=mu_train,family = family,
                               hyper = submod.hyper)
-        ## Obtain the "Merged" Rules ##
-        if (is.null(Rules)){ #if no definitions, use the numeric predictions #
-          temp.rules = data.frame(Subgrps.temp=temp$Subgrps.temp,
-                                  Rules = temp$Subgrps.temp)
-        }
-        if (!is.null(Rules)){
-          temp.rules = Rules
-          colnames(temp.rules) = c("Subgrps.temp", "Rules")
-        }
-        rules.dat = data.frame(Subgrps.temp = step3$Subgrps.train,
-                               Subgrps.new = step3X$Subgrps.train)
-        rules.dat = left_join(rules.dat, temp.rules, by="Subgrps.temp")
-        rules.dat = unique(rules.dat[,c("Subgrps.new", "Rules")])
-        rules.dat <- aggregate(Rules ~ Subgrps.new, data = rules.dat, paste,
-                               collapse = " , ")
-        colnames(rules.dat) = c("Subgrps", "Rules")
-        step3X$Rules = rules.dat
         step3 = step3X
       }
-      Sub.mod = step3$mod; Rules=step3$Rules;
+      submod.fit = step3$fit
+      Rules=step3$Rules;
       Subgrps.train = step3$Subgrps.train; Subgrps.test = step3$Subgrps.test
-      Subpred.train = step3$pred.train; Subpred.test = step3$pred.test
     }
     if ( is.null(submod) ){
-      Sub.mod = NULL; Rules=NULL;
+      submod.fit = NULL; Rules=NULL;
       Subgrps.train = NULL; Subgrps.test = NULL;
-      Subpred.train = NULL; Subpred.test = NULL
     }
     ### Step 4: Parameter Estimation and Inference ###
     if (verbose){ message(paste("Parameter Estimation:", param, sep=" ")) }
@@ -255,9 +233,8 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
                                      alpha_s=alpha_s)  )
     ### Return Outputs ###
     return( list( mu_train = mu_train, mu_test = mu_test, filter.mod = filter.mod,
-                  filter.vars = filter.vars, ple.mods = ple.mods, Sub.mod=Sub.mod,
+                  filter.vars = filter.vars, ple.fit = ple.fit, submod.fit = submod.fit,
                   Subgrps.train = Subgrps.train, Subgrps.test=Subgrps.test,
-                  Subpred.train = Subpred.train, Subpred.test = Subpred.test,
                   Rules = Rules, param.dat=param.dat) )
   }
   ## Run on Observed Data ##
@@ -442,15 +419,76 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
   }
 
   ### Return Results ##
-  res = list( mu_train=res0$mu_train, mu_test=res0$mu_test,
-              filter.mod = res0$filter.mod, filter.vars = res0$filter.vars,
-              ple.mod = res0$ple.mods,
-              Sub.mod = res0$Sub.mod,
+  res = list( filter.mod = res0$filter.mod, filter.vars = res0$filter.vars,
+              ple.fit = res0$ple.fit, mu_train=res0$mu_train, mu_test=res0$mu_test,
+              submod.fit = res0$submod.fit,
               out.train = data.frame(Y, A, X, Subgrps=res0$Subgrps.train),
               out.test = data.frame(Xtest, Subgrps=res0$Subgrps.test),
-              Subpred.train = res0$Subpred.train,
-              Subpred.test = res0$Subpred.test, Rules=res0$Rules,
-              param.dat = param.dat, resamp.dist = resamp_param)
+              Rules=res0$Rules,
+              param.dat = param.dat, resamp.dist = resamp_param,
+              family = family,
+              filter = filter, ple = ple, submod=submod, param=param)
   class(res) <- c("PRISM")
   return(res)
 }
+
+#' PRISM: Patient Response Identifier for Stratified Medicine (Predictions)
+#'
+#' Predictions for PRISM algorithm. Given the training set (Y,A,X) or new test set (Xtest),
+#' output ple predictions and identified subgroups with correspond parameter estimates.
+#'
+#' @param object Trained PRISM model.
+#' @param newdata Data-set to make predictions at (Default=NULL, predictions correspond
+#' to training data).
+#' @param type Type of prediction. Default is "all" (ple, submod, and param predictions).
+#' Other options include "ple" (ple predictions), "submod" (submod predictions with
+#' associated parameter estimates).
+#' @param ... Any additional parameters, not currently passed through.
+#'
+#' @return Data-frame with predictions (ple, submod, or both).
+#' @export
+#'
+#' @examples
+#' ## Load library ##
+#' library(StratifiedMedicine)
+#'
+#' ##### Examples: Continuous Outcome ###########
+#'
+#' dat_ctns = generate_subgrp_data(family="gaussian")
+#' Y = dat_ctns$Y
+#' X = dat_ctns$X
+#' A = dat_ctns$A
+#'
+#' # Run Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
+#' res0 = PRISM(Y=Y, A=A, X=X)
+#' summary( predict(res0) ) # all #
+#' summary( predict(res0, type="ple") )
+#' summary( predict(res0, type="submod") )
+#'
+#'
+#' @method predict PRISM
+#' @export
+#'
+predict.PRISM = function(object, newdata=NULL, type="all", ...){
+
+  if (type=="all"){
+    mu_hat = predict(object$ple.fit, newdata=newdata)
+    Subgrps = predict(object$submod.fit, newdata=newdata)
+    res = data.frame(mu_hat, Subgrps=Subgrps$Subgrps)
+    params = object$param.dat
+    res = left_join(res, params[,c("Subgrps", "est")], by="Subgrps")
+    res = data.frame(res)
+  }
+  if (type=="ple"){
+    mu_hat = predict(object$ple.fit, newdata=newdata)
+    res = data.frame(mu_hat)
+  }
+  if (type=="submod"){
+    Subgrps = predict(object$submod.fit, newdata=newdata)
+    res = data.frame(Subgrps=Subgrps$Subgrps)
+    params = object$param.dat
+    res = left_join(res, params[,c("Subgrps", "est")], by="Subgrps")
+  }
+  return(res)
+}
+
