@@ -12,7 +12,7 @@ submod_rpart(Y, A, X, Xtest, mu_train, minbucket = floor(dim(X)[1] *
 
 \item{A}{Treatment variable. (a=1,...A)}
 
-\item{X}{Covariate matrix. Must be numeric.}
+\item{X}{Covariate space.}
 
 \item{Xtest}{Test set}
 

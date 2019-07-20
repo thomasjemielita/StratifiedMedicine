@@ -5,14 +5,14 @@
 \title{Subgroup Identification: Optimal Treatment Regime (through ctree)}
 \usage{
 submod_otr(Y, A, X, Xtest, mu_train, minbucket = floor(dim(X)[1] * 0.05),
-  maxdepth = 4, thres = 0, ...)
+  maxdepth = 4, thres = ">0", ...)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
 
 \item{A}{Treatment variable. (a=1,...A)}
 
-\item{X}{Covariate matrix. Must be numeric.}
+\item{X}{Covariate space.}
 
 \item{Xtest}{Test set}
 
@@ -23,7 +23,8 @@ Default = floor( dim(train)[1]*0.05  )}
 
 \item{maxdepth}{Maximum depth of any node in the tree (default=4)}
 
-\item{thres}{Threshold for I(PLE>thres) (default=0)}
+\item{thres}{Threshold for PLE, ex: I(PLE>thres). Default is ">0". Direction can be
+reversed and can include equality sign (ex: "<=")}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
