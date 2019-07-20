@@ -12,7 +12,7 @@ filter_ranger(Y, A, X, b = 0.66, K = 200, DF2 = FALSE, FDR = FALSE,
 
 \item{A}{Treatment variable. (a=1,...A)}
 
-\item{X}{Covariate matrix. Must be numeric.}
+\item{X}{Covariate space.}
 
 \item{b}{Subsample size (n^b)}
 
