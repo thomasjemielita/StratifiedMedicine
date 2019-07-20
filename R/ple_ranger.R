@@ -5,7 +5,7 @@
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
-#' @param X Covariate matrix. Must be numeric.
+#' @param X Covariate space.
 #' @param Xtest Test set
 #' @param byTrt If 1, fit treatment-specific ranger models. If 0, fit a single ranger model
 #' with covariate space (X, A, X*A)
@@ -18,7 +18,8 @@
 #' @return Trained random forest (ranger) model(s).
 #'  \itemize{
 #'   \item mods - trained model(s)
-#'   \item family - outcome family
+#'   \item A - treatment variable (training set)
+#'   \item X - covariate space (training set)
 #' }
 #' @examples
 #' library(StratifiedMedicine)
@@ -76,7 +77,7 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussi
                  min.node.size = min.node.pct*dim(train.inter)[1])
     mods = list(mod.inter=mod.inter)
   }
-  res = list(mods=mods, family=family)
+  res = list(mods=mods, A=A, X=X)
   class(res) = "ple_ranger"
   ## Return Results ##
   return( res )
@@ -88,10 +89,10 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussi
 #' forest (ranger) model(s).
 #'
 #' @param object Trained random forest (ranger) model(s).
-#' @param newdata Data-set to make predictions at. For training data, should
-#' include covariates (X) and treatment (A) for oob predictions.
-#' @param oob Use out-of-bag predictions (default=TRUE unless newdata does not contain
-#' treatment variable A).
+#' @param newdata Data-set to make predictions at (Default=NULL, predictions correspond
+#' to training data).
+#' @param oob Use out-of-bag predictions (default=TRUE). Only applicable for training data
+#' (newdata=NULL).
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #' @import ranger
@@ -111,25 +112,26 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussi
 #'
 #' # Default (treatment-specific ranger models) #
 #' mod1 = ple_ranger(Y, A, X, Xtest=X)
-#' summary( predict(mod1, newdata=data.frame(A,X) ) ) # oob predictions for training
-#' summary( predict(mod1, newdata=data.frame(X) ) ) # new-predictions, no oob here
+#' summary( predict(mod1 ) ) # oob predictions for training
+#' summary( predict(mod1, newdata=X ) ) # new-predictions, no oob here
 #'
 #'
 #' @method predict ple_ranger
 #' @export
 #'
 #### Counterfactual Forest: Ranger ####
-predict.ple_ranger = function(object, newdata, oob=TRUE, ...){
+predict.ple_ranger = function(object, newdata=NULL, oob=TRUE, ...){
 
   mods = object$mods
-  family = object$family
-  if ( !("A" %in% names(newdata)) ){
-    oob = FALSE
+  A = object$A
+  X = object$X
+  if (!is.null(newdata)){
+    oob=FALSE
+    X = newdata
   }
-  A = newdata$A
-  X = newdata[,!(colnames(newdata) %in% "A") ]
+  treetype = mods[[1]]$treetype
   ### E(Y|X,A=1) - E(Y|X,A=0) ###
-  if (family!="survival"){
+  if (treetype!="Survival"){
     ## Treatment-specific ranger models ##
     if (length(object$mods)>1){
       mu1_hat = predict( object$mods[["mod1"]], X )$predictions
@@ -155,7 +157,7 @@ predict.ple_ranger = function(object, newdata, oob=TRUE, ...){
     ple_hat = mu1_hat-mu0_hat
   }
   ## Predict Difference in RMST (can restrict up to time-point) ##
-  if (family=="survival"){
+  if (treetype=="Survival"){
     if (!requireNamespace("zoo", quietly = TRUE)) {
       stop("Package zoo needed for ranger RMST predictions. Please install.")
     }
@@ -179,7 +181,8 @@ predict.ple_ranger = function(object, newdata, oob=TRUE, ...){
     id1 <- order(times1)
     id0 <- order(times0)
     ple_hat = NULL
-    for (ii in 1:dim(newdata)[1]){
+    dim.length = ifelse(is.null(newdata), dim(X)[1], dim(newdata)[1])
+    for (ii in 1:dim.length){
       ## Trt 1 ##
       y <- mu1_hat[ii,]
       rmst1 <- sum(diff(times1[id1])*zoo::rollmean(y[id1],2))

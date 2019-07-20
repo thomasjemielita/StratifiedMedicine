@@ -12,7 +12,7 @@ ple_ranger(Y, A, X, Xtest, byTrt = 1, min.node.pct = 0.1,
 
 \item{A}{Treatment variable. (a=1,...A)}
 
-\item{X}{Covariate matrix. Must be numeric.}
+\item{X}{Covariate space.}
 
 \item{Xtest}{Test set}
 
@@ -29,7 +29,8 @@ with covariate space (X, A, X*A)}
 Trained random forest (ranger) model(s).
  \itemize{
   \item mods - trained model(s)
-  \item family - outcome family
+  \item A - treatment variable (training set)
+  \item X - covariate space (training set)
 }
 }
 \description{
