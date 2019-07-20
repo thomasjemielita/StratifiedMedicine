@@ -7,7 +7,7 @@
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
-#' @param X Covariate matrix. Must be numeric.
+#' @param X Covariate space.
 #' @param mu_hat Patient-level estimates (See PLE_models)
 #' @param Subgrps Identified subgroups (can be the overall population)
 #' @param alpha_ovrl Two-sided alpha level for overall population

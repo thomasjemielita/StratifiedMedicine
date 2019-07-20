@@ -6,7 +6,7 @@
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
-#' @param X Covariate matrix. Must be numeric.
+#' @param X Covariate space.
 #' @param mu_hat Patient-level estimates (See PLE_models)
 #' @param Subgrps Identified subgroups (can be the overall population)
 #' @param alpha_ovrl Two-sided alpha level for overall population
@@ -42,7 +42,7 @@
 #'
 #' @seealso \code{\link{param_combine}}
 #'
-### Linear Regression: E(Y|A=1) - E(Y|A=0) ###
+### Linear Regression: Estimate E(Y|A=1) - E(Y|A=0) ###
 param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="adaptive",
                     ...){
 

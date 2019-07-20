@@ -11,7 +11,7 @@ param_ple(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...)
 
 \item{A}{Treatment variable. (a=1,...A)}
 
-\item{X}{Covariate matrix. Must be numeric.}
+\item{X}{Covariate space.}
 
 \item{mu_hat}{Patient-level estimates (See PLE_models)}
 
