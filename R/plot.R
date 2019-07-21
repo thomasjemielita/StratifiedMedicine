@@ -93,6 +93,12 @@ plot.PRISM = function(x, type="forest", grid.data=NULL, grid.thres=">0", ...){
                                                ",", sprintf("%.2f",round(UCL,2)),
                                                "]",sep="") )
       ct = x$submod.fit$mod
+      plot(ct)
+      for(gg in grid.ls(print=F)[[1]]) {
+        if (grepl("text", gg)) {
+          print(paste(gg, grid.get(gg)$label,sep=": "))
+        }
+      }
       ct_node <- as.list(ct$node)
       for(i in 1:nrow(param.dat)) {
         ct_node[[param.dat[i,1]]]$info$est <- sprintf("%.2f",round(param.dat$est[i],2))
@@ -105,10 +111,6 @@ plot.PRISM = function(x, type="forest", grid.data=NULL, grid.thres=">0", ...){
       plot(ct, terminal_panel = node_terminal, tp_args = list(
         FUN = function(node) c("E(Y|A=1)-E(Y|A=0):",
                                node$est, node$CI,
-                               paste("N=", node$nobs)) ) )
-      plot(ct, terminal_panel = node_terminal, tp_args = list(
-        FUN = function(node) c("E(Y|A=1)-E(Y|A=0):",
-                               node$prediction, "",
                                paste("N=", node$nobs)) ) )
     }
   }
