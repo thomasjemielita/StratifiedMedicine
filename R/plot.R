@@ -17,7 +17,7 @@ globalVariables(c("Rules", "est", "LCL", "UCL", "PLE"))
 #' @return Plot (ggplot2) object
 #' @method plot PRISM
 #' @export
-#' @importFrom stats reorder
+#' @importFrom stats reorder as.formula
 #' @seealso \code{\link{PRISM}}
 
 
@@ -81,38 +81,6 @@ plot.PRISM = function(x, type="forest", grid.data=NULL, grid.thres=">0", ...){
             axis.title=element_text(size=12,face="bold"))+
       theme_bw()
 
-  }
-  if (type=="submod"){
-    if (!( "party" %in%  class(x$submod.fit$mod)) ){
-      plot(x$submod.fit$mod)
-    }
-    if ("party" %in% class(x$submod.fit$mod)){
-      param.dat = res0$param.dat[res0$param.dat$Subgrps>0, ]
-      param.dat$est.CI = with(param.dat, paste(sprintf("%.2f",round(est,2)),
-                                               " [", sprintf("%.2f",round(LCL,2)),
-                                               ",", sprintf("%.2f",round(UCL,2)),
-                                               "]",sep="") )
-      ct = x$submod.fit$mod
-      plot(ct)
-      for(gg in grid.ls(print=F)[[1]]) {
-        if (grepl("text", gg)) {
-          print(paste(gg, grid.get(gg)$label,sep=": "))
-        }
-      }
-      ct_node <- as.list(ct$node)
-      for(i in 1:nrow(param.dat)) {
-        ct_node[[param.dat[i,1]]]$info$est <- sprintf("%.2f",round(param.dat$est[i],2))
-        ct_node[[param.dat[i,1]]]$info$CI <- paste("[", sprintf("%.2f",round(param.dat$LCL[i],2)),
-                                                   ",", sprintf("%.2f",round(param.dat$UCL[i],2)),
-                                                   "]",sep="")
-        ct_node[[param.dat[i,1]]]$info$prediction <- param.dat$est.CI[i]
-      }
-      ct$node <- as.partynode(ct_node)
-      plot(ct, terminal_panel = node_terminal, tp_args = list(
-        FUN = function(node) c("E(Y|A=1)-E(Y|A=0):",
-                               node$est, node$CI,
-                               paste("N=", node$nobs)) ) )
-    }
   }
   if (type=="resample"){
     plot.dat = x$resamp.dist
