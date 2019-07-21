@@ -56,33 +56,53 @@ res0 = PRISM(Y=Y, A=A, X=X)
 #> Subgroup Identification: submod_lmtree
 #> Parameter Estimation: param_ple
 ## Plot the distribution of PLEs ###
-hist(res0$mu_train$PLE, main="Distribution of PLEs",
-     xlab = "PLEs: E(Y|X=x, A=1)-E(Y|X=x,A=0)")
+plot(res0, type="PLE:density") # Density plot of PLEs #
 ```
 
 <img src="man/figures/README-example-1.png" width="100%" />
 
 ``` r
-## Plot of the subgroup model (lmtree) ##
-plot(res0$Sub.mod)
+plot(res0, type="PLE:waterfall") # waterfall plot of PLEs
 ```
 
 <img src="man/figures/README-example-2.png" width="100%" />
 
 ``` r
-## Overall/subgroup specific parameter estimates/inference
-res0$param.dat
-#>   Subgrps   N         est         SE          LCL       UCL       pval
-#> 1       0 800 0.119163550 0.06277086 -0.004051715 0.2423788 0.05800485
-#> 2       3  71 0.269953773 0.20845268 -0.145791990 0.6856995 0.19956283
-#> 3       5 303 0.001823749 0.10423555 -0.203296193 0.2069437 0.98605215
-#> 4       6 107 0.145690459 0.16108360 -0.173673450 0.4650544 0.36781312
-#> 5       8 221 0.124661570 0.11491806 -0.101819583 0.3511427 0.27920349
-#> 6       9  98 0.331351436 0.18714952 -0.040088556 0.7027914 0.07978260
-## Forest plot: Overall/subgroup specific parameter estimates (CIs)
-plot(res0)
+## Plot of the subgroup model (lmtree) ##
+plot(res0$submod.fit$mod)
 ```
 
 <img src="man/figures/README-example-3.png" width="100%" />
+
+``` r
+## Overall/subgroup specific parameter estimates/inference
+res0$param.dat
+#>   Subgrps   N       est         SE         LCL       UCL        pval
+#> 1       0 800 0.2002288 0.07625826  0.05053855 0.3499190 0.008813376
+#> 2       3 149 0.1639289 0.19134782 -0.21419779 0.5420557 0.392992087
+#> 3       4 277 0.1367610 0.11828108 -0.09608672 0.3696087 0.248583996
+#> 4       6 267 0.2207054 0.12863914 -0.03257507 0.4739859 0.087382447
+#> 5       7 107 0.3639856 0.23182371 -0.09562749 0.8235986 0.119373067
+## Forest plot: Overall/subgroup specific parameter estimates (CIs)
+plot(res0, type="forest")
+```
+
+<img src="man/figures/README-example-4.png" width="100%" />
+
+``` r
+
+## Heatmap of PLEs #
+grid.data = expand.grid(X1 = seq(min(X$X1), max(X$X1), by=0.30),
+                    X2 = seq(min(X$X2), max(X$X2), by=0.30))
+plot(res0, type="heatmap", grid.data = grid.data)
+#> $heatmap.est
+```
+
+<img src="man/figures/README-example-5.png" width="100%" />
+
+    #> 
+    #> $heatmap.prob
+
+<img src="man/figures/README-example-6.png" width="100%" />
 
 Overall, PRISM provides information at the patient-level, the subgroup-level (if any), and the overall population. While there are defaults in place, the user can also input their own functions/model wrappers into the PRISM algorithm. For more details and more examples, we refer the reader to the vignette, [PRISM\_vignette](https://cran.r-project.org/web/packages/StratifiedMedicine/vignettes/SM_PRISM.html).

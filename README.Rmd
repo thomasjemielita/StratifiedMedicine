@@ -60,14 +60,20 @@ A = dat_ctns$A # binary treatment, 1:1 randomized
 # PRISM Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
 res0 = PRISM(Y=Y, A=A, X=X)
 ## Plot the distribution of PLEs ###
-hist(res0$mu_train$PLE, main="Distribution of PLEs",
-     xlab = "PLEs: E(Y|X=x, A=1)-E(Y|X=x,A=0)")
+plot(res0, type="PLE:density") # Density plot of PLEs #
+plot(res0, type="PLE:waterfall") # waterfall plot of PLEs
 ## Plot of the subgroup model (lmtree) ##
-plot(res0$Sub.mod)
+plot(res0$submod.fit$mod)
 ## Overall/subgroup specific parameter estimates/inference
 res0$param.dat
 ## Forest plot: Overall/subgroup specific parameter estimates (CIs)
-plot(res0)
+plot(res0, type="forest")
+
+## Heatmap of PLEs #
+grid.data = expand.grid(X1 = seq(min(X$X1), max(X$X1), by=0.30),
+                    X2 = seq(min(X$X2), max(X$X2), by=0.30))
+plot(res0, type="heatmap", grid.data = grid.data)
+
 ```
 
 Overall, PRISM provides information at the patient-level, the subgroup-level (if any), and the overall population. While there are defaults in place, the user can also input their own functions/model wrappers into the PRISM algorithm. For more details and more examples, we refer the reader to the vignette, [PRISM_vignette](https://cran.r-project.org/web/packages/StratifiedMedicine/vignettes/SM_PRISM.html). 
