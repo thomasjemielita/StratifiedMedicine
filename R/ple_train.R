@@ -25,6 +25,7 @@
 #'   \item mu_test - Patient-level estimates (test set)
 #' }
 #' @examples
+#' \donttest{
 #' library(StratifiedMedicine)
 #' ## Continuous ##
 #' dat_ctns = generate_subgrp_data(family="gaussian")
@@ -39,6 +40,7 @@
 #' # Fit through ple_train wrapper #
 #' mod2 = ple_train(Y=Y, A=A, X=X, Xtest=X, ple="ple_ranger" )
 #' summary(mod2$mu_train)
+#' }
 #'
 #'
 #' @export
@@ -80,6 +82,7 @@ ple_train = function(Y, A, X, Xtest, family="gaussian", ple, hyper=NULL, ...){
 #' @return Data-frame with predictions (depends on trained ple model).
 #'
 #' @examples
+#' \donttest{
 #' library(StratifiedMedicine)
 #' ## Continuous ##
 #' dat_ctns = generate_subgrp_data(family="gaussian")
@@ -96,6 +99,7 @@ ple_train = function(Y, A, X, Xtest, family="gaussian", ple, hyper=NULL, ...){
 #' res3 = predict(mod2, newdata=X) # test data #
 #' summary(res2)
 #' summary(res3)
+#' }
 #'
 #' @method predict ple_train
 #' @export
