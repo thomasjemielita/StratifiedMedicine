@@ -32,10 +32,6 @@
 #' @param filter.hyper Hyper-parameters for the Filter function (must be list). Default is NULL.
 #' @param ple.hyper Hyper-parameters for the PLE function (must be list). Default is NULL.
 #' @param submod.hyper Hyper-parameters for the SubMod function (must be list). Default is NULL.
-#' @param submod.prune Pruning option for subgroup model. Current options include "OTR"
-#' (feed initial discovered subgroups into submod_otr) and "2X" which feeds the initial
-#' subgroups into submod (based on 5-STAR, Marceau-West and Mehrotra 2019 in progress).
-#' Default=NULL (no pruning).
 #' @param param.hyper Hyper-parameters for the Param function (must be list). Default is NULL.
 #' @param prefilter_resamp Option to filter the covariate space (based on filter model) prior
 #' to resampling. Default=FALSE.
@@ -139,7 +135,7 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
                  filter="filter_glmnet", ple=NULL, submod=NULL, param=NULL,
                  alpha_ovrl=0.05, alpha_s = 0.05,
                  filter.hyper=NULL, ple.hyper=NULL, submod.hyper = NULL,
-                 submod.prune=NULL, param.hyper = NULL, prefilter_resamp=FALSE,
+                 param.hyper = NULL, prefilter_resamp=FALSE,
                  resample = NULL, stratify=TRUE,
                  R = 100, filter.resamp = NULL, ple.resamp = NULL,
                  submod.resamp = NULL, verbose=TRUE,
@@ -163,7 +159,7 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
     if (is.null(param) ){ param = "param_ple" }
   }
   if (family=="survival"){
-    if (is.null(ple) ){ ple = "ple_glmnet" }
+    if (is.null(ple) ){ ple = "ple_ranger" }
     if (is.null(submod) ){ submod = "submod_weibull" }
     if (is.null(param) ){ param = "param_cox" }
   }
@@ -208,15 +204,6 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
                                 submod, sep=" "))
       step3 = submod_train(Y=Y, A=A, X=X.star, Xtest=Xtest.star, mu_train=mu_train,
                            family = family, submod=submod, hyper = submod.hyper)
-
-      # Option for subgroup pruning: experimental ##
-      if (!is.null(submod.prune)){
-
-        step3X = submod_prune(Y=Y, A=A, X=X.star, Xtest=Xtest.star, submod0 = step3,
-                              submod=submod, mu_train=mu_train,family = family,
-                              hyper = submod.hyper)
-        step3 = step3X
-      }
       submod.fit = step3$fit
       Rules=step3$Rules;
       Subgrps.train = step3$Subgrps.train; Subgrps.test = step3$Subgrps.test
@@ -427,7 +414,8 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
               Rules=res0$Rules,
               param.dat = param.dat, resamp.dist = resamp_param,
               family = family,
-              filter = filter, ple = ple, submod=submod, param=param)
+              filter = filter, ple = ple, submod=submod, param=param,
+              alpha_ovrl = alpha_ovrl, alpha_s = alpha_s )
   class(res) <- c("PRISM")
   return(res)
 }

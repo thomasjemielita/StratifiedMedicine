@@ -8,8 +8,8 @@ PRISM(Y, A, X, Xtest = NULL, family = "gaussian",
   filter = "filter_glmnet", ple = NULL, submod = NULL,
   param = NULL, alpha_ovrl = 0.05, alpha_s = 0.05,
   filter.hyper = NULL, ple.hyper = NULL, submod.hyper = NULL,
-  submod.prune = NULL, param.hyper = NULL, prefilter_resamp = FALSE,
-  resample = NULL, stratify = TRUE, R = 100, filter.resamp = NULL,
+  param.hyper = NULL, prefilter_resamp = FALSE, resample = NULL,
+  stratify = TRUE, R = 100, filter.resamp = NULL,
   ple.resamp = NULL, submod.resamp = NULL, verbose = TRUE,
   verbose.resamp = FALSE)
 }
@@ -54,11 +54,6 @@ perform inference through the input function (by name). Default for "gaussian"/"
 \item{ple.hyper}{Hyper-parameters for the PLE function (must be list). Default is NULL.}
 
 \item{submod.hyper}{Hyper-parameters for the SubMod function (must be list). Default is NULL.}
-
-\item{submod.prune}{Pruning option for subgroup model. Current options include "OTR"
-(feed initial discovered subgroups into submod_otr) and "2X" which feeds the initial
-subgroups into submod (based on 5-STAR, Marceau-West and Mehrotra 2019 in progress).
-Default=NULL (no pruning).}
 
 \item{param.hyper}{Hyper-parameters for the Param function (must be list). Default is NULL.}
 
