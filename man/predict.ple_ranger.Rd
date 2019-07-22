@@ -27,6 +27,7 @@ Get estimates of (E(Y|X,A=1), E(Y|X,A=0), E(Y|X,A=1)-E(Y|X,A=0)) using trained r
 forest (ranger) model(s).
 }
 \examples{
+\donttest{
 library(StratifiedMedicine)
 ## Continuous ##
 dat_ctns = generate_subgrp_data(family="gaussian")
@@ -39,6 +40,6 @@ A = dat_ctns$A
 mod1 = ple_ranger(Y, A, X, Xtest=X)
 summary( predict(mod1 ) ) # oob predictions for training
 summary( predict(mod1, newdata=X ) ) # new-predictions, no oob here
-
+}
 
 }

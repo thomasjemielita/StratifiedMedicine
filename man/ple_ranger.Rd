@@ -38,6 +38,7 @@ Uses treatment-specific (or with explicit X*A interactions) random forest models
 to obtain patient-level estimates. Used for continuous, binary, or survival outcomes.
 }
 \examples{
+\donttest{
 library(StratifiedMedicine)
 ## Continuous ##
 dat_ctns = generate_subgrp_data(family="gaussian")
@@ -50,7 +51,7 @@ mod1 = ple_ranger(Y, A, X, Xtest=X)
 summary( predict(mod1, newdata=data.frame(A,X) ) ) # oob predictions for training
 summary( predict(mod1, newdata=data.frame(X) ) ) # new-predictions, no oob here
 
-## Survival (TBD) ##
+}
 
 }
 \seealso{

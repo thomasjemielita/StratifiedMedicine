@@ -22,6 +22,7 @@
 #'   \item X - covariate space (training set)
 #' }
 #' @examples
+#' \donttest{
 #' library(StratifiedMedicine)
 #' ## Continuous ##
 #' dat_ctns = generate_subgrp_data(family="gaussian")
@@ -34,7 +35,7 @@
 #' summary( predict(mod1, newdata=data.frame(A,X) ) ) # oob predictions for training
 #' summary( predict(mod1, newdata=data.frame(X) ) ) # new-predictions, no oob here
 #'
-#' ## Survival (TBD) ##
+#' }
 #'
 #' @export
 #' @seealso \code{\link{PRISM}}, \code{\link{ranger}}
@@ -102,6 +103,7 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussi
 #' (S(T|X,A=1), S(T|X,A=0), RMST(A=1,X)-RMST(A=0,X) )
 #'
 #' @examples
+#' \donttest{
 #' library(StratifiedMedicine)
 #' ## Continuous ##
 #' dat_ctns = generate_subgrp_data(family="gaussian")
@@ -114,7 +116,7 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussi
 #' mod1 = ple_ranger(Y, A, X, Xtest=X)
 #' summary( predict(mod1 ) ) # oob predictions for training
 #' summary( predict(mod1, newdata=X ) ) # new-predictions, no oob here
-#'
+#' }
 #'
 #' @method predict ple_ranger
 #' @export

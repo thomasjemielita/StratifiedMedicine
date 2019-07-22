@@ -41,6 +41,7 @@ Wrapper function to train a patient-level estimate (ple) model. Used directly in
 and can be used to directly fit a ple model by name.
 }
 \examples{
+\donttest{
 library(StratifiedMedicine)
 ## Continuous ##
 dat_ctns = generate_subgrp_data(family="gaussian")
@@ -55,6 +56,7 @@ summary(mod1$mu_train)
 # Fit through ple_train wrapper #
 mod2 = ple_train(Y=Y, A=A, X=X, Xtest=X, ple="ple_ranger" )
 summary(mod2$mu_train)
+}
 
 
 }
