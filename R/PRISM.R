@@ -16,14 +16,15 @@
 #' match X.
 #' @param family Outcome type. Options include "gaussion" (default), "binomial", and "survival".
 #' @param filter Maps (Y,A,X) => (Y,A,X.star) where X.star has potentially less
-#' covariates than X. Default is "Filter_ENET", NULL uses no filter.
+#' covariates than X. Default is "filter_glmnet", "None" uses no filter.
 #' @param ple PLE (Patient-Level Estimate) function. Maps the observed data to PLEs.
 #' (Y,A,X) ==> PLE(X). Default for "gaussian"/"binomial" is "ple_ranger"
 #' (treatment-specific random forest models). The default for "survival" is
-#' "ple_glmnet" (elastic net (glmnet) cox regression).
+#' "ple_glmnet" (elastic net (glmnet) cox regression). "None" uses no ple.
 #' @param submod Subgroup identification model function. Maps the observed data and/or PLEs
 #' to subgroups. Default of "gaussian"/"binomial" is "submod_lmtree" (MOB with OLS loss).
-#' Default for "survival" is "submod_weibull" (MOB with weibull loss)
+#' Default for "survival" is "submod_weibull" (MOB with weibull loss). "None" uses no 
+#' submod. 
 #' @param param Parameter estimation and inference function. Based on the discovered subgroups,
 #' perform inference through the input function (by name). Default for "gaussian"/"binomial" is
 #' "param_PLE", default for "survival" is "param_cox".
@@ -87,7 +88,7 @@
 #' plot(res0) # Forest plot: overall/subgroup specific parameter estimates (CIs)
 #'
 #' # Without filtering #
-#' res1 = PRISM(Y=Y, A=A, X=X, filter=NULL)
+#' res1 = PRISM(Y=Y, A=A, X=X, filter="None" )
 #' plot(res1$submod.fit$mod)
 #' plot(res1)
 #'
@@ -167,25 +168,25 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
   ### Main Model Pipeline: Feeds into CV/Bootstrap/resamples procedures ##
   main = function(Y, A, X, Xtest, ple, filter, submod, verbose){
     #### Step 1: Variable Filtering #####
-    if ( !is.null(filter) ){
+    if ( !(filter=="None") ){
       if (verbose) message( paste("Filtering:", filter, sep=" ") )
       step1 = do.call( filter, append(list(Y=Y, A=A, X=X, family=family), filter.hyper)  )
       filter.mod = step1$mod
       filter.vars = step1$filter.vars
     }
-    if ( is.null(filter) ){
+    if ( filter=="None" ){
       filter.mod = NULL; filter.vars = NULL;
     }
     # Drop variables depending on filter #
-    if ( is.null(filter) ){ X.star = X; Xtest.star = Xtest }
-    if ( !is.null(filter) ){
+    if ( filter=="None" ){ X.star = X; Xtest.star = Xtest }
+    if ( !(filter=="None") ){
       if (length(filter.vars)==0){ X.star = X; Xtest.star = Xtest  }
       if (length(filter.vars) >0){
         X.star = X[, colnames(X) %in% c(filter.vars, "A", "Y"), drop=FALSE]
         Xtest.star = Xtest[, colnames(Xtest) %in% c(filter.vars, "A", "Y"), drop=FALSE] }
     }
     #### Step 2: PLE Estimation #####
-    if ( !is.null(ple) ){
+    if ( !(ple=="None") ){
       if (verbose) message( paste("PLE:", ple, sep=" " ) )
       step2 = ple_train(Y=Y,A=A,X=X.star,Xtest=Xtest.star,family=family, ple=ple,
                         hyper = ple.hyper)
@@ -193,13 +194,13 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
       mu_train = step2$mu_train
       mu_test = step2$mu_test
     }
-    if ( is.null(ple) ){
+    if ( ple=="None" ){
       ple.mods = NULL
       mu_train = NULL
       mu_test = NULL
     }
     ### Step 3: Subgroup Identification ###
-    if ( !is.null(submod) ){
+    if ( !(submod=="None") ){
       if (verbose) message( paste("Subgroup Identification:",
                                 submod, sep=" "))
       step3 = submod_train(Y=Y, A=A, X=X.star, Xtest=Xtest.star, mu_train=mu_train,
@@ -208,7 +209,7 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
       Rules=step3$Rules;
       Subgrps.train = step3$Subgrps.train; Subgrps.test = step3$Subgrps.test
     }
-    if ( is.null(submod) ){
+    if ( submod=="None" ){
       submod.fit = NULL; Rules=NULL;
       Subgrps.train = NULL; Subgrps.test = NULL;
     }

@@ -30,16 +30,17 @@ match X.}
 \item{family}{Outcome type. Options include "gaussion" (default), "binomial", and "survival".}
 
 \item{filter}{Maps (Y,A,X) => (Y,A,X.star) where X.star has potentially less
-covariates than X. Default is "Filter_ENET", NULL uses no filter.}
+covariates than X. Default is "filter_glmnet", "None" uses no filter.}
 
 \item{ple}{PLE (Patient-Level Estimate) function. Maps the observed data to PLEs.
 (Y,A,X) ==> PLE(X). Default for "gaussian"/"binomial" is "ple_ranger"
 (treatment-specific random forest models). The default for "survival" is
-"ple_glmnet" (elastic net (glmnet) cox regression).}
+"ple_glmnet" (elastic net (glmnet) cox regression). "None" uses no ple.}
 
 \item{submod}{Subgroup identification model function. Maps the observed data and/or PLEs
 to subgroups. Default of "gaussian"/"binomial" is "submod_lmtree" (MOB with OLS loss).
-Default for "survival" is "submod_weibull" (MOB with weibull loss)}
+Default for "survival" is "submod_weibull" (MOB with weibull loss). "None" uses no 
+submod.}
 
 \item{param}{Parameter estimation and inference function. Based on the discovered subgroups,
 perform inference through the input function (by name). Default for "gaussian"/"binomial" is
@@ -120,7 +121,7 @@ res0$param.dat # overall/subgroup specific parameter estimates/inference
 plot(res0) # Forest plot: overall/subgroup specific parameter estimates (CIs)
 
 # Without filtering #
-res1 = PRISM(Y=Y, A=A, X=X, filter=NULL)
+res1 = PRISM(Y=Y, A=A, X=X, filter="None" )
 plot(res1$submod.fit$mod)
 plot(res1)
 
