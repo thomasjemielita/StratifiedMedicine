@@ -45,33 +45,41 @@
 ### Linear Regression: Estimate E(Y|A=1) - E(Y|A=0) ###
 param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="adaptive",
                     ...){
-
   indata = data.frame(Y=Y,A=A, X)
   ## Subgroup Specific Estimate ##
   looper = function(s){
     lm.mod = tryCatch( lm(Y ~ A , data=indata[Subgrps==s,]),
                        error = function(e) "param error" )
     if (is.character(lm.mod)){
-      est = NA; SE = NA; pval = NA; LCL = NA; UCL = NA;
+      summ = NA
     }
     if (is.list(lm.mod)){
-      est = summary(lm.mod)$coefficients[2,1]
-      SE = summary(lm.mod)$coefficients[2,2]
-      LCL =  confint(lm.mod, level=1-alpha_s)[2,1]
-      UCL =  confint(lm.mod, level=1-alpha_s)[2,2]
-      pval = summary(lm.mod)$coefficients[2,4]
+      n.s = length(Y[Subgrps==s])
+      L.mat = rbind( c(1,0), c(1,1), c(0,1) )
+      est = L.mat %*% coef(lm.mod)
+      SE = sqrt(  diag( L.mat %*% vcov(lm.mod) %*% t(L.mat) ) )
+      LCL = est - qt(1-alpha_s/2, df=n.s-1)*SE
+      UCL = est + qt(1-alpha_s/2, df=n.s-1)*SE
+      pval = 2*pt(-abs(est/SE), df=n.s-1)
+      summ = data.frame( Subgrps = s, N = n.s, estimand = c("A=0", "A=1", "Mean(1-0)"),
+                         est, SE, LCL, UCL, pval)
     }
-    return( c(est, SE, LCL, UCL, pval) )
+    return( summ )
   }
   S_levels = as.numeric( names(table(Subgrps)) )
   S_N = as.numeric( table(Subgrps) )
   param.dat = lapply(S_levels, looper)
   param.dat = do.call(rbind, param.dat)
-  param.dat = data.frame( S = S_levels, N=S_N, param.dat)
-  colnames(param.dat) = c("Subgrps", "N", "est", "SE", "LCL", "UCL", "pval")
+  param.dat = data.frame( param.dat )
   # Combine results and estimate effect in overall population #
-  param.dat0 = param_combine(param.dat = param.dat, alpha_ovrl=alpha_ovrl,
-                             combine=combine)
+  param.dat0 = NULL
+  for (e in unique(param.dat$estimand)){
+    hold = param_combine(param.dat = param.dat[param.dat$estimand==e,],
+                         alpha_ovrl=alpha_ovrl, combine=combine)
+    hold$estimand = e
+    hold = hold[,c("Subgrps", "N", "estimand", "est", "SE", "LCL", "UCL", "pval")]
+    param.dat0 = rbind(param.dat0, hold)
+  }
   param.dat = rbind(param.dat0, param.dat)
   return( param.dat )
 }
