@@ -7,8 +7,8 @@
 #' @param A Treatment variable. (a=1,...A)
 #' @param X Covariate space.
 #' @param Xtest Test set
-#' @param byTrt If 1, fit treatment-specific ranger models. If 0, fit a single ranger model
-#' with covariate space (X, A, X*A)
+#' @param byTrt If TRUE, fit treatment-specific ranger models. If FALSE, fit a single ranger
+#' model with covariate space (X, A, X*A).
 #' @param min.node.pct Minimum sample size in forest nodes (n*min.node.pct)
 #' @param family Outcome type ("gaussian", "binomial"), default is "gaussian"
 #' @param ... Any additional parameters, not currently passed through.
@@ -41,11 +41,11 @@
 #' @seealso \code{\link{PRISM}}, \code{\link{ranger}}
 #'
 #### Counterfactual Forest: Ranger ####
-ple_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussian", ...){
+ple_ranger = function(Y, A, X, Xtest, byTrt=TRUE, min.node.pct=0.10, family="gaussian", ...){
 
   set.seed(668877)
   ## Random Forest models for each Treatment ##
-  if (byTrt==1){
+  if (byTrt){
     ## Split data by treatment ###
     train0 =  data.frame(Y=Y[A==0], X[A==0,])
     train1 =  data.frame(Y=Y[A==1], X[A==1,])
@@ -57,7 +57,7 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=1, min.node.pct=0.10, family="gaussi
     mods = list(mod0=mod0, mod1=mod1)
   }
   ## Single Random Forest Model: Generate A*X interactions manually ##
-  if (byTrt==0){
+  if (!byTrt){
 
     ## Set up A*X interactions in training set ##
     X_inter = X*A
