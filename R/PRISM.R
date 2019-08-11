@@ -45,6 +45,7 @@
 #' @param submod.resamp SubMod function for resampling, default=NULL (use original SubMod)
 #' @param verbose Detail progress of PRISM? Default=TRUE
 #' @param verbose.resamp Output iterations during resampling? Default=FALSE
+#' @param seed Seed for PRISM run (Default=777) 
 #'
 #' @return Trained PRISM object. Includes filter, ple, submod, and param outputs.
 #'  \itemize{
@@ -62,7 +63,7 @@
 #' }
 #' @export
 #' @importFrom stats aggregate coef lm model.matrix p.adjust pnorm confint
-#' @importFrom stats predict pt qnorm qt quantile sd weighted.mean
+#' @importFrom stats predict pt qnorm qt quantile sd weighted.mean vcov na.omit
 #' @import dplyr
 #' @import ggplot2
 #' @import survival
@@ -96,7 +97,7 @@
 #' \donttest{
 #'   res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, verbose.resamp = TRUE)
 #'   # Plot of distributions and P(est>0) #
-#'   plot(res_boot, type="resample")+geom_vline(xintercept = 0)
+#'   plot(res_boot, type="resample", estimand = "E(Y|A=1)-E(Y|A=0)")+geom_vline(xintercept = 0)
 #'   aggregate(I(est>0)~Subgrps, data=res_boot$resamp.dist, FUN="mean")
 #' }
 #'
@@ -117,7 +118,7 @@
 #'                        verbose.resamp = TRUE)
 #'   plot(res_weibull1$submod.fit$mod)
 #'   plot(res_weibull1)
-#'   plot(res_weibull1, type="resample")+geom_vline(xintercept = 1)
+#'   plot(res_weibull1, type="resample", estimand = "HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
 #'   aggregate(I(est<1)~Subgrps, data=res_weibull1$resamp.dist, FUN="mean")
 #'
 #'   # PRISM: ENET ==> CTREE ==> Cox; bootstrapping for posterior prob/inference #
@@ -125,7 +126,7 @@
 #'                      resample="Bootstrap", R=100, verbose.resamp = TRUE)
 #'   plot(res_ctree1$submod.fit$submod.fit$mod)
 #'   plot(res_ctree1)
-#'   plot(res_ctree1, type="resample")+geom_vline(xintercept = 1)
+#'   plot(res_ctree1, type="resample", estimand="HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
 #'   aggregate(I(est<1)~Subgrps, data=res_ctree1$resamp.dist, FUN="mean")
 #' }
 #'
@@ -140,7 +141,7 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
                  resample = NULL, stratify=TRUE,
                  R = 100, filter.resamp = NULL, ple.resamp = NULL,
                  submod.resamp = NULL, verbose=TRUE,
-                 verbose.resamp = FALSE){
+                 verbose.resamp = FALSE, seed=777){
 
   ## "Test" Set ##
   if (is.null(Xtest)){ Xtest = X   }
@@ -195,7 +196,7 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
       mu_test = step2$mu_test
     }
     if ( ple=="None" ){
-      ple.mods = NULL
+      ple.fit = NULL
       mu_train = NULL
       mu_test = NULL
     }
@@ -203,11 +204,21 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
     if ( !(submod=="None") ){
       if (verbose) message( paste("Subgroup Identification:",
                                 submod, sep=" "))
-      step3 = submod_train(Y=Y, A=A, X=X.star, Xtest=Xtest.star, mu_train=mu_train,
-                           family = family, submod=submod, hyper = submod.hyper)
-      submod.fit = step3$fit
-      Rules=step3$Rules;
-      Subgrps.train = step3$Subgrps.train; Subgrps.test = step3$Subgrps.test
+      step3 = tryCatch( submod_train(Y=Y, A=A, X=X.star, Xtest=Xtest.star, 
+                                     mu_train=mu_train, family = family, 
+                                     submod=submod, hyper = submod.hyper),
+                        error = function(e) "submod error",
+                        warning = function(w) "submod error" )
+      if (is.character(step3)){
+        submod.fit = step3
+        Rules = step3
+        Subgrps.train = 1; Subgrps.test = 1
+      }
+      if (is.list(step3)){
+        submod.fit = step3$fit
+        Rules=step3$Rules;
+        Subgrps.train = step3$Subgrps.train; Subgrps.test = step3$Subgrps.test
+      }
     }
     if ( submod=="None" ){
       submod.fit = NULL; Rules=NULL;
@@ -215,10 +226,11 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
     }
     ### Step 4: Parameter Estimation and Inference ###
     if (verbose){ message(paste("Parameter Estimation:", param, sep=" ")) }
-    param.dat = do.call( param, list(Y=Y, A=A, X=X.star, mu_hat = mu_train,
+    param.dat = tryCatch( do.call( param, list(Y=Y, A=A, X=X.star, mu_hat = mu_train,
                                      Subgrps=Subgrps.train,
                                      alpha_ovrl=alpha_ovrl,
-                                     alpha_s=alpha_s)  )
+                                     alpha_s=alpha_s)  ),
+                          error = function(e) "param error" )
     ### Return Outputs ###
     return( list( mu_train = mu_train, mu_test = mu_test, filter.mod = filter.mod,
                   filter.vars = filter.vars, ple.fit = ple.fit, submod.fit = submod.fit,
@@ -227,11 +239,13 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
   }
   ## Run on Observed Data ##
   if (verbose){ message( "Observed Data" )   }
+  set.seed(seed)
   res0 = main(Y=Y, A=A, X=X, Xtest=Xtest, ple=ple, filter=filter,
               submod = submod, verbose=verbose)
   Subgrps = res0$Subgrps.train
   mu_train = res0$mu_train
   param.dat = res0$param.dat
+  param.dat = param.dat[order(param.dat$Subgrps, param.dat$estimand),]
 
   #################################################################
   #### Resampling (Bootstrapping or Permutation)    ###############
@@ -255,39 +269,37 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
     if (verbose){ message( paste(resample, R, "resamples"))   }
 
     subject.counter = data.frame(id = obs.data$id )
+    
+    # Generate resampling indices #
+    n = dim(X)[1]
+    if (resample=="Bootstrap" | resample=="Permutation"){
+      if (!stratify){
+        indices <- sample.int(n, n * R, replace = TRUE)
+        dim(indices) <- c(R, n)
+      }
+      if (stratify){
+        indices <- matrix(NA, R, n)
+        for (s in unique(Subgrps)) {
+          sub_i <- seq_len(n)[Subgrps == s]
+          ns = length(sub_i)
+          indices[, sub_i] <- sub_i[sample.int(ns, ns*R, replace = TRUE)]
+        }
+      }
+    }
 
     ### Resampling Wrapper ###
     fetty_wop = function(R, stratify, obs.data, ple, filter, submod,
                          calibrate, verbose){
 
       if (verbose) message( paste(resample, "Sample", R) )
+      resamp.data = obs.data
       ### Permutation resampling (shuffle treatment assignment) ###
       if (resample=="Permutation"){
-        seedz = 5341+R
-        set.seed(seedz)
-        A_resamp = sample(obs.data$A, replace=FALSE)
-        resamp.data = obs.data
+        A_resamp = resamp.data$A[ indices[R,] ]
         resamp.data$A = A_resamp
       }
       if (resample=="Bootstrap"){
-        ### Re-sample the data ##
-        if (stratify){
-          resamp.data = NULL
-          for (s in unique(Subgrps)){
-            hold.s = obs.data[obs.data$Subgrps==s,]
-            seedz = 5341+R
-            set.seed(seedz)
-            indices.R = sample(nrow(hold.s), size = dim(hold.s)[1], replace=TRUE)
-            resamp.data = rbind(resamp.data, hold.s[indices.R,])
-          }
-        }
-        if (!stratify){
-          seedz = 5341+R
-          set.seed(seedz)
-          indices.R = sample(nrow(obs.data), size = dim(obs.data)[1], replace=TRUE)
-          resamp.data = obs.data[indices.R,]
-        }
-
+        resamp.data = obs.data[ indices[R,], ]
       }
       #### PRISM on resampled data: Test set = Observed Data ####
       Y.R = resamp.data$Y
@@ -298,21 +310,36 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
                    submod = submod, verbose=FALSE)
       Subgrps.R = res.R$Subgrps.train
       param.R = res.R$param.dat
+      # Return NULL if param error #
+      if (is.character(param.R)){
+        if (verbose){ message("param error; ignoring resample")   }
+        return( NULL   )
+      }
       if (calibrate){
         ### Calibrate alpha (need to implement) ###
         ## NEED WORKS!!! ##
       }
-      ## Original Subgroups: Based on bootstrap parameter estimates ##
+      # Bootstrap parameter estimates (for original Subgrps) #
       hold = param.R %>% filter(param.R$Subgrps>0)
-      hold = hold[, colnames(hold) %in% c("Subgrps", "est") ]
-      est.resamp = left_join( data.frame(Subgrps=Subgrps.R),
-                              hold, by="Subgrps")
-      est.resamp = data.frame(id=resamp.data$id, Subgrps = resamp.data$Subgrps, est.resamp)
-      colnames(est.resamp) = c("id", "Subgrps", "Subgrps.R", "est")
-      param.resamp = aggregate(est ~ Subgrps, data=est.resamp, FUN="mean")
-      param.resamp = rbind( param.R[param.R$Subgrps==0,c("Subgrps", "est")],
+      hold = hold[, colnames(hold) %in% c("Subgrps", "estimand", "est") ]
+      # Loop through estimands #
+      param.resamp = NULL
+      for (e in unique(hold$estimand)){
+        hold.e = hold[hold$estimand==e,]
+        est.resamp = left_join( data.frame(Subgrps=Subgrps.R),
+                                hold.e, by="Subgrps")
+        est.resamp = data.frame(id=resamp.data$id, Subgrps = resamp.data$Subgrps, 
+                                est.resamp)
+        colnames(est.resamp) = c("id", "Subgrps", "Subgrps.R", "estimand", "est")
+        param.hold = aggregate(est ~ Subgrps, data=est.resamp, FUN="mean")
+        param.hold = data.frame(R=R, param.hold, estimand=e)
+        param.resamp = rbind(param.resamp, param.hold)
+      }
+      # Add in estimates from overall population #
+      param.resamp.ovrl = data.frame(R=R, 
+                              param.R[param.R$Subgrps==0,c("Subgrps", "est", "estimand")])
+      param.resamp = rbind( param.resamp.ovrl,
                             param.resamp )
-      param.resamp = data.frame(R=R, param.resamp)
       ## Counter for each subject (how many times did they appear in the bootstrap sample)##
       cnt.table = table(resamp.data$id)
       counter = suppressWarnings( left_join(subject.counter,
@@ -332,23 +359,25 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
     ## Extract Resampling parameter estimates and subject-counters ##
     hold = do.call(rbind, resamp.obj)
     resamp_param = do.call(rbind, hold[,1])
-    resamp_param = resamp_param %>% arrange(Subgrps)
+    resamp_param = resamp_param[order(resamp_param$Subgrps, resamp_param$estimand),]
     resamp_counter = do.call(cbind, hold[,2])
 
-    ### Calculate Resample Metrics
-    ## Smoothed estimate (average across resamples), SE, pval
-    ## Bootstrap specific: Covariances, Acceleraation, PCT / BCa CIs ###
-    ## Standard errors, covariances, acceleration, CIs
-    resamp_metrics = function(param.dat){
-      final_ests = param.dat
+    ## Resampling Metrics ##
+    # Smoothed estimate (average across resamples), SE, pval #
+    # Bootstrap specific: Bias, Acceleration, and PCT/BCa CIs #
+    # Standard errors, covariances, acceleration, CIs #
+    resamp_metrics = function(param.dat, e){
+      final_ests = param.dat[param.dat$estimand==e,]
       final_ests$est_resamp = NA
       final_ests$SE_resamp = NA
       if (resample=="Permutation"){
         final_ests$pval_perm = NA
       }
       if (resample=="Bootstrap"){
-        final_ests$SE_bootS = NA
-        final_ests$bias = NA
+        final_ests$SE_smooth = NA
+        final_ests$SE_smooth_adj = NA
+        final_ests$bias_smooth = NA
+        final_ests$bca.z0 = NA
         final_ests$accel = NA
         final_ests$LCL.pct = NA
         final_ests$UCL.pct = NA
@@ -358,7 +387,7 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
       for (sub in unique(final_ests$Subgrps)){
         ### Smoothed Bootstrap estimate, boot SD ###
         est0 = final_ests$est[final_ests$Subgrps==sub]
-        est.vec = resamp_param$est[resamp_param$Subgrps==sub]
+        est.vec = resamp_param$est[resamp_param$Subgrps==sub & resamp_param$estimand==e]
         final_ests$est_resamp[final_ests$Subgrps==sub] = mean(est.vec)
         final_ests$SE_resamp[final_ests$Subgrps==sub] = sd( est.vec )
         ## Permutation p-value ##
@@ -368,7 +397,7 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
         }
         ## Bootstrap Covariance/acceleration/bias/smoothed SE ##
         if (resample=="Bootstrap"){
-          if (sub %in% c(-1, 0)){
+          if (sub<=0){
             sub_subjs = as.matrix( resamp_counter  )
             alpha = alpha_ovrl
           }
@@ -376,22 +405,28 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
             sub_subjs = as.matrix( resamp_counter[obs.data$Subgrps==sub,]  )
             alpha = alpha_s
           }
+          # Bootstrap covariance #
           sub_subjs = apply(sub_subjs, 2, function(x) ifelse(is.na(x)==TRUE,0,x) )
-          count_mean = as.numeric( rowMeans(sub_subjs, na.rm=TRUE) )
           cov.b = suppressWarnings(
-            rowMeans( (sub_subjs - count_mean) * (est.vec - mean(est.vec) ) ) )
-          bias.b =  suppressWarnings(
-            rowMeans( (sub_subjs - 1)^2 * (est.vec - mean(est.vec) ) ) )
-          bca.accel = (1/6)*sum(cov.b^3) / (sum(cov.b^2))^(2/3)
-          bca.bias = mean(bias.b)
-          final_ests$accel[final_ests$Subgrps==sub] = bca.accel
-          final_ests$bias[final_ests$Subgrps==sub] = bca.bias
-          final_ests$SE_bootS[final_ests$Subgrps==sub] = sqrt( sum(cov.b^2) )
+            rowMeans( (sub_subjs - 1) * (est.vec - mean(est.vec) ) ) )
+          # Bias (smoothed estimate) #
+          bias_smooth =  mean( suppressWarnings(
+            rowMeans( (sub_subjs - 1)^2 * (est.vec - mean(est.vec) ) ) ) )
+          # Acceleration #
+          accel = (1/6)*sum(cov.b^3) / ( (sum(cov.b^2))^(3/2) )
+          bca.z0 = qnorm( sum( est.vec < est0, na.rm=TRUE) / length(na.omit(est.vec))  )
+          final_ests$accel[final_ests$Subgrps==sub] = accel
+          final_ests$bca.z0[final_ests$Subgrps==sub] = bca.z0
+          final_ests$bias_smooth[final_ests$Subgrps==sub] = bias_smooth
+          final_ests$SE_smooth[final_ests$Subgrps==sub] = sqrt( sum(cov.b^2) )
+          final_ests$SE_smooth_adj[final_ests$Subgrps==sub] = suppressWarnings(
+            sqrt( sum(cov.b^2) - (length(Y) / (R^2))*sum( (est.vec-mean(est.vec))^2) ) 
+          )
           ### Confidence Intervals (Pct and BCa) ###
-          BCa.QL = pnorm(bca.bias +(bca.bias+qnorm(alpha/2))/
-                           (1-bca.accel*(bca.bias+qnorm(alpha/2))) )
-          BCa.QU = pnorm(bca.bias +(bca.bias+qnorm(1-alpha/2))/
-                           (1-bca.accel*(bca.bias+qnorm(1-alpha/2))) )
+          BCa.QL = pnorm(bca.z0 +(bca.z0+qnorm(alpha/2))/
+                           (1-accel*(bca.z0+qnorm(alpha/2))) )
+          BCa.QU = pnorm(bca.z0 +(bca.z0+qnorm(1-alpha/2))/
+                           (1-accel*(bca.z0+qnorm(1-alpha/2))) )
           quants = as.numeric(
             quantile(est.vec, probs=c(alpha/2, (1-alpha/2), BCa.QL, BCa.QU)) )
           final_ests$LCL.pct[final_ests$Subgrps==sub] = quants[1]
@@ -402,8 +437,11 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
       }
       return(final_ests)
     }
-    param.dat = resamp_metrics(param.dat=param.dat)
-
+    holder = NULL
+    for (e in unique(param.dat$estimand)){
+      holder = rbind( holder, resamp_metrics(param.dat=param.dat, e=e)   )
+    }
+    param.dat = holder
   }
 
   ### Return Results ##

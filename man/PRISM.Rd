@@ -11,7 +11,7 @@ PRISM(Y, A, X, Xtest = NULL, family = "gaussian",
   param.hyper = NULL, prefilter_resamp = FALSE, resample = NULL,
   stratify = TRUE, R = 100, filter.resamp = NULL,
   ple.resamp = NULL, submod.resamp = NULL, verbose = TRUE,
-  verbose.resamp = FALSE)
+  verbose.resamp = FALSE, seed = 777)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
@@ -77,6 +77,8 @@ Options include "Boostrap" and "Permutation." Default=NULL (No resampling).}
 \item{verbose}{Detail progress of PRISM? Default=TRUE}
 
 \item{verbose.resamp}{Output iterations during resampling? Default=FALSE}
+
+\item{seed}{Seed for PRISM run (Default=777)}
 }
 \value{
 Trained PRISM object. Includes filter, ple, submod, and param outputs.
@@ -129,7 +131,7 @@ plot(res1)
 \donttest{
   res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, verbose.resamp = TRUE)
   # Plot of distributions and P(est>0) #
-  plot(res_boot, type="resample")+geom_vline(xintercept = 0)
+  plot(res_boot, type="resample", estimand = "E(Y|A=1)-E(Y|A=0)")+geom_vline(xintercept = 0)
   aggregate(I(est>0)~Subgrps, data=res_boot$resamp.dist, FUN="mean")
 }
 
@@ -150,7 +152,7 @@ plot(res1)
                        verbose.resamp = TRUE)
   plot(res_weibull1$submod.fit$mod)
   plot(res_weibull1)
-  plot(res_weibull1, type="resample")+geom_vline(xintercept = 1)
+  plot(res_weibull1, type="resample", estimand = "HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
   aggregate(I(est<1)~Subgrps, data=res_weibull1$resamp.dist, FUN="mean")
 
   # PRISM: ENET ==> CTREE ==> Cox; bootstrapping for posterior prob/inference #
@@ -158,7 +160,7 @@ plot(res1)
                      resample="Bootstrap", R=100, verbose.resamp = TRUE)
   plot(res_ctree1$submod.fit$submod.fit$mod)
   plot(res_ctree1)
-  plot(res_ctree1, type="resample")+geom_vline(xintercept = 1)
+  plot(res_ctree1, type="resample", estimand="HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
   aggregate(I(est<1)~Subgrps, data=res_ctree1$resamp.dist, FUN="mean")
 }
 
