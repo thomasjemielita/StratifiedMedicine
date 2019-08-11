@@ -1,4 +1,4 @@
-globalVariables(c("Rules", "est", "LCL", "UCL", "PLE"))
+globalVariables(c("Rules", "est", "LCL", "UCL", "PLE", "label"))
 #' plot.PRISM
 #'
 #' Plots PRISM results, either forest plot (estimate with CIs) or resampling distribution.
@@ -8,6 +8,8 @@ globalVariables(c("Rules", "est", "LCL", "UCL", "PLE"))
 #' options include "PLE:waterfall" (waterfall plot of PLEs), "PLE:density" (density plot
 #' of PLEs), "resample" (resampling distribution of parameter estimates for overall
 #' and subgroups), and "heatmap" (heatmap of ple estimates/probabilities).
+#' @param estimand For "resample" plot only, must be specify which estimand to visualize.
+#' Default=NULL.
 #' @param grid.data Input grid of values for 2-3 covariates (if 3, last variable cannot
 #' be continuous). This is required for type="heatmap". Default=NULL.
 #' @param grid.thres Threshold for PLE, ex: I(PLE>thres). Used to estimate P(PLE>thres) for
@@ -21,7 +23,7 @@ globalVariables(c("Rules", "est", "LCL", "UCL", "PLE"))
 #' @seealso \code{\link{PRISM}}
 
 
-plot.PRISM = function(x, type="forest", grid.data=NULL, grid.thres=">0", ...){
+plot.PRISM = function(x, type="forest", estimand=NULL, grid.data=NULL, grid.thres=">0", ...){
 
   if (type=="forest"){
     # Combine parameter-estimates with rules ##
@@ -35,20 +37,30 @@ plot.PRISM = function(x, type="forest", grid.data=NULL, grid.thres=">0", ...){
       rules = rbind(data.frame(Subgrps=0,Rules="Overall"), x$Rules)
       plot.dat = left_join(parm, rules, by="Subgrps")
     }
-
-    # Order subgroups in descending order ##
-    plot.dat$order = c(-1, rank(plot.dat$est[plot.dat$Subgrps>0]) )
-    res = ggplot(data=plot.dat, aes(x=reorder(Rules,order) , y=est, ymin=LCL, ymax=UCL)) +
-      geom_pointrange() +
-      coord_flip() +
+    # Create label: Use bootstrap BCa interval if available #
+    if( !is.null(plot.dat$LCL.BCa)  ){
+      plot.dat$LCL = plot.dat$LCL.BCa
+      plot.dat$UCL = plot.dat$UCL.BCa
+    }
+    plot.dat$label = with(plot.dat, paste( sprintf("%.2f", round(est,2)),
+                                           " [",
+                                           sprintf("%.2f", round(LCL,2)), ",",
+                                           sprintf("%.2f", round(UCL,2)), "]", sep=""))
+    # Plot #
+    res = ggplot(data=plot.dat, aes(x=estimand, y=est, ymin=LCL, ymax=UCL)) +
+      geom_pointrange(aes(col=estimand)) + 
+      geom_text(aes(label = label, col=estimand), size=3, 
+                position = position_nudge(x = 0.3)) +
+      facet_wrap(~Rules, strip.position = "left", nrow = length(unique(plot.dat$Rules)),
+                 scales = "free_y") + 
       xlab("Subgroup") + ylab("Estimate (95% CI)") + ggtitle("PRISM Forest Plot") +
+      theme_bw() + 
       theme(plot.title=element_text(size=16,face="bold"),
             axis.text.y=element_blank(),
-            axis.ticks.y=element_blank(),
             axis.text.x=element_text(face="bold"),
             axis.title=element_text(size=12,face="bold"),
             strip.text.y = element_text(hjust=0,vjust = 1,angle=180,face="bold"))+
-      theme_bw()
+      coord_flip()
   }
   if (type=="PLE:waterfall"){
     if (is.null(x$mu_train)){
@@ -92,7 +104,12 @@ plot.PRISM = function(x, type="forest", grid.data=NULL, grid.thres=">0", ...){
       rules = rbind(data.frame(Subgrps=0,Rules="Overall"), x$Rules)
       plot.dat = left_join(plot.dat, rules, by="Subgrps")
     }
+    if (is.null(estimand)){
+      stop("Must provide estimand for resampling plot")
+    }
+    plot.dat = plot.dat[plot.dat$estimand==estimand,]
     res = ggplot(plot.dat, aes(est)) + geom_density() +
+      xlab( paste("Bootstrap Estimates:", estimand)  ) +
       facet_wrap(~Rules) +
       ggtitle("Bootstrap Distribution of Overall/Subgroup Estimates")+
       theme(plot.title=element_text(size=16,face="bold"),
