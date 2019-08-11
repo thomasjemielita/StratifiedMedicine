@@ -55,28 +55,34 @@ param_dr = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
     probA = mean(A.s)
     mu.s = mu_hat[Subgrps %in% s,]
     # EIF ###
-    eif = ( A.s*Y.s - (A.s-probA)*mu.s$mu1 )/ probA -
-      ( (1-A.s)*Y.s + (A.s-probA)*mu.s$mu0 ) / (1-probA)
-    # Average PLEs for point-estimate #
-    est = mean(eif, na.rm=TRUE)
+    eif.0 = ( (1-A.s)*Y.s + (A.s-probA)*mu.s$mu0 ) / (1-probA)
+    eif.1 = ( A.s*Y.s - (A.s-probA)*mu.s$mu1 )/ probA
+    eif = eif.1 - eif.0
+    # Double robust estimator: Average eifs #
+    est = c( mean(eif.0, na.rm=TRUE), 
+             mean(eif.1, na.rm=TRUE),
+             mean(eif, na.rm=TRUE) )
     # EIF for variance estimate #
-    eif = eif - est
-    SE = sqrt( n.s^(-2) * sum( eif^2 )  )
+    SE = sqrt( n.s^(-2) * c( sum( (eif.0-est[1])^2 ),
+                             sum( (eif.1-est[2])^2 ),
+                             sum( (eif-est[3])^2 ) ) )
     LCL = est-qt( (1-alpha_s/2), df=n.s-1 )*SE
     UCL = est+qt( (1-alpha_s/2), df=n.s-1 )*SE
     pval = 2*pt(-abs(est/SE), df=n.s-1)
-    return( c(n.s, est, SE, LCL, UCL, pval) )
+    summ = data.frame( Subgrps = ifelse(n.s==length(Y), 0, s),
+                       N = n.s, 
+                       estimand = c("E(Y|A=0)", "E(Y|A=1)", "E(Y|A=1)-E(Y|A=0)"),
+                       est, SE, LCL, UCL, pval)
+    return( summ )
   }
   ## Across subgroups ##
   S_levels = as.numeric( names(table(Subgrps)) )
   S_N = as.numeric( table(Subgrps) )
   param.dat = lapply(S_levels, looper)
   param.dat = do.call(rbind, param.dat)
-  param.dat = data.frame( S = S_levels, param.dat)
+  param.dat = data.frame( param.dat )
   # Overall #
   param.dat0 = looper(s = S_levels)
-  param.dat0 = c(0, param.dat0)
   param.dat = rbind(param.dat0, param.dat)
-  colnames(param.dat) = c("Subgrps", "N", "est", "SE", "LCL", "UCL", "pval")
   return( param.dat )
 }

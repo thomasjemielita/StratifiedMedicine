@@ -86,8 +86,17 @@ param_rmst = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="ad
   param.dat = data.frame( S = S_levels, N=S_N, param.dat)
   colnames(param.dat) = c("Subgrps", "N", "est", "SE", "LCL", "UCL", "pval")
   # Combine results and estimate effect in overall population #
-  param.dat0 = param_combine(param.dat = param.dat, alpha_ovrl=alpha_ovrl,
-                             combine=combine)
+  if ( sum(is.na(param.dat$est))>0 | length(unique(Subgrps))==1  ){
+    param.dat0 = looper(s=S_levels)
+    param.dat0 = data.frame( Subgrps=0, N=dim(X)[2],
+                             param.dat0 )
+  }
+  if ( sum(is.na(param.dat$est))==0){
+    param.dat0 = param_combine(param.dat = param.dat, alpha_ovrl=alpha_ovrl,
+                               combine=combine)
+  }
   param.dat = rbind(param.dat0, param.dat)
+  param.dat$estimand = "RMST(1-0)"
+  param.dat = param.dat[,c("Subgrps", "N", "estimand", "est", "SE", "LCL", "UCL", "pval")]
   return( param.dat )
 }

@@ -61,7 +61,8 @@ param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="adap
       LCL = est - qt(1-alpha_s/2, df=n.s-1)*SE
       UCL = est + qt(1-alpha_s/2, df=n.s-1)*SE
       pval = 2*pt(-abs(est/SE), df=n.s-1)
-      summ = data.frame( Subgrps = s, N = n.s, estimand = c("A=0", "A=1", "Mean(1-0)"),
+      summ = data.frame( Subgrps = s, N = n.s, 
+                         estimand = c("E(Y|A=0)", "E(Y|A=1)", "E(Y|A=1)-E(Y|A=0)"),
                          est, SE, LCL, UCL, pval)
     }
     return( summ )
@@ -74,9 +75,15 @@ param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="adap
   # Combine results and estimate effect in overall population #
   param.dat0 = NULL
   for (e in unique(param.dat$estimand)){
-    hold = param_combine(param.dat = param.dat[param.dat$estimand==e,],
-                         alpha_ovrl=alpha_ovrl, combine=combine)
-    hold$estimand = e
+    if (length(unique(Subgrps))==1){
+      hold = param.dat
+      hold$Subgrps = 0
+    }
+    if (length(unique(Subgrps))>1){
+      hold = param_combine(param.dat = param.dat[param.dat$estimand==e,],
+                           alpha_ovrl=alpha_ovrl, combine=combine)
+      hold$estimand = e
+    }
     hold = hold[,c("Subgrps", "N", "estimand", "est", "SE", "LCL", "UCL", "pval")]
     param.dat0 = rbind(param.dat0, hold)
   }
