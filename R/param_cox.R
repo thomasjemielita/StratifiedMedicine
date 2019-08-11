@@ -79,12 +79,25 @@ param_cox = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="ada
   param.dat = data.frame( S = S_levels, N=S_N, param.dat)
   colnames(param.dat) = c("Subgrps", "N", "est", "SE", "LCL", "UCL", "pval")
   # Combine results and estimate effect in overall population #
-  param.dat0 = param_combine(param.dat = param.dat, alpha_ovrl=alpha_ovrl,
-                             combine=combine)
+  if ( sum(is.na(param.dat$est))>0 | length(unique(Subgrps))==1  ){
+    cox.mod = coxph(Y ~ A , data=indata)
+    param.dat0 = data.frame(Subgrps = 0, N = dim(X)[2],
+                            est = summary(cox.mod)$coefficients[1],
+                            SE = summary(cox.mod)$coefficients[3],
+                            LCL = confint(cox.mod, level=1-alpha_ovrl)[1],
+                            UCL = confint(cox.mod, level=1-alpha_ovrl)[2],
+                            pval = summary(cox.mod)$coefficients[5] )
+  }
+  if ( sum(is.na(param.dat$est))==0){
+    param.dat0 = param_combine(param.dat = param.dat, alpha_ovrl=alpha_ovrl,
+                               combine=combine)
+  }
   param.dat = rbind(param.dat0, param.dat)
   # convert log(HR) to HR #
   param.dat$est = exp(param.dat$est)
   param.dat$LCL = exp(param.dat$LCL)
   param.dat$UCL = exp(param.dat$UCL)
+  param.dat$estimand = "HR(A=1 vs A=0)"
+  param.dat = param.dat[,c("Subgrps", "N", "estimand", "est", "SE", "LCL", "UCL", "pval")]
   return( param.dat )
 }
