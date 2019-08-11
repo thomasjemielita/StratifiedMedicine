@@ -44,7 +44,6 @@ ple_glmnet = function(Y, A, X, Xtest, lambda="lambda.min", family, ...){
   colnames(X_inter) = paste(colnames(X), "_A", sep="")
   W = cbind(X, A, X_inter)
   ##### Elastic Net #####
-  set.seed(6134)
   if (family=="survival") { family = "cox"  }
   mod <- cv.glmnet(x = W, y = Y, alpha=0.5, family=family)
   res = list(mods = mod, lambda=lambda, X=X)

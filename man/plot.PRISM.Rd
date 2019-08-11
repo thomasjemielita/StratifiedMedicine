@@ -4,8 +4,8 @@
 \alias{plot.PRISM}
 \title{plot.PRISM}
 \usage{
-\method{plot}{PRISM}(x, type = "forest", grid.data = NULL,
-  grid.thres = ">0", ...)
+\method{plot}{PRISM}(x, type = "forest", estimand = NULL,
+  grid.data = NULL, grid.thres = ">0", ...)
 }
 \arguments{
 \item{x}{PRISM object}
@@ -14,6 +14,9 @@
 options include "PLE:waterfall" (waterfall plot of PLEs), "PLE:density" (density plot
 of PLEs), "resample" (resampling distribution of parameter estimates for overall
 and subgroups), and "heatmap" (heatmap of ple estimates/probabilities).}
+
+\item{estimand}{For "resample" plot only, must be specify which estimand to visualize.
+Default=NULL.}
 
 \item{grid.data}{Input grid of values for 2-3 covariates (if 3, last variable cannot
 be continuous). This is required for type="heatmap". Default=NULL.}

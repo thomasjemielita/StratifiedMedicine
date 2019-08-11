@@ -53,7 +53,6 @@ filter_ranger = function(Y, A, X, b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thre
   }
 
   ## Calculcate observed variable importance ##
-  set.seed(15314)
   mod0 <- ranger(Y ~ ., data = data.frame(Y,W), importance = "permutation")
   VI0 = as.numeric(mod0$variable.importance)
 
@@ -62,8 +61,6 @@ filter_ranger = function(Y, A, X, b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thre
   sub_VI = function(s){
     ## Subsample data ##
     hold = data.frame(Y, W)
-    seedz = s+3141
-    set.seed(seedz)
     hold = hold[sample(nrow(hold), size=b1),]
     mod.s <- ranger(Y ~ ., data = hold, importance = "permutation")
     VI = c( as.numeric(mod.s$variable.importance) )

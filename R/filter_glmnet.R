@@ -62,7 +62,6 @@ filter_glmnet = function(Y, A, X, lambda="lambda.min", family="gaussian",
   }
 
   ##### Elastic Net on estimated ITEs #####
-  set.seed(6134)
   if (family=="survival") { family = "cox" }
   mod <- cv.glmnet(x = W, y = Y, nlambda = 100, alpha=0.5, family=family)
 

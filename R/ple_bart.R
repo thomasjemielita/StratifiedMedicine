@@ -62,7 +62,6 @@ ple_bart = function(Y, A, X, Xtest, family="gaussian", ...){
   # Test: Include both train/test for faster predictions #
   X.FULL = rbind(Xtrain_0, Xtrain_1, Xtest_0, Xtest_1)
   ## BART ##
-  set.seed(51351)
   bartFit = BART::wbart(x.train = W, y.train = Y, x.test = X.FULL)
   n.tr = dim(Xtrain_0)[1]
   n.ts = dim(Xtest_0)[1]

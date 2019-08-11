@@ -43,7 +43,6 @@
 #### Counterfactual Forest: Ranger ####
 ple_ranger = function(Y, A, X, Xtest, byTrt=TRUE, min.node.pct=0.10, family="gaussian", ...){
 
-  set.seed(668877)
   ## Random Forest models for each Treatment ##
   if (byTrt){
     ## Split data by treatment ###

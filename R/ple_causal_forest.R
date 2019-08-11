@@ -45,7 +45,6 @@ ple_causal_forest = function(Y, A, X, Xtest, tune=FALSE, num.trees=500, family="
   if (!requireNamespace("grf", quietly = TRUE)) {
     stop("Package grf needed for ple_causal_forest. Please install.")
   }
-  set.seed(5131)
   ## Regression Forest: Y~X ##
   forest.Y = grf::regression_forest(X, Y, ci.group.size=1,
                                     num.trees = min(500, num.trees) )
