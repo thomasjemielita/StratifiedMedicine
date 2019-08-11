@@ -4,7 +4,7 @@
 \alias{ple_ranger}
 \title{Patient-level Estimates: Ranger}
 \usage{
-ple_ranger(Y, A, X, Xtest, byTrt = 1, min.node.pct = 0.1,
+ple_ranger(Y, A, X, Xtest, byTrt = TRUE, min.node.pct = 0.1,
   family = "gaussian", ...)
 }
 \arguments{
@@ -16,8 +16,8 @@ ple_ranger(Y, A, X, Xtest, byTrt = 1, min.node.pct = 0.1,
 
 \item{Xtest}{Test set}
 
-\item{byTrt}{If 1, fit treatment-specific ranger models. If 0, fit a single ranger model
-with covariate space (X, A, X*A)}
+\item{byTrt}{If TRUE, fit treatment-specific ranger models. If FALSE, fit a single ranger
+model with covariate space (X, A, X*A).}
 
 \item{min.node.pct}{Minimum sample size in forest nodes (n*min.node.pct)}
 
