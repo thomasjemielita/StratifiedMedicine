@@ -47,7 +47,7 @@ devtools::install_github("thomasjemielita/StratifiedMedicine")
 ```
 ## Example: Continuous Outcome with Binary Treatment
 
-Suppose the estimand or question of interest is the average treatment effect, $\theta_0 = E(Y|A=1)-E(Y|A=0)$. The goal is to understand whether there is any treatment heterogeneity across patients and if there are any distinct subgroups with similar responses. 
+Suppose the estimand or question of interest is the average treatment effect, $\theta_0 = E(Y|A=1)-E(Y|A=0)$. The goal is to understand whether there is any treatment heterogeneity across patients and if there are any distinct subgroups with similar responses. In this example, we simulate continuous data where roughly 30\% of the patients receive no treatment-benefit for using $A=1$ vs $A=0$. Responders vs non-responders are defined by the continuous predictive covariates $X_1$ and $X_2$ for a total of four subgroups. Subgroup treatment effects are: $\theta_{1} = 0$ ($X_1 \leq 0, X_2 \leq 0$), $\theta_{2} = 0.25 (X_1 > 0, X_2 \leq 0)$, $\theta_{3} = 0.45 (X_1 \leq 0, X2 > 0$), $\theta_{4} = 0.65 (X_1>0, X_2>0)$.
 
 ```{r example}
 library(StratifiedMedicine)
