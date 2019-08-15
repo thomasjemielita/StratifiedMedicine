@@ -62,17 +62,17 @@ perform inference through the input function (by name). Default for "gaussian"/"
 to resampling. Default=FALSE.}
 
 \item{resample}{Resampling method for resample-based estimates and variability metrics.
-Options include "Boostrap" and "Permutation." Default=NULL (No resampling).}
+Options include "Boostrap", "Permutation", and "CV". Default=NULL (No resampling).}
 
 \item{stratify}{Stratified resampling (Default=TRUE)}
 
 \item{R}{Number of resamples (default=100)}
 
-\item{filter.resamp}{Filter function during resampling, default=NULL (use original Filter)}
+\item{filter.resamp}{Filter function during resampling, default=NULL (use filter)}
 
-\item{ple.resamp}{PLE function during resampling, default=NULL (use original PLE)}
+\item{ple.resamp}{PLE function during resampling, default=NULL (use ple)}
 
-\item{submod.resamp}{SubMod function for resampling, default=NULL (use original SubMod)}
+\item{submod.resamp}{submod function for resampling, default=NULL (use submod)}
 
 \item{verbose}{Detail progress of PRISM? Default=TRUE}
 
