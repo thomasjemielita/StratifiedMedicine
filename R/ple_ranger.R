@@ -121,7 +121,7 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=TRUE, min.node.pct=0.10, family="gau
 #' @export
 #'
 #### Counterfactual Forest: Ranger ####
-predict.ple_ranger = function(object, newdata=NULL, oob=TRUE, ...){
+predict.ple_ranger = function(object, newdata=NULL, oob=FALSE, ...){
 
   mods = object$mods
   A = object$A

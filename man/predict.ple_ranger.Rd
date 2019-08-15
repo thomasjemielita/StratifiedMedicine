@@ -4,7 +4,7 @@
 \alias{predict.ple_ranger}
 \title{Predict Patient-level Estimates: Ranger}
 \usage{
-\method{predict}{ple_ranger}(object, newdata = NULL, oob = TRUE, ...)
+\method{predict}{ple_ranger}(object, newdata = NULL, oob = FALSE, ...)
 }
 \arguments{
 \item{object}{Trained random forest (ranger) model(s).}
