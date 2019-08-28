@@ -138,7 +138,7 @@ plot(res0, type="heatmap", grid.data = grid.data)
 ```
 
 
-The hyper-parameters for the individual steps of PRISM can also be easily modified. For example, "filter_glmnet" by default selects covariates based on "lambda.min", "ple_ranger" requires nodes to contain at least 10% of the total observations, and "submod_lmtree" requires nodes to contain at least 5% of the total observations. To modify this:
+The hyper-parameters for the individual steps of PRISM can also be easily modified. For example, "filter_glmnet" by default selects covariates based on "lambda.min", "ple_ranger" requires nodes to contain at least 10% of the total observations, and "submod_lmtree" requires nodes to contain at least 10% of the total observations. To modify this:
 
 ```{r default_hyper}
 # PRISM Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
