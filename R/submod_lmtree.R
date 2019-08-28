@@ -39,7 +39,7 @@
 #'
 #'
 #### lmtree (MOB) ###
-submod_lmtree = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0.05  ),
+submod_lmtree = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0.10  ),
                          maxdepth = 4, ...){
 
   ## Fit Model ##

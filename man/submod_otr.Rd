@@ -4,7 +4,7 @@
 \alias{submod_otr}
 \title{Subgroup Identification: Optimal Treatment Regime (through ctree)}
 \usage{
-submod_otr(Y, A, X, Xtest, mu_train, minbucket = floor(dim(X)[1] * 0.05),
+submod_otr(Y, A, X, Xtest, mu_train, minbucket = floor(dim(X)[1] * 0.1),
   maxdepth = 4, thres = ">0", ...)
 }
 \arguments{

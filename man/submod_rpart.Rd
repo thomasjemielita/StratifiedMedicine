@@ -5,7 +5,7 @@
 \title{Subgroup Identification: CART (rpart)}
 \usage{
 submod_rpart(Y, A, X, Xtest, mu_train, minbucket = floor(dim(X)[1] *
-  0.05), maxdepth = 4, outcome_PLE = FALSE, family = "gaussian", ...)
+  0.1), maxdepth = 4, outcome_PLE = FALSE, family = "gaussian", ...)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}

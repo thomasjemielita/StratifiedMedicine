@@ -42,7 +42,7 @@
 #'
 #'
 ## CART(rpart) ###
-submod_rpart = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.05  ),
+submod_rpart = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.10  ),
                        maxdepth = 4, outcome_PLE=FALSE, family="gaussian", ...){
 
   if (!requireNamespace("rpart", quietly = TRUE)) {

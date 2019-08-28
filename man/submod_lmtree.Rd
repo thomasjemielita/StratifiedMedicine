@@ -4,8 +4,8 @@
 \alias{submod_lmtree}
 \title{Subgroup Identification: Model-based partitioning (lmtree)}
 \usage{
-submod_lmtree(Y, A, X, Xtest, mu_train, minsize = floor(dim(X)[1] *
-  0.05), maxdepth = 4, ...)
+submod_lmtree(Y, A, X, Xtest, mu_train, minsize = floor(dim(X)[1] * 0.1),
+  maxdepth = 4, ...)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}

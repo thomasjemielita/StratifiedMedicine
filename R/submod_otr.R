@@ -43,7 +43,7 @@
 #'
 
 #### OTR: I(PLE>thres) ~ X, weights = abs(PLE) ###
-submod_otr = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.05  ),
+submod_otr = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.10  ),
                       maxdepth = 4, thres=">0", ...){
   ## Set up data ##
   ind_PLE = eval(parse(text=paste("ifelse(mu_train$PLE", thres, ", 1, 0)")))
