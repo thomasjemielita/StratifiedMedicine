@@ -69,7 +69,6 @@ PRISM_resamp = function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
     
     if (verbose) message( paste(resample, "Sample", R) )
     resamp.data = obs.data
-    Subgrps0 = resamp.data$Subgrps
     ### Permutation resampling (shuffle treatment assignment) ###
     if (resample=="Permutation"){
       A_resamp = resamp.data$A[ indices[R,] ]
@@ -77,6 +76,7 @@ PRISM_resamp = function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
     }
     if (resample=="Bootstrap"){
       resamp.data = obs.data[ indices[R,], ]
+      Subgrps0 = resamp.data$Subgrps
     }
     if (resample=="CV"){
       resamp.data = obs.data[folds!=R,]
@@ -116,33 +116,47 @@ PRISM_resamp = function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
       ## NEED WORKS!!! ##
     }
     # Bootstrap parameter estimates (for original Subgrps) #
-    hold = param.R %>% filter(param.R$Subgrps>0)
-    hold = hold[, colnames(hold) %in% c("Subgrps", "estimand", "est", "SE") ]
-    # Loop through estimands #
-    param.resamp = NULL
-    for (e in unique(hold$estimand)){
-      hold.e = hold[hold$estimand==e,]
-      est.resamp = left_join( data.frame(Subgrps=Subgrps.R),
-                              hold.e, by="Subgrps")
-      est.resamp = data.frame(Subgrps = Subgrps0, est.resamp)
-      colnames(est.resamp) = c("Subgrps", "Subgrps.R", "estimand", "est", "SE")
-      est.resamp = est.resamp %>% group_by(Subgrps, Subgrps.R) %>% mutate( N = n() )
-      est.resamp = unique(est.resamp)
-      ## Obtain point-estimate / standard errors ##
-      S_levels = as.numeric( names(table(est.resamp$Subgrps)) )
-      param.hold = NULL
-      for (s in S_levels){
-        hold.s = param_combine(est.resamp[est.resamp$Subgrps==s,], combine="SS")
-        hold.s = data.frame(Subgrps=s,hold.s[,colnames(hold.s) %in% c("N", "est", "SE")])
-        param.hold = rbind(param.hold, hold.s)
-      }
-      param.hold = data.frame(R=R, param.hold, estimand=e)
-      param.resamp = rbind(param.resamp, param.hold)
+    numb_subs = length(unique(param.R$Subgrps))
+    # No Subgroups #
+    if (numb_subs==1){
+      hold = param.R[,c("estimand", "est", "SE")]
+      param.resamp = param.dat[,c("Subgrps", "N", "estimand")]
+      param.resamp = left_join(param.resamp, hold, by = "estimand")
+      param.resamp = data.frame(R=R, param.resamp)
     }
-    # Add in estimates from overall population #
-    param.resamp.ovrl = data.frame(R=R, param.R[param.R$Subgrps==0, 
-                                        colnames(param.R) %in% colnames(param.resamp)])
-    param.resamp = rbind( param.resamp.ovrl, param.resamp )
+    # >1 Subgroups #
+    if (numb_subs>1){
+      hold = param.R %>% filter(param.R$Subgrps>0)
+      hold = hold[, colnames(hold) %in% c("Subgrps", "estimand", "est", "SE") ]
+      # Loop through estimands #
+      param.resamp = NULL
+      for (e in unique(hold$estimand)){
+        hold.e = hold[hold$estimand==e,]
+        est.resamp = left_join( data.frame(Subgrps=Subgrps.R),
+                                hold.e, by="Subgrps")
+        est.resamp = data.frame(Subgrps = Subgrps0, est.resamp)
+        colnames(est.resamp) = c("Subgrps", "Subgrps.R", "estimand", "est", "SE")
+        est.resamp = est.resamp %>% group_by(Subgrps, Subgrps.R) %>% mutate( N = n() )
+        est.resamp = unique(est.resamp)
+        ## Obtain point-estimate / standard errors ##
+        S_levels = as.numeric( names(table(est.resamp$Subgrps)) )
+        param.hold = NULL
+        for (s in S_levels){
+          hold.s = param_combine(est.resamp[est.resamp$Subgrps==s,], combine="SS")
+          hold.s = data.frame(Subgrps=s,hold.s[,colnames(hold.s) %in% c("N", "est", "SE")])
+          param.hold = rbind(param.hold, hold.s)
+        }
+        param.hold = data.frame(R=R, param.hold, estimand=e)
+        param.resamp = rbind(param.resamp, param.hold)
+      }
+      # Add in estimates from overall population #
+      hold.ovrl = param.R[param.R$Subgrps==0, 
+                          colnames(param.R) %in% colnames(param.resamp)]
+      param.resamp.ovrl = data.frame(R=R, hold.ovrl)
+      param.resamp = rbind( param.resamp.ovrl, param.resamp )
+    }
+    param.resamp$numb_subs = numb_subs
+   
     ## Counter for each subject (how many times did they appear in the bootstrap sample)##
     cnt.table = table(resamp.data$id)
     counter = suppressWarnings( left_join(subject.counter,
@@ -160,7 +174,7 @@ PRISM_resamp = function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
                       verbose = verbose)
   ## Extract Resampling parameter estimates and subject-counters ##
   hold = do.call(rbind, resamp.obj)
-  resamp_param = do.call(rbind, hold[,1])
+  resamp_param = do.call(bind_rows, hold[,1])
   resamp_param = resamp_param[order(resamp_param$Subgrps, resamp_param$estimand),]
   resamp_counter = do.call(cbind, hold[,2])
   
