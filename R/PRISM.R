@@ -160,7 +160,10 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
       if (is.null(A)){ submod = "submod_ctree" }
       else { submod = "submod_lmtree" }
     }
-    if (is.null(param) ){ param = "param_ple" }
+    if (is.null(param) ){ 
+      if (is.null(A)){ param = "param_lm" }
+      else { param = "param_ple" }
+    }
   }
   if (family=="survival"){
     if (is.null(ple) ){ ple = "ple_ranger" }
