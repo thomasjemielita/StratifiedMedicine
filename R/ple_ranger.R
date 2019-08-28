@@ -48,10 +48,6 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=TRUE, min.node.pct=0.10, family="gau
     mod <- ranger(Y ~ ., data = data.frame(Y, X), seed=1, 
                    min.node.size = min.node.pct*dim(X)[2] )
     mods = list(mod=mod)
-    pred.fun = function(mods, X){
-      mu_hat = data.frame(PLE = predict(mods$mod, data = X)$predictions)
-      return(mu_hat)
-    }
   }
   if (!is.null(A)){
     ## Random Forest models for each Treatment ##
@@ -64,12 +60,6 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=TRUE, min.node.pct=0.10, family="gau
       # Trt 1 #
       mod1 <- ranger(Y ~ ., data = train1, seed=2, min.node.size = min.node.pct*dim(train1)[1])
       mods = list(mod0=mod0, mod1=mod1)
-      pred.fun = function(mods, X){
-        mu1_hat = predict( mods$mod1, X )$predictions
-        mu0_hat = predict( mods$mod0, X )$predictions
-        mu_hat = data.frame(mu1 = mu1_hat, mu0 = mu0_hat, PLE = mu1_hat-mu0_hat)
-        return(mu_hat)
-      }
     }
     ## Single Random Forest Model: Generate A*X interactions manually ##
     if (!byTrt){
@@ -91,19 +81,9 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=TRUE, min.node.pct=0.10, family="gau
       mod.inter <- ranger(Y ~ ., data = train.inter, seed=5,
                           min.node.size = min.node.pct*dim(train.inter)[1])
       mods = list(mod.inter=mod.inter)
-      pred.fun = function(mods, X){
-        X0 = data.frame(0, X, X*0)
-        colnames(X0) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
-        X1 = data.frame(1, X, X*1)
-        colnames(X1) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
-        mu_hat = data.frame(mu1 = predict(mods$mod.inter, X1)$predictions,
-                            mu0 = predict(mods$mod.inter, X0)$predictions )
-        mu_hat$PLE = with(mu_hat, mu1-mu0)
-        return(mu_hat)
-      }
     }
   }
-  res = list(mods=mods, pred.fun=pred.fun, A=A, X=X)
+  res = list(mods=mods, A=A, X=X)
   class(res) = "ple_ranger"
   ## Return Results ##
   return( res )

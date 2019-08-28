@@ -49,10 +49,6 @@ ple_bart = function(Y, A, X, Xtest, family="gaussian", ...){
     mods = BART::wbart(x.train = X, y.train = Y, x.test = Xtest)
     mu_train = data.frame(PLE = mods$yhat.train.mean)
     mu_test = data.frame(PLE = mods$yhat.test.mean)
-    pred.fun = function(mods, X){
-      hold = predict(mods, newdata=X)
-      return( apply(hold, 2, mean) )
-    }
   }
   if (!is.null(A)){
     ## Generate the covariate by treatment interactions ##
