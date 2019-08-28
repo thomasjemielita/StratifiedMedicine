@@ -81,24 +81,9 @@ ple_bart = function(Y, A, X, Xtest, family="gaussian", ...){
     mu_test = data.frame(mu1 = mods$yhat.test.mean[(2*n.tr+n.ts+1):(2*n.tr+2*n.ts)],
                          mu0 = mods$yhat.test.mean[(2*n.tr+1):(2*n.tr+n.ts)] )
     mu_test$PLE = mu_test$mu1 - mu_test$mu0
-    pred.fun = function(mods, X){
-      X0 = data.frame(0, X, X*0)
-      colnames(X0) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
-      X1 = data.frame(1, X, X*1)
-      colnames(X1) = c( "A", colnames(X), paste(colnames(X), "_A", sep="") )
-      X.FULL = rbind( X0, X1 )
-      preds = predict(mods, newdata=X.FULL)
-      preds = apply(preds, 2, mean)
-      n = dim(X)[1]
-      ### PLE Predictions: Train/Test ###
-      mu_hat = data.frame(mu1 = preds[(n+1):(2*n)], mu0 = preds[1:n])
-      mu_hat$PLE = with(mu_hat, mu1-mu0)
-      return( mu_hat )
-    }
   }
 
-  res = list(mods = mods, pred.fun=pred.fun, mu_train = mu_train, mu_test=mu_test,
-             A=A)
+  res = list(mods = mods, mu_train = mu_train, mu_test=mu_test, A=A)
   class(res) = "ple_bart"
   ## Return Results ##
   return( res )

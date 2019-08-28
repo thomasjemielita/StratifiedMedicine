@@ -162,7 +162,9 @@ predict.ple_ranger = function(object, newdata=NULL, oob=FALSE, ...){
       mu_hat = data.frame(PLE = predict( object$mods$mod, X )$predictions )
     } 
     if (treetype=="Survival"){
-      mu_hat = data.frame(PLE = predict( object$mods$mod, X )$survival )
+      preds = predict( mods$mod, X )
+      mu_hat = data.frame( preds$survival )
+      colnames(mu_hat) = paste("time", mods$mod$unique.death.times)
     }
   }
   if (!is.null(A)){
