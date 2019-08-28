@@ -52,10 +52,12 @@
 ### Cox Regression: Hazard Ratios ###
 param_cox = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="adaptive",
                      ...){
-
+  if (is.null(A)){
+    stop("param_cox not applicable for no treatment (A=NULL)")
+  }
   indata = data.frame(Y=Y, A=A, X)
   ### Loop through subgroups ##
-  looper = function(s){
+  looper = function(s, alpha){
     ## Extract HR, SE, 95% CI, and p-value for Subgroup Specific Treatment Effect ##
     cox.mod = tryCatch( coxph(Y ~ A , data=indata[Subgrps==s,]),
                         error = function(e) "param error",
@@ -64,35 +66,32 @@ param_cox = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="ada
       est = NA; SE = NA; pval = NA; LCL = NA; UCL = NA;
     }
     if (is.list(cox.mod)){
+      n.s = dim(indata[Subgrps==s,])[1]
       est = summary(cox.mod)$coefficients[1]
       SE = summary(cox.mod)$coefficients[3]
-      LCL = confint(cox.mod, level=1-alpha_s)[1]
-      UCL = confint(cox.mod, level=1-alpha_s)[2]
+      LCL = confint(cox.mod, level=1-alpha)[1]
+      UCL = confint(cox.mod, level=1-alpha)[2]
       pval = summary(cox.mod)$coefficients[5]
+      summ = data.frame( Subgrps = ifelse(n.s==dim(indata)[1], 0, s),
+                         N = n.s, est, SE, LCL, UCL, pval)
     }
-    return( c(est, SE, LCL, UCL, pval) )
+    return( summ )
   }
+  # Across Subgroups #
   S_levels = as.numeric( names(table(Subgrps)) )
-  S_N = as.numeric( table(Subgrps) )
-  param.dat = lapply(S_levels, looper)
+  param.dat = lapply(S_levels, looper, 
+                     alpha = ifelse( length(unique(Subgrps))==1, alpha_ovrl, alpha_s))
   param.dat = do.call(rbind, param.dat)
-  param.dat = data.frame( S = S_levels, N=S_N, param.dat)
-  colnames(param.dat) = c("Subgrps", "N", "est", "SE", "LCL", "UCL", "pval")
+  param.dat = data.frame( param.dat )
   # Combine results and estimate effect in overall population #
   if ( sum(is.na(param.dat$est))>0 | length(unique(Subgrps))==1  ){
-    cox.mod = coxph(Y ~ A , data=indata)
-    param.dat0 = data.frame(Subgrps = 0, N = dim(X)[2],
-                            est = summary(cox.mod)$coefficients[1],
-                            SE = summary(cox.mod)$coefficients[3],
-                            LCL = confint(cox.mod, level=1-alpha_ovrl)[1],
-                            UCL = confint(cox.mod, level=1-alpha_ovrl)[2],
-                            pval = summary(cox.mod)$coefficients[5] )
+    param.dat = param.dat
   }
-  if ( sum(is.na(param.dat$est))==0){
+  if ( sum(is.na(param.dat$est))==0 & length(unique(Subgrps))>1){
     param.dat0 = param_combine(param.dat = param.dat, alpha_ovrl=alpha_ovrl,
                                combine=combine)
+    param.dat = rbind(param.dat0, param.dat)
   }
-  param.dat = rbind(param.dat0, param.dat)
   # convert log(HR) to HR #
   param.dat$est = exp(param.dat$est)
   param.dat$LCL = exp(param.dat$LCL)

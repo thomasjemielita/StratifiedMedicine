@@ -45,9 +45,14 @@
 ### Linear Regression: Estimate E(Y|A=1) - E(Y|A=0) ###
 param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="adaptive",
                     ...){
+  noA = FALSE
+  if (is.null(A)){
+    A = rep(1, length(Y))
+    noA = TRUE
+  }
   indata = data.frame(Y=Y,A=A, X)
   ## Subgroup Specific Estimate ##
-  looper = function(s){
+  looper = function(s, alpha){
     lm.mod = tryCatch( lm(Y ~ A , data=indata[Subgrps==s,]),
                        error = function(e) "param error" )
     if (is.character(lm.mod)){
@@ -55,38 +60,49 @@ param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="adap
     }
     if (is.list(lm.mod)){
       n.s = length(Y[Subgrps==s])
-      L.mat = rbind( c(1,0), c(1,1), c(0,1) )
-      est = L.mat %*% coef(lm.mod)
-      SE = sqrt(  diag( L.mat %*% vcov(lm.mod) %*% t(L.mat) ) )
-      LCL = est - qt(1-alpha_s/2, df=n.s-1)*SE
-      UCL = est + qt(1-alpha_s/2, df=n.s-1)*SE
-      pval = 2*pt(-abs(est/SE), df=n.s-1)
-      summ = data.frame( Subgrps = s, N = n.s, 
-                         estimand = c("E(Y|A=0)", "E(Y|A=1)", "E(Y|A=1)-E(Y|A=0)"),
-                         est, SE, LCL, UCL, pval)
+      if (noA){
+        est = summary(lm.mod)$coefficients[1,1]
+        SE = summary(lm.mod)$coefficients[1,2]
+        LCL = est - qt(1-alpha/2, df=n.s-1)*SE
+        UCL = est + qt(1-alpha/2, df=n.s-1)*SE
+        pval = 2*pt(-abs(est/SE), df=n.s-1)
+        summ = data.frame( Subgrps = ifelse(n.s==length(Y), 0, s), N = n.s, 
+                           estimand = "E(Y)", est, SE, LCL, UCL, pval)
+      }
+      if (!noA){
+        L.mat = rbind( c(1,0), c(1,1), c(0,1) )
+        est = L.mat %*% coef(lm.mod)
+        SE = sqrt(  diag( L.mat %*% vcov(lm.mod) %*% t(L.mat) ) )
+        LCL = est - qt(1-alpha/2, df=n.s-1)*SE
+        UCL = est + qt(1-alpha/2, df=n.s-1)*SE
+        pval = 2*pt(-abs(est/SE), df=n.s-1)
+        summ = data.frame( Subgrps = ifelse(n.s==length(Y), 0, s), N = n.s, 
+                           estimand = c("E(Y|A=0)", "E(Y|A=1)", "E(Y|A=1)-E(Y|A=0)"),
+                           est, SE, LCL, UCL, pval) 
+      }
     }
     return( summ )
   }
+  # Across Subgroups #
   S_levels = as.numeric( names(table(Subgrps)) )
-  S_N = as.numeric( table(Subgrps) )
-  param.dat = lapply(S_levels, looper)
+  param.dat = lapply(S_levels, looper, 
+                     alpha = ifelse( length(unique(Subgrps))==1, alpha_ovrl, alpha_s))
   param.dat = do.call(rbind, param.dat)
   param.dat = data.frame( param.dat )
-  # Combine results and estimate effect in overall population #
-  param.dat0 = NULL
-  for (e in unique(param.dat$estimand)){
-    if (length(unique(Subgrps))==1){
-      hold = param.dat
-      hold$Subgrps = 0
-    }
-    if (length(unique(Subgrps))>1){
+  # If multiple subgroups, aggregate for overall #
+  if (length(unique(Subgrps))==1){
+    param.dat = param.dat
+  }
+  if (length(unique(Subgrps))>1){
+    param.dat0 = NULL
+    for (e in unique(param.dat$estimand)){
       hold = param_combine(param.dat = param.dat[param.dat$estimand==e,],
                            alpha_ovrl=alpha_ovrl, combine=combine)
       hold$estimand = e
+      hold = hold[,c("Subgrps", "N", "estimand", "est", "SE", "LCL", "UCL", "pval")]
+      param.dat0 = rbind(param.dat0, hold)
     }
-    hold = hold[,c("Subgrps", "N", "estimand", "est", "SE", "LCL", "UCL", "pval")]
-    param.dat0 = rbind(param.dat0, hold)
+    param.dat = rbind(param.dat0, param.dat)
   }
-  param.dat = rbind(param.dat0, param.dat)
   return( param.dat )
 }

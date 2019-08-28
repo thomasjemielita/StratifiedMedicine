@@ -45,10 +45,13 @@
 
 ### AIPTW (Double-Robust) Param ###
 param_dr = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
-
+  
+  if (is.null(A)){
+    stop("param_dr not applicable for no treatment (A=NULL)") 
+  }
   indata = data.frame(Y=Y, A=A, X)
   # Subgroup and overall estimates #
-  looper = function(s){
+  looper = function(s, alpha){
     Y.s = indata$Y[Subgrps %in% s]
     A.s = indata$A[Subgrps %in% s]
     n.s = length(Y.s)
@@ -66,8 +69,8 @@ param_dr = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
     SE = sqrt( n.s^(-2) * c( sum( (eif.0-est[1])^2 ),
                              sum( (eif.1-est[2])^2 ),
                              sum( (eif-est[3])^2 ) ) )
-    LCL = est-qt( (1-alpha_s/2), df=n.s-1 )*SE
-    UCL = est+qt( (1-alpha_s/2), df=n.s-1 )*SE
+    LCL = est-qt( (1-alpha/2), df=n.s-1 )*SE
+    UCL = est+qt( (1-alpha/2), df=n.s-1 )*SE
     pval = 2*pt(-abs(est/SE), df=n.s-1)
     summ = data.frame( Subgrps = ifelse(n.s==length(Y), 0, s),
                        N = n.s, 
@@ -75,14 +78,17 @@ param_dr = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
                        est, SE, LCL, UCL, pval)
     return( summ )
   }
-  ## Across subgroups ##
   S_levels = as.numeric( names(table(Subgrps)) )
-  S_N = as.numeric( table(Subgrps) )
-  param.dat = lapply(S_levels, looper)
-  param.dat = do.call(rbind, param.dat)
-  param.dat = data.frame( param.dat )
-  # Overall #
-  param.dat0 = looper(s = S_levels)
-  param.dat = rbind(param.dat0, param.dat)
+  ## Fit Overall and across subgroups ##
+  param.dat0 = looper(s = S_levels, alpha = alpha_ovrl)
+  if (length(unique(S_levels))>1){
+    param.dat = lapply(S_levels, looper, alpha = alpha_s)
+    param.dat = do.call(rbind, param.dat)
+    param.dat = data.frame( param.dat )
+    param.dat = rbind(param.dat0, param.dat)
+  }
+  if (length(unique(S_levels))==1){
+    param.dat = param.dat0
+  }
   return( param.dat )
 }
