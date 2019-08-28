@@ -156,7 +156,10 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
   ### Defaults: By Family (gaussian, binomial (Risk Difference), survival ) ##
   if (family=="gaussian" | family=="binomial"){
     if (is.null(ple) ){ ple = "ple_ranger" }
-    if (is.null(submod) ){ submod = "submod_lmtree" }
+    if (is.null(submod) ){ 
+      if (is.null(A)){ submod = "submod_ctree" }
+      else { submod = "submod_lmtree" }
+    }
     if (is.null(param) ){ param = "param_ple" }
   }
   if (family=="survival"){
@@ -204,11 +207,17 @@ PRISM = function(Y, A, X, Xtest=NULL, family="gaussian",
     param.dat = resR$param.dat
     resamp.dist = resR$resamp.dist
   }
+  if (is.null(A)){
+    out.train = data.frame(Y, X, Subgrps=res0$Subgrps.train)
+  }
+  if (!is.null(A)){
+    out.train = data.frame(Y, A, X, Subgrps=res0$Subgrps.train)
+  }
   ### Return Results ##
   res = list( filter.mod = res0$filter.mod, filter.vars = res0$filter.vars,
               ple.fit = res0$ple.fit, mu_train=res0$mu_train, mu_test=res0$mu_test,
               submod.fit = res0$submod.fit,
-              out.train = data.frame(Y, A, X, Subgrps=res0$Subgrps.train),
+              out.train = out.train,
               out.test = data.frame(Xtest, Subgrps=res0$Subgrps.test),
               Rules=res0$Rules,
               param.dat = param.dat, resamp.dist = resamp.dist,
