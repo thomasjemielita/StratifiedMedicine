@@ -42,6 +42,9 @@
 ple_causal_forest = function(Y, A, X, Xtest, tune=FALSE, num.trees=500, family="gaussian",
                              mod.A = "mean", ...){
 
+  if (is.null(A)){
+    stop("ple_causal_forest not applicable for no treatment (A=NULL)")
+  }
   if (!requireNamespace("grf", quietly = TRUE)) {
     stop("Package grf needed for ple_causal_forest. Please install.")
   }

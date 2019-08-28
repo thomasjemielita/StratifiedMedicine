@@ -39,14 +39,19 @@ ple_glmnet = function(Y, A, X, Xtest, lambda="lambda.min", family, ...){
 
   ## Model matrix the covariate space ###
   X = model.matrix(~. -1, data = X )
-  ## Generate the interaction covariates ###
-  X_inter = X*A
-  colnames(X_inter) = paste(colnames(X), "_A", sep="")
-  W = cbind(X, A, X_inter)
+  if (is.null(A)){
+    W = X
+  }
+  if (!is.null(A)){
+    ## Generate the interaction covariates ###
+    X_inter = X*A
+    colnames(X_inter) = paste(colnames(X), "_A", sep="")
+    W = cbind(X, A, X_inter)
+  }
   ##### Elastic Net #####
   if (family=="survival") { family = "cox"  }
-  mod <- cv.glmnet(x = W, y = Y, alpha=0.5, family=family)
-  res = list(mods = mod, lambda=lambda, X=X)
+  mods <- cv.glmnet(x = W, y = Y, alpha=0.5, family=family)
+  res = list(mods = mods, lambda=lambda, X=X, A=A)
   class(res) = "ple_glmnet"
   ## Return Results ##
   return( res )
@@ -92,15 +97,22 @@ predict.ple_glmnet = function(object, newdata=NULL, ...){
   mod = object$mods
   lambda = object$lambda
   X = object$X
+  A = object$A
   if (!is.null(newdata)){
     X = newdata
     X = model.matrix(~. -1, data = X )
   }
   ### Predictions (Counterfactuals) ###
-  mu_hat = data.frame( mu1 =  as.numeric(predict(mod,
-                                                   newx = cbind(X, 1, X*1), s=lambda)),
-                       mu0 =  as.numeric(predict(mod,
-                                                   newx = cbind(X, 0, X*0), s=lambda)) )
+  if (is.null(A)){
+    mu_hat = data.frame( mu1=as.numeric(predict(mod, newx = X, s=lambda)) ) 
+  }
+  if (!is.null(A)){
+    mu_hat = data.frame( mu1 = as.numeric(
+                               predict(mod,newx = cbind(X, 1, X*1), s=lambda)),
+                         mu0 = as.numeric(
+                               predict(mod,newx = cbind(X, 0, X*0), s=lambda)) )
+    mu_hat$PLE = with(mu_hat, mu1 - mu0 )
+  }
   mu_hat$PLE = with(mu_hat, mu1 - mu0 )
-  return( mu_hat  )
+  return( mu_hat )
 }
