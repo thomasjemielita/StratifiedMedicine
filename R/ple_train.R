@@ -20,7 +20,7 @@
 #' (HR(X,A=1), HR(X,A=0), HR(X, A=1)-HR(X, A=0)).
 #'
 #'  \itemize{
-#'   \item mods - trained model(s)
+#'   \item mod - trained model(s)
 #'   \item mu_train - Patient-level estimates (training set)
 #'   \item mu_test - Patient-level estimates (test set)
 #' }
@@ -60,10 +60,10 @@ ple_train = function(Y, A, X, Xtest, family="gaussian", ple, hyper=NULL, ...){
   }
   ## If no prior predictions are mode: ##
   if (is.null(fit$mu_train)){
-    mu_train = predict(fit)
+    mu_train = fit$pred.fun(fit$mod, X=X)
   }
   if (is.null(fit$mu_test)){
-    mu_test = predict(fit, newdata = data.frame(Xtest) )
+    mu_test = fit$pred.fun(fit$mod, X=Xtest)
   }
   res = list(fit = fit, mu_train=mu_train, mu_test=mu_test)
   class(res) = "ple_train"
@@ -95,10 +95,8 @@ ple_train = function(Y, A, X, Xtest, family="gaussian", ple, hyper=NULL, ...){
 #' mod2 = ple_train(Y=Y, A=A, X=X, Xtest=X, ple="ple_ranger" )
 #' summary(mod2$mu_train)
 #'
-#' res2 = predict(mod2) # newdata=NULL, training data #
-#' res3 = predict(mod2, newdata=X) # test data #
+#' res2 = predict(mod2, newdata=X)
 #' summary(res2)
-#' summary(res3)
 #' }
 #'
 #' @method predict ple_train
@@ -107,7 +105,7 @@ ple_train = function(Y, A, X, Xtest, family="gaussian", ple, hyper=NULL, ...){
 #'
 predict.ple_train = function(object, newdata=NULL, ...){
 
-  mu_hat = predict(object$fit, newdata = newdata )
+  mu_hat = object$fit$pred.fun(object$fit$mod, newdata)
 
   return(mu_hat)
 }
