@@ -4,7 +4,8 @@
 \alias{generate_subgrp_data}
 \title{Generate Subgroup Data-sets}
 \usage{
-generate_subgrp_data(n = 800, seed = 513413, family, ...)
+generate_subgrp_data(n = 800, seed = 513413, family, null = FALSE,
+  ...)
 }
 \arguments{
 \item{n}{sample size (default=800)}
@@ -12,6 +13,9 @@ generate_subgrp_data(n = 800, seed = 513413, family, ...)
 \item{seed}{seed number (default=513413)}
 
 \item{family}{Outcome type ("gaussian", "binomial", "survival")}
+
+\item{null}{Simulate null hypothesis of no treatment effect and no subgruops. Default
+is FALSE.}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }

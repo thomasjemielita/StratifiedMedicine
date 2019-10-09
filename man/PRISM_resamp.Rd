@@ -9,14 +9,16 @@ PRISM_resamp(PRISM.fit, Y, A, X, Xtest = NULL, family = "gaussian",
   param = NULL, alpha_ovrl = 0.05, alpha_s = 0.05,
   filter.hyper = NULL, ple.hyper = NULL, submod.hyper = NULL,
   param.hyper = NULL, verbose = TRUE, prefilter_resamp = FALSE,
-  resample = NULL, R = 100, stratify = TRUE)
+  resample = "Bootstrap", R = NULL, stratify = TRUE,
+  calibrate = TRUE, alpha.mat = NULL)
 }
 \arguments{
 \item{PRISM.fit}{Fitted PRISM model}
 
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
 
-\item{A}{Treatment variable. (ex: a=1,...,A or a="control","new")}
+\item{A}{Treatment variable. (ex: a=1,...,A, should be numeric). Default is NULL, which
+searches for prognostic variables (Y~X).}
 
 \item{X}{Covariate space. Variables types (ex: numeric, factor, ordinal) should be set
 to align with subgroup model (submod argument). For example, for lmtree, binary variables
@@ -64,11 +66,20 @@ perform inference through the input function (by name). Default for "gaussian"/"
 to resampling. Default=FALSE.}
 
 \item{resample}{Resampling method for resample-based estimates and variability metrics.
-Options include "Boostrap", "Permutation", and "CV". Default=NULL (No resampling).}
+Options include "Boostrap", "Permutation", and "CV" (cross-validation). 
+Default=NULL (No resampling).}
 
-\item{R}{Number of resamples (default=100)}
+\item{R}{Number of resamples (default=NULL; R=100 for Permutation/Bootstrap and 
+R=5 for CV)}
 
 \item{stratify}{Stratified resampling (Default=TRUE)}
+
+\item{calibrate}{Bootstrap calibration for nominal alpha (Loh et al 2016).
+Default=TRUE which outputs the calibrated alpha level and calibrated CIs for 
+the overall population and subgroups. Not applicable for permutation/CV resampling.}
+
+\item{alpha.mat}{Grid of alpha values for calibration. Default=NULL, which uses
+seq(alpha/1000,alpha,by=0.005) for alpha_ovrl/alpha_s.}
 }
 \value{
 Trained PRISM object. Includes filter, ple, submod, and param outputs.

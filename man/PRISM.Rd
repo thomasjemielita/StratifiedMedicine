@@ -4,19 +4,21 @@
 \alias{PRISM}
 \title{PRISM: Patient Response Identifier for Stratified Medicine}
 \usage{
-PRISM(Y, A, X, Xtest = NULL, family = "gaussian",
+PRISM(Y, A = NULL, X, Xtest = NULL, family = "gaussian",
   filter = "filter_glmnet", ple = NULL, submod = NULL,
   param = NULL, alpha_ovrl = 0.05, alpha_s = 0.05,
   filter.hyper = NULL, ple.hyper = NULL, submod.hyper = NULL,
-  param.hyper = NULL, prefilter_resamp = FALSE, resample = NULL,
-  stratify = TRUE, R = 100, filter.resamp = NULL,
-  ple.resamp = NULL, submod.resamp = NULL, verbose = TRUE,
-  verbose.resamp = FALSE, seed = 777)
+  param.hyper = NULL, bayes = NULL, prefilter_resamp = FALSE,
+  resample = NULL, stratify = TRUE, R = NULL, calibrate = TRUE,
+  alpha.mat = NULL, filter.resamp = NULL, ple.resamp = NULL,
+  submod.resamp = NULL, verbose = TRUE, verbose.resamp = FALSE,
+  seed = 777)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
 
-\item{A}{Treatment variable. (ex: a=1,...,A or a="control","new")}
+\item{A}{Treatment variable. (ex: a=1,...,A, should be numeric). Default is NULL, which
+searches for prognostic variables (Y~X).}
 
 \item{X}{Covariate space. Variables types (ex: numeric, factor, ordinal) should be set
 to align with subgroup model (submod argument). For example, for lmtree, binary variables
@@ -58,15 +60,29 @@ perform inference through the input function (by name). Default for "gaussian"/"
 
 \item{param.hyper}{Hyper-parameters for the Param function (must be list). Default is NULL.}
 
+\item{bayes}{Based on input point estimates/SEs, this uses a bayesian based approach 
+to obtain ests, SEs, CIs, and posterior probabilities. Currently includes "norm_norm" 
+(normal prior at overall estimate with large uninformative variance; normal posterior).
+Default=NULL.}
+
 \item{prefilter_resamp}{Option to filter the covariate space (based on filter model) prior
 to resampling. Default=FALSE.}
 
 \item{resample}{Resampling method for resample-based estimates and variability metrics.
-Options include "Boostrap", "Permutation", and "CV". Default=NULL (No resampling).}
+Options include "Boostrap", "Permutation", and "CV" (cross-validation). 
+Default=NULL (No resampling).}
 
 \item{stratify}{Stratified resampling (Default=TRUE)}
 
-\item{R}{Number of resamples (default=100)}
+\item{R}{Number of resamples (default=NULL; R=100 for Permutation/Bootstrap and 
+R=5 for CV)}
+
+\item{calibrate}{Bootstrap calibration for nominal alpha (Loh et al 2016).
+Default=TRUE which outputs the calibrated alpha level and calibrated CIs for 
+the overall population and subgroups. Not applicable for permutation/CV resampling.}
+
+\item{alpha.mat}{Grid of alpha values for calibration. Default=NULL, which uses
+seq(alpha/1000,alpha,by=0.005) for alpha_ovrl/alpha_s.}
 
 \item{filter.resamp}{Filter function during resampling, default=NULL (use filter)}
 
@@ -94,6 +110,7 @@ Trained PRISM object. Includes filter, ple, submod, and param outputs.
   \item Rules - Subgroup rules / definitions
   \item param.dat - Parameter estimates and variablity metrics (depends on param)
   \item resamp.dist - Resampling distributions (NULL if no resampling is done)
+  \item bayes.fun - Function to simulate posterior distribution (NULL if no bayes)
 }
 }
 \description{
@@ -115,17 +132,23 @@ A = dat_ctns$A
 
 # Run Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
 res0 = PRISM(Y=Y, A=A, X=X)
-res0$filter.vars # variables that pass the filter
-plot(res0, type="PLE:density") # distribution of PLEs
-plot(res0, type="PLE:waterfall") # PLE waterfall plot
-plot(res0$submod.fit$mod) # Plot of subgroup model
-res0$param.dat # overall/subgroup specific parameter estimates/inference
-plot(res0) # Forest plot: overall/subgroup specific parameter estimates (CIs)
-
+\donttest{
+summary(res0)
+plot(res0)
+}
 # Without filtering #
+\donttest{
 res1 = PRISM(Y=Y, A=A, X=X, filter="None" )
-plot(res1$submod.fit$mod)
+summary(res1)
 plot(res1)
+}
+
+# Search for Prognostic Only (omit A from function) #
+\donttest{
+res3 = PRISM(Y=Y, X=X)
+summary(res3)
+plot(res3)
+}
 
 ## With bootstrap (No filtering) ##
 \donttest{
@@ -150,7 +173,6 @@ plot(res1)
   # Default: PRISM: glmnet ==> MOB (Weibull) ==> Cox; bootstrapping posterior prob/inference #
   res_weibull1 = PRISM(Y=Y, A=A, X=X, ple=NULL, resample="Bootstrap", R=100,
                        verbose.resamp = TRUE)
-  plot(res_weibull1$submod.fit$mod)
   plot(res_weibull1)
   plot(res_weibull1, type="resample", estimand = "HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
   aggregate(I(est<1)~Subgrps, data=res_weibull1$resamp.dist, FUN="mean")
@@ -158,7 +180,6 @@ plot(res1)
   # PRISM: ENET ==> CTREE ==> Cox; bootstrapping for posterior prob/inference #
   res_ctree1 = PRISM(Y=Y, A=A, X=X, ple=NULL, submod = "submod_ctree",
                      resample="Bootstrap", R=100, verbose.resamp = TRUE)
-  plot(res_ctree1$submod.fit$submod.fit$mod)
   plot(res_ctree1)
   plot(res_ctree1, type="resample", estimand="HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
   aggregate(I(est<1)~Subgrps, data=res_ctree1$resamp.dist, FUN="mean")
@@ -166,5 +187,5 @@ plot(res1)
 
 }
 \references{
-Jemielita and Mehrotra (2019 in progress)
+Jemielita and Mehrotra (2019 to appear)
 }
