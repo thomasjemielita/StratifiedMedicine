@@ -16,12 +16,12 @@
 #' Default is "adaptive", "SS" corresponds to sample size weighting.
 #' @param ... Any additional parameters, not currently passed through.
 #'
-#' @return Data-set with parameter estimates (hazard ratio) and corresponding
+#' @return Data-set with parameter estimates (log hazard ratio) and corresponding
 #' variability metrics, for overall and subgroups. Subgrps=0 corresponds to the overall
 #' population by default.
 #'  \itemize{
-#'   \item param.dat - Parameter estimates and variability metrics (est=HR, SE=SE(logHR),
-#'   LCL/UCL = lower/upper confidence limit on HR scale, pval = p-value).
+#'   \item param.dat - Parameter estimates and variability metrics (est=logHR, 
+#'   SE=SE(logHR), LCL/UCL = lower/upper confidence limit on logHR scale, pval = p-value).
 #'   }
 #' @export
 #' @examples
@@ -58,15 +58,17 @@ param_cox = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="ada
   indata = data.frame(Y=Y, A=A, X)
   ### Loop through subgroups ##
   looper = function(s, alpha){
+    n.s = dim(indata[Subgrps %in% s,])[1]
     ## Extract HR, SE, 95% CI, and p-value for Subgroup Specific Treatment Effect ##
-    cox.mod = tryCatch( coxph(Y ~ A , data=indata[Subgrps==s,]),
-                        error = function(e) "param error",
+    cox.mod = tryCatch( coxph(Y ~ A , data=indata[Subgrps %in% s,]),
+                        error = function(e) "fit error",
                         warning = function(w) "convergence issues")
     if (is.character(cox.mod)){
-      est = NA; SE = NA; pval = NA; LCL = NA; UCL = NA;
+      summ = data.frame(Subgrps = ifelse(n.s==dim(indata)[1], 0, s), N=n.s,
+                        est=NA, SE=NA, LCL=NA, UCL=NA, 
+                        pval=NA)
     }
     if (is.list(cox.mod)){
-      n.s = dim(indata[Subgrps==s,])[1]
       est = summary(cox.mod)$coefficients[1]
       SE = summary(cox.mod)$coefficients[3]
       LCL = confint(cox.mod, level=1-alpha)[1]
@@ -78,25 +80,26 @@ param_cox = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="ada
     return( summ )
   }
   # Across Subgroups #
-  S_levels = as.numeric( names(table(Subgrps)) )
-  param.dat = lapply(S_levels, looper, 
-                     alpha = ifelse( length(unique(Subgrps))==1, alpha_ovrl, alpha_s))
-  param.dat = do.call(rbind, param.dat)
-  param.dat = data.frame( param.dat )
+  S_levels <- as.numeric( names(table(Subgrps)) )
+  param.dat <- lapply(S_levels, looper, 
+                      alpha = ifelse( length(unique(Subgrps))==1, alpha_ovrl, alpha_s))
+  param.dat <- do.call(rbind, param.dat)
+  param.dat <- data.frame( param.dat )
   # Combine results and estimate effect in overall population #
-  if ( sum(is.na(param.dat$est))>0 | length(unique(Subgrps))==1  ){
-    param.dat = param.dat
+  if ( sum(is.na(param.dat$est))>0){
+    if (length(unique(Subgrps))>1){
+      param.dat0 <- looper(s=S_levels, alpha=alpha_ovrl)
+      param.dat = rbind(param.dat0, param.dat)
+    }
   }
-  if ( sum(is.na(param.dat$est))==0 & length(unique(Subgrps))>1){
-    param.dat0 = param_combine(param.dat = param.dat, alpha_ovrl=alpha_ovrl,
-                               combine=combine)
-    param.dat = rbind(param.dat0, param.dat)
+  if ( sum(is.na(param.dat$est))==0){
+    if (length(unique(Subgrps))>1){
+      param.dat0 <- param_combine(param.dat = param.dat, alpha_ovrl=alpha_ovrl,
+                                  combine=combine)
+      param.dat <- rbind(param.dat0, param.dat) 
+    }
   }
-  # convert log(HR) to HR #
-  param.dat$est = exp(param.dat$est)
-  param.dat$LCL = exp(param.dat$LCL)
-  param.dat$UCL = exp(param.dat$UCL)
-  param.dat$estimand = "HR(A=1 vs A=0)"
+  param.dat$estimand = "logHR(A=1 vs A=0)"
   param.dat = param.dat[,c("Subgrps", "N", "estimand", "est", "SE", "LCL", "UCL", "pval")]
   return( param.dat )
 }
