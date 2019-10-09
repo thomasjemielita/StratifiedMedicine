@@ -30,7 +30,7 @@ If mod.A="RF", estimate P(A|X) using regression_forest (applicable for non-RCTs)
 \value{
 Trained causal_forest and regression_forest models.
  \itemize{
-  \item mods - trained model(s)
+  \item mod - trained model(s)
 }
 }
 \description{

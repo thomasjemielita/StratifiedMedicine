@@ -28,7 +28,7 @@ model with covariate space (X, A, X*A).}
 \value{
 Trained random forest (ranger) model(s).
  \itemize{
-  \item mods - trained model(s)
+  \item mod - trained model(s)
   \item A - treatment variable (training set)
   \item X - covariate space (training set)
 }

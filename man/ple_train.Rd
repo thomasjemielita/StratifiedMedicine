@@ -31,7 +31,7 @@ family="gaussian" or "binomial", output estimates of
 (HR(X,A=1), HR(X,A=0), HR(X, A=1)-HR(X, A=0)).
 
  \itemize{
-  \item mods - trained model(s)
+  \item mod - trained model(s)
   \item mu_train - Patient-level estimates (training set)
   \item mu_test - Patient-level estimates (test set)
 }

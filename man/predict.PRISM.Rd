@@ -38,9 +38,9 @@ A = dat_ctns$A
 
 # Run Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
 res0 = PRISM(Y=Y, A=A, X=X)
-summary( predict(res0) ) # all #
-summary( predict(res0, type="ple") )
-summary( predict(res0, type="submod") )
+summary( predict(res0, X) ) # all #
+summary( predict(res0, X, type="ple") )
+summary( predict(res0, X, type="submod") )
 
 
 }

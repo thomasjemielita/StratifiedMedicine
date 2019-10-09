@@ -28,12 +28,12 @@ Default is "adaptive", "SS" corresponds to sample size weighting.}
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
-Data-set with parameter estimates (hazard ratio) and corresponding
+Data-set with parameter estimates (log hazard ratio) and corresponding
 variability metrics, for overall and subgroups. Subgrps=0 corresponds to the overall
 population by default.
  \itemize{
-  \item param.dat - Parameter estimates and variability metrics (est=HR, SE=SE(logHR),
-  LCL/UCL = lower/upper confidence limit on HR scale, pval = p-value).
+  \item param.dat - Parameter estimates and variability metrics (est=logHR, 
+  SE=SE(logHR), LCL/UCL = lower/upper confidence limit on logHR scale, pval = p-value).
   }
 }
 \description{

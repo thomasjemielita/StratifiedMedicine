@@ -23,7 +23,7 @@ ple_bart(Y, A, X, Xtest, family = "gaussian", ...)
 Trained BART model(s) and patient-level estimates
 (E(Y|X,1), E(Y|X,0), E(Y|X,1)-E(Y|X,0)) for train/test sets.
  \itemize{
-  \item mods - trained model(s)
+  \item mod - trained model(s)
   \item mu_train - Patient-level estimates (training set)
   \item mu_test - Patient-level estimates (test set)
 }

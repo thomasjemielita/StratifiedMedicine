@@ -25,7 +25,7 @@ ple_glmnet(Y, A, X, Xtest, lambda = "lambda.min", family, ...)
 \value{
 Trained glmnet model(s).
  \itemize{
-  \item mods - trained model(s)
+  \item mod - trained model(s)
   \item lambda - Lambda used for elastic-net (passes to prediction function)
   \item X - Covariate Space (in model matrix form)
 }
@@ -44,6 +44,5 @@ X = dat_ctns$X
 A = dat_ctns$A
 
 mod1 = ple_glmnet(Y, A, X, Xtest=X, family="gaussian")
-summary(mod1$mu_train$PLE)
 
 }

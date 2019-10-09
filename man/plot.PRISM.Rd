@@ -4,16 +4,19 @@
 \alias{plot.PRISM}
 \title{plot.PRISM}
 \usage{
-\method{plot}{PRISM}(x, type = "forest", estimand = NULL,
+\method{plot}{PRISM}(x, type = "submod", estimand = NULL,
   grid.data = NULL, grid.thres = ">0", ...)
 }
 \arguments{
 \item{x}{PRISM object}
 
-\item{type}{Type of plot (default="forest", forest plot for overall and subgroups). Other
-options include "PLE:waterfall" (waterfall plot of PLEs), "PLE:density" (density plot
-of PLEs), "resample" (resampling distribution of parameter estimates for overall
-and subgroups), and "heatmap" (heatmap of ple estimates/probabilities).}
+\item{type}{Type of plot (default="submod", tree plot + parameter estimates). Other 
+optins include  "forest" ( forest plot for overall and subgroups),"PLE:waterfall" 
+(waterfall plot of PLEs), "PLE:density" (density plot of PLEs), "resample" (resampling 
+distribution of parameter estimates for overall and subgroups), and "heatmap" 
+(heatmap of ple estimates/probabilities). For "submod" and "forest", CIs are based on 
+the observed data unless bootstrap resampling. If calibrate=TRUE (the default), then
+calibrated CIs are shown, otherse CIs based on the percentile method are shown.}
 
 \item{estimand}{For "resample" plot only, must be specify which estimand to visualize.
 Default=NULL.}
