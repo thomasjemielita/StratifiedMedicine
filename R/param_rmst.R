@@ -57,27 +57,52 @@ param_rmst = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="ad
   if (!requireNamespace("survRM2", quietly = TRUE)) {
     stop("Package survRM2 needed for param_rmst. Please install.")
   }
+  noA = FALSE
+  estimand = "RMST(A=1-A=0)"
+  if (is.null(A)){
+    noA = TRUE
+    estimand = "RMST"
+    A = rep(1, dim(X)[1])
+  }
 
   indata = data.frame(Y=Y, A=A, X)
   ### Loop through subgroups ##
   looper = function(s, alpha){
     time = indata$Y[Subgrps %in% s,1]
     status = indata$Y[Subgrps %in% s,2]
-    arm = indata$A[Subgrps %in% s]
-    n.s = length(arm)
-    obj = tryCatch( survRM2::rmst2(time, status, arm),
-                    error = function(e) "param error" )
-    if (is.character(obj)){
-      est = NA; SE = NA; pval = NA; LCL = NA; UCL = NA;
+    n.s = length(status)
+    if (noA){
+      obj = tryCatch( rmst_calc(time, status, tau=NULL),
+                      error = function(e) "param error" )
+      if (is.character(obj)){
+        est = NA; SE = NA; pval = NA; LCL = NA; UCL = NA;
+      }
+      if (is.list(obj)){
+        est = obj$rmst
+        SE = obj$rmst.se
+        LCL =  est - qnorm(1-alpha/2)*SE
+        UCL =  est + qnorm(1-alpha/2)*SE
+        pval = 2*pt(-abs(est/SE), df=n.s-1)
+        summ = data.frame( Subgrps = ifelse(n.s==dim(indata)[1], 0, s),
+                           N = n.s, est, SE, LCL, UCL, pval)
+      }
     }
-    if (is.list(obj)){
-      est = obj$unadjusted.result[1,1]
-      SE = sqrt( obj$RMST.arm1$rmst.var + obj$RMST.arm0$rmst.var )
-      LCL =  est - qnorm(1-alpha/2)*SE
-      UCL =  est + qnorm(1-alpha/2)*SE
-      pval = obj$unadjusted.result[1,4]
-      summ = data.frame( Subgrps = ifelse(n.s==dim(indata)[1], 0, s),
-                         N = n.s, est, SE, LCL, UCL, pval)
+    if (!noA){
+      arm = indata$A[Subgrps %in% s]
+      obj = tryCatch( survRM2::rmst2(time, status, arm),
+                      error = function(e) "param error" ) 
+      if (is.character(obj)){
+        est = NA; SE = NA; pval = NA; LCL = NA; UCL = NA;
+      }
+      if (is.list(obj)){
+        est = obj$unadjusted.result[1,1]
+        SE = sqrt( obj$RMST.arm1$rmst.var + obj$RMST.arm0$rmst.var )
+        LCL =  est - qnorm(1-alpha/2)*SE
+        UCL =  est + qnorm(1-alpha/2)*SE
+        pval = 2*pt(-abs(est/SE), df=n.s-1)
+        summ = data.frame( Subgrps = ifelse(n.s==dim(indata)[1], 0, s),
+                           N = n.s, est, SE, LCL, UCL, pval)
+      }
     }
     return( summ )
   }
@@ -96,7 +121,8 @@ param_rmst = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="ad
                                combine=combine)
     param.dat = rbind(param.dat0, param.dat)
   }
-  param.dat$estimand = "RMST(1-0)"
-  param.dat = param.dat[,c("Subgrps", "N", "estimand", "est", "SE", "LCL", "UCL", "pval")]
+  param.dat$estimand = estimand
+  param.dat = param.dat[,c("Subgrps", "N", "estimand", "est", "SE",
+                           "LCL", "UCL", "pval")]
   return( param.dat )
 }
