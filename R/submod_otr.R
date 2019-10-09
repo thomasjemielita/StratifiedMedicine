@@ -46,69 +46,25 @@
 submod_otr = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.10  ),
                       maxdepth = 4, thres=">0", ...){
   ## Set up data ##
-  ind_PLE = eval(parse(text=paste("ifelse(mu_train$PLE", thres, ", 1, 0)")))
-  w_PLE = abs(mu_train$PLE)
-  hold = data.frame(ind_PLE, X)
+  ind_PLE <- eval(parse(text=paste("ifelse(mu_train$PLE", thres, ", 1, 0)")))
+  w_PLE <- abs(mu_train$PLE)
+  hold <- data.frame(ind_PLE, X)
   # Fit Model #
   mod <- suppressWarnings( ctree(ind_PLE ~ ., data = hold, weights = w_PLE,
                                  control = ctree_control(minbucket=minbucket,
                                                          maxdepth=maxdepth)) )
-
-  res = list(mod=mod)
-  class(res) = "submod_otr"
+  # Prediction Function #
+  pred.fun <- function(mod, X=NULL, type="subgrp"){
+    Subgrps <- NULL; pred <- NULL;
+    Subgrps = as.numeric( predict(mod, type="node", newdata = X) )
+    if (type=="all"){
+      pred = data.frame(Subgrps=Subgrps,
+                        as.numeric( predict(mod, newdata = X, type="response") ) )
+    }
+    return( list(Subgrps=Subgrps, pred=pred) )
+  }
   ## Return Results ##
+  res <- list(mod=mod, pred.fun=pred.fun)
+  class(res) <- "submod_otr"
   return(  res )
 }
-
-#' Predict submod: OTR CTREE
-#'
-#' Predict subgroups and obtain subgroup-specific estimates, P(PLE>thres), for a
-#' trained ctree OTR model.
-#'
-#' @param object Trained ctree model.
-#' @param newdata Data-set to make predictions at (Default=NULL, predictions correspond
-#' to training data).
-#' @param ... Any additional parameters, not currently passed through.
-#'
-#' @import partykit
-#'
-#' @return Identified subgroups with subgroup-specific predictions of P(PLE>thres).
-#' \itemize{
-#'   \item Subgrps - Identified subgroups
-#'   \item pred - Predictions, P(PLE>thres) by identified subgroup.
-#'}
-#' @examples
-#' library(StratifiedMedicine)
-#'
-#' ## Continuous ##
-#' dat_ctns = generate_subgrp_data(family="gaussian")
-#' Y = dat_ctns$Y
-#' X = dat_ctns$X
-#' A = dat_ctns$A
-#'
-#' \donttest{
-#' ## Estimate PLEs (through Ranger) ##
-#' res.ple = ple_train(Y, A, X, Xtest=X, family="gaussian", ple="ple_ranger")
-#'
-#' ## Fit OTR Subgroup Model ##
-#' res_otr = submod_otr(Y, A, X, Xtest=X, mu_train = res.ple$mu_train)
-#' out = predict(res_otr, newdata=X)
-#' plot(res_otr$mod)
-#' }
-#'
-#' @method predict submod_otr
-#' @export
-#'
-predict.submod_otr = function(object, newdata=NULL, ...){
-
-  # Extract mod/family #
-  mod = object$mod
-  family = object$family
-  ##  Predict Subgroups ##
-  Subgrps = as.numeric( predict(mod, type="node", newdata = newdata) )
-  ## Predict P(PLE>thres|X) ##
-  pred = as.numeric( predict(mod, newdata = newdata) )
-  ## Return Results ##
-  return(  list(Subgrps=Subgrps, pred=pred) )
-}
-

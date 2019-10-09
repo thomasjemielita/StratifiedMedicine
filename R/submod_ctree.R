@@ -45,63 +45,26 @@ submod_ctree = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0
 
   ## Use PLE as outcome? ##
   if (outcome_PLE==TRUE){
-    Y = mu_train$PLE
-    family = "gaussian"
+    Y <- mu_train$PLE
+    family <- "gaussian"
   }
-  ## Fit Model ##
+  # Fit Model #
   mod <- ctree(Y ~ ., data = X,
                control = ctree_control(minbucket=minbucket, maxdepth=maxdepth))
-  res = list(mod=mod, family=family)
+  
+  # Prediction Function #
+  pred.fun <- function(mod, X=NULL, type="subgrp"){
+    Subgrps <- NULL
+    pred <- NULL
+    Subgrps <- as.numeric( predict(mod, type="node", newdata = X) )
+    if (type=="all"){
+      pred <- data.frame(Subgrps=Subgrps,
+                        mu=as.numeric( predict(mod, newdata = X, type="response")) )
+    }
+    return( list(Subgrps=Subgrps, pred=pred) )
+  }
+  res <- list(mod=mod, pred.fun=pred.fun)
   class(res) = "submod_ctree"
   ## Return Results ##
   return(  res )
-}
-
-#' Predict submod: CTREE
-#'
-#' Predict subgroups and obtain subgroup-specific estimates, E(Y|X) or PLE(X), for a
-#' trained ctree model (depends on if outcome_PLE argument)
-#'
-#' @param object Trained ctree model.
-#' @param newdata Data-set to make predictions at (Default=NULL, predictions correspond
-#' to training data).
-#' @param ... Any additional parameters, not currently passed through.
-#'
-#' @import partykit
-#'
-#' @return Identified subgroups with subgroup-specific predictions of E(Y|X) or PLE(X).
-#' \itemize{
-#'   \item Subgrps - Identified subgroups
-#'   \item pred - Predictions, E(Y|X) or PLE(X) by subgroup.
-#'}
-#' @examples
-#' library(StratifiedMedicine)
-#'
-#' ## Continuous ##
-#' dat_ctns = generate_subgrp_data(family="gaussian")
-#' Y = dat_ctns$Y
-#' X = dat_ctns$X
-#' A = dat_ctns$A
-#'
-#' res_ctree1 = submod_ctree(Y, A, X, Xtest=X)
-#' # Predict subgroups / estimates #
-#' out = predict(res_ctree1, newdata=X)
-#'
-#' @method predict submod_ctree
-#' @export
-#'
-predict.submod_ctree = function(object, newdata=NULL, ...){
-
-  # Extract mod/family #
-  mod = object$mod
-  family = object$family
-  ##  Predict Subgroups ##
-  Subgrps = as.numeric( predict(mod, type="node", newdata = newdata) )
-  ## Response Predictions ##
-  if (family=="gaussian"){ type.fam = "response"   } # E(Y|X)
-  if (family=="binomial"){ type.fam = "prob"   } # probability
-  if (family=="survival"){ type.fam = "response" } # median survival
-  pred = predict( mod, newdata = newdata, type = type.fam )
-  ## Return Results ##
-  return(  list(Subgrps=Subgrps, pred=pred) )
 }

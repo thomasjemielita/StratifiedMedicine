@@ -18,7 +18,7 @@
 #' @return Trained subgroup model and subgroup predictions/estimates for train/test sets.
 #'
 #'  \itemize{
-#'   \item fit - trained subgroup model
+#'   \item mod - trained subgroup model
 #'   \item Subgrps.train - Identified subgroups (training set)
 #'   \item Subgrps.test - Identified subgroups (test set)
 #'   \item pred.train - Predictions (training set)
@@ -62,18 +62,19 @@ submod_train = function(Y, A, X, Xtest, mu_train=NULL, family="gaussian", submod
   }
   ## If no prior predictions are made: ##
   if (is.null(fit$Subgrps.train)){
-    out = predict(fit)
+    out = fit$pred.fun(fit$mod, X=X)
     Subgrps.train = out$Subgrps
     pred.train = out$pred
   }
   if (is.null(fit$Subgrps.test)){
-    out = predict(fit, newdata = Xtest)
+    out = fit$pred.fun(fit$mod, X=Xtest)
     Subgrps.test = out$Subgrps
     pred.test = out$pred
   }
+ 
   Rules = fit$Rules
   res = list(fit = fit, Subgrps.train=Subgrps.train, Subgrps.test=Subgrps.test,
-             pred.train=pred.train, pred.test=pred.test, Rules=Rules)
+             Rules=Rules)
   class(res) = "submod_train"
   return(res)
 }
@@ -103,7 +104,6 @@ submod_train = function(Y, A, X, Xtest, mu_train=NULL, family="gaussian", submod
 #'
 #' # Fit submod_lmtree directly #
 #' mod1 = submod_lmtree(Y, A, X, Xtest=X)
-#' out1 = predict(mod1)
 #' plot(mod1$mod)
 #'
 #' # Fit through submod_train wrapper #
@@ -116,7 +116,8 @@ submod_train = function(Y, A, X, Xtest, mu_train=NULL, family="gaussian", submod
 #'
 predict.submod_train = function(object, newdata=NULL, ...){
 
-  preds = predict(object$fit, newdata=newdata)
+  # preds = predict(object$fit, newdata=newdata)
+  preds = object$fit$pred.fun(object$fit$mod, newdata)
   ## Return Results ##
   return(  list(Subgrps=preds$Subgrps, pred=preds$pred) )
 }
