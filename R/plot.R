@@ -1,13 +1,17 @@
-globalVariables(c("Rules", "est", "LCL", "UCL", "PLE", "label"))
+globalVariables(c("Rules", "est", "LCL", "UCL", "PLE", "label", "N", "estimand",
+                  "splitvar", "p.value", "surv", "A"))
 #' plot.PRISM
 #'
 #' Plots PRISM results, either forest plot (estimate with CIs) or resampling distribution.
 #'
 #' @param x PRISM object
-#' @param type Type of plot (default="forest", forest plot for overall and subgroups). Other
-#' options include "PLE:waterfall" (waterfall plot of PLEs), "PLE:density" (density plot
-#' of PLEs), "resample" (resampling distribution of parameter estimates for overall
-#' and subgroups), and "heatmap" (heatmap of ple estimates/probabilities).
+#' @param type Type of plot (default="submod", tree plot + parameter estimates). Other 
+#' optins include  "forest" ( forest plot for overall and subgroups),"PLE:waterfall" 
+#' (waterfall plot of PLEs), "PLE:density" (density plot of PLEs), "resample" (resampling 
+#' distribution of parameter estimates for overall and subgroups), and "heatmap" 
+#' (heatmap of ple estimates/probabilities). For "submod" and "forest", CIs are based on 
+#' the observed data unless bootstrap resampling. If calibrate=TRUE (the default), then
+#' calibrated CIs are shown, otherse CIs based on the percentile method are shown.
 #' @param estimand For "resample" plot only, must be specify which estimand to visualize.
 #' Default=NULL.
 #' @param grid.data Input grid of values for 2-3 covariates (if 3, last variable cannot
@@ -23,8 +27,18 @@ globalVariables(c("Rules", "est", "LCL", "UCL", "PLE", "label"))
 #' @seealso \code{\link{PRISM}}
 
 
-plot.PRISM = function(x, type="forest", estimand=NULL, grid.data=NULL, grid.thres=">0", ...){
+plot.PRISM = function(x, type="submod", estimand=NULL, grid.data=NULL, grid.thres=">0",
+                      ...){
 
+  if (type=="submod"){
+    cls = class(x$submod.fit$mod)
+    if ("party" %in% cls ){
+      res = do.call("plot_submod", list(object=x))
+    }
+    if (!("party" %in% cls)){
+      stop( paste("Plots for custom submod wrappers not currently supported.") )
+    }
+  }
   if (type=="forest"){
     # Combine parameter-estimates with rules ##
     parm = x$param.dat
@@ -37,10 +51,20 @@ plot.PRISM = function(x, type="forest", estimand=NULL, grid.data=NULL, grid.thre
       rules = rbind(data.frame(Subgrps=0,Rules="Overall"), x$Rules)
       plot.dat = left_join(parm, rules, by="Subgrps")
     }
-    # Create label: Use bootstrap BCa interval if available #
-    if( !is.null(plot.dat$LCL.BCa)  ){
-      plot.dat$LCL = plot.dat$LCL.BCa
-      plot.dat$UCL = plot.dat$UCL.BCa
+    # Create label: Use calibrated bootstrap interval if available #
+    if( !is.null(plot.dat$LCL.calib)  ){
+      plot.dat$LCL = plot.dat$LCL.calib
+      plot.dat$UCL = plot.dat$UCL.calib
+    }
+    if (is.null(plot.dat$LCL.calib) & !is.null(plot.dat$LCL.pct)){
+      plot.dat$LCL = plot.dat$LCL.pct
+      plot.dat$UCL = plot.dat$UCL.pct
+    }
+    if (x$param=="param_cox"){
+      plot.dat$est = exp(plot.dat$est)
+      plot.dat$LCL = exp(plot.dat$LCL)
+      plot.dat$UCL = exp(plot.dat$UCL)
+      plot.dat$estimand = "HR(A=1 vs A=0)"
     }
     plot.dat$label = with(plot.dat, paste( sprintf("%.2f", round(est,2)),
                                            " [",
@@ -106,6 +130,10 @@ plot.PRISM = function(x, type="forest", estimand=NULL, grid.data=NULL, grid.thre
     }
     if (is.null(estimand)){
       stop("Must provide estimand for resampling plot")
+    }
+    if (x$param=="param_cox"){
+      plot.dat$est = exp(plot.dat$est)
+      plot.dat$estimand = "HR(A=1 vs A=0)" 
     }
     plot.dat = plot.dat[plot.dat$estimand==estimand,]
     res = ggplot(plot.dat, aes(est)) + geom_density() +
@@ -181,4 +209,138 @@ plot.PRISM = function(x, type="forest", estimand=NULL, grid.data=NULL, grid.thre
     res = list(heatmap.est=res.est, heatmap.prob=res.prob)
   }
   return(res)
+}
+
+## PRISM submod plot ##
+plot_submod = function(object){
+  
+  n <- dim(object$out.train)[1]
+  alpha_s <- object$alpha_s
+  family <- object$family
+  # Extract tree fit #
+  ct <- object$submod.fit$mod
+  # Extract parameter estimates #
+  param.dat <- object$param.dat
+  param.dat <- param.dat[param.dat$Subgrps>0,]
+  if (object$param=="param_cox"){
+    param.dat$est = exp(param.dat$est)
+    param.dat$LCL = exp(param.dat$LCL)
+    param.dat$UCL = exp(param.dat$UCL)
+    param.dat$estimand = "HR(A=1 vs A=0)" 
+  }
+  param.dat$label <- with(param.dat, paste( sprintf("%.2f", round(est,2)),
+                                            " [",
+                                            sprintf("%.2f", round(LCL,2)), ",",
+                                            sprintf("%.2f", round(UCL,2)), "]", sep=""))
+  param.dat$id <- param.dat$Subgrps
+  
+  # Add estimates into tree #
+  ct_node <- as.list(ct$node)
+  for (s in unique(param.dat$Subgrps)) {
+    ct_node[[s]]$info$label <- param.dat$label[param.dat$Subgrps==s] 
+    ct_node[[s]]$info$N <- param.dat$N[param.dat$Subgrps==s] 
+    ct_node[[s]]$info$estimand <- param.dat$estimand[param.dat$Subgrps==s] 
+    ct_node[[s]]$info$label <- param.dat$label[param.dat$Subgrps==s] 
+  }
+  # Round Edge Labels #
+  for (ii in 1:length(ct_node)) {
+    brk = ct_node[[ii]]$split$breaks
+    if (!is.null(brk)){
+      ct_node[[ii]]$split$breaks <- ifelse(is.numeric(brk), round(brk,2), brk)
+    }
+  }
+  ct$node <- as.partynode(ct_node)
+  
+  # Create ggparty plot #
+  plt <- ggparty(ct, horizontal = TRUE,
+                 add_vars = list(N = "$node$info$N",
+                                 est = "$node$info$label",
+                                 estimand = "$node$info$estimand",
+                                 label = "$node$info$label")) +
+    geom_edge() +
+    geom_edge_label() +
+    geom_node_splitvar() + 
+    geom_node_label(line_list = list(aes(label = splitvar),
+                                     aes(label = pval_convert(p.value))
+                    ),
+                    line_gpar = list(list(size = 8, col = "black", fontface = "bold"),
+                                     list(size = 8)
+                    ),
+                    ids = "inner")
+  if (family!="survival"){
+    plt <- plt +
+      geom_node_label(
+        line_list = list(
+          aes(label = paste("Node ", id) ),
+          aes(label = paste("N = ", N, " (", round(N/n*100,1), "%)", sep=""))
+        ),
+        line_gpar = list(list(size = 8, fontface="bold"),
+                         list(size = 8) ),
+        ids = "terminal") + 
+      geom_node_plot(gglist =
+                       list(geom_pointrange(data=param.dat,
+                                            aes(x=estimand, y=est,
+                                                ymin=LCL, ymax=UCL,col=estimand)),
+                            geom_text(data=param.dat,
+                                      aes(x=estimand, y=est,
+                                          label = label, col=estimand), size=3,
+                                      position = position_nudge(x = 0.6),
+                                      check_overlap = TRUE),
+                            scale_x_discrete(expand=c(0.4, 0.4)), 
+                            xlab(""),
+                            ylab( paste("Estimate (", (1-alpha_s)*100,"% CI)",sep="")),
+                            theme_bw(), theme( axis.text.y = element_blank()),
+                            coord_flip()),
+                     nudge_x = 0.05,
+                     shared_axis_labels = TRUE,
+                     legend_separator = TRUE, scales = "fixed") 
+  }
+  if (family=="survival"){
+    # Create KM survival prediction data-set #
+    out.train = object$out.train
+    pred.surv = NULL
+    for (s in unique(out.train$Subgrps)){
+      hold.dat = out.train[out.train$Subgrps==s,]
+      if (is.null(out.train$A)){
+        km_mod = survfit(Y ~ 1, data=hold.dat)
+        pred.s = data.frame(A = "",
+                            time=c(0,km_mod$time), surv=c(1, km_mod$surv))
+      }
+      if (!is.null(out.train$A)){
+        km0 = survfit(Y ~ 1, data=hold.dat[hold.dat$A==0,])
+        surv0 = data.frame(A="A=0", time=c(0,km0$time), surv=c(1, km0$surv))
+        km1 = survfit(Y ~ 1, data=hold.dat[hold.dat$A==1,])
+        surv1 = data.frame(A="A=1", time=c(0,km1$time), surv=c(1, km1$surv))
+        pred.s = suppressWarnings( bind_rows(surv0, surv1) )
+      }
+      pred.s = data.frame(id=s, pred.s)
+      pred.surv = suppressWarnings( bind_rows(pred.surv, pred.s) )
+    }
+    plt <- plt +
+      geom_node_label(
+        line_list = list(
+          aes(label = paste("Node ", id) ),
+          aes(label = paste("N = ", N, " (", round(N/n*100,1), "%)", sep="")),
+          aes(label = paste(estimand, " [", (1-alpha_s)*100,"% CI]", sep="")),
+          aes(label = label)
+        ),
+        line_gpar = list(list(size = 8, fontface="bold"),
+                         list(size = 8),
+                         list(size = 8, fontface="bold"),
+                         list(size = 8) ),
+        ids = "terminal") +
+      geom_node_plot(gglist = list(geom_line(data=pred.surv,
+                                             aes(x=time, y=surv,
+                                                 col=A)),
+                                   xlab("Time"),
+                                   ylab( "Survival Probability" ),
+                                   theme_bw(),
+                                   theme(legend.title = element_blank())),
+                     nudge_x = 0.10,
+                     shared_axis_labels = TRUE,
+                     legend_separator = TRUE, scales = "fixed") 
+    
+  }
+  plt <- plt + ggtitle("PRISM Tree Plot")
+  return(plt)
 }
