@@ -31,7 +31,7 @@ PLEs to subgroups.}
 Trained subgroup model and subgroup predictions/estimates for train/test sets.
 
  \itemize{
-  \item fit - trained subgroup model
+  \item mod - trained subgroup model
   \item Subgrps.train - Identified subgroups (training set)
   \item Subgrps.test - Identified subgroups (test set)
   \item pred.train - Predictions (training set)

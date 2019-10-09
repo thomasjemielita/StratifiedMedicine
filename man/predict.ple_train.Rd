@@ -34,10 +34,8 @@ A = dat_ctns$A
 mod2 = ple_train(Y=Y, A=A, X=X, Xtest=X, ple="ple_ranger" )
 summary(mod2$mu_train)
 
-res2 = predict(mod2) # newdata=NULL, training data #
-res3 = predict(mod2, newdata=X) # test data #
+res2 = predict(mod2, newdata=X)
 summary(res2)
-summary(res3)
 }
 
 }

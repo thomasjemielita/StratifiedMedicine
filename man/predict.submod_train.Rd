@@ -35,7 +35,6 @@ A = dat_ctns$A
 
 # Fit submod_lmtree directly #
 mod1 = submod_lmtree(Y, A, X, Xtest=X)
-out1 = predict(mod1)
 plot(mod1$mod)
 
 # Fit through submod_train wrapper #
