@@ -217,31 +217,15 @@ library(dplyr)
 res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, ple = "None")
 # Plot of distributions #
 plot(res_boot, type="resample", estimand = "HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
-
 ```
 
 **Permutation Resampling**
 
-Permutation resampling follows the same general procedure as bootstrap resampling. The main difference is that we randomly shuffle the treatment assignment $A$ without replacement. This simulates the null hypothesis of no treatment. A key output is the permutation p-values (pval_perm in param.dat) and the permutation resampling distributions. See below.
-
-```{r default_permut, warning=FALSE, message=FALSE}
-res_permute = PRISM(Y=Y, A=A, X=X, resample = "Permutation", R=50, ple = "None")
-# Plot of distributions #
-plot(res_permute, type="resample", estimand = "HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
-
-```
+Permutation resampling (resample="Permutation") follows the same general procedure as bootstrap resampling. The main difference is that we only randomly shuffle the treatment assignment $A$ without replacement. This simulates the null hypothesis of no treatment. A key output is the permutation p-values (pval_perm in param.dat) and the permutation resampling distributions.
 
 **Cross-Validation**
 
-Given observed data $(Y, A, X)$, fit $PRISM(Y,A,X)$. Based on the identified $k=1,..,K$ subgroups, output subgroup assignment for each patient. Split the data into $R$ folds (ex: 5). For fold $r$, fit PRISM on $(Y[-r],A[-r], X[-r])$ and obtain new subgroup assignments $k_r=1,..,K_r$  and predict the subgroup assignments for patients in fold $r$. The data in fold $r$ is then used to obtain parameter estimates for each subgroup, $\hat{\theta}_{k_r}$. Estimates for the original subgroups are then obtained using the same formula as with the bootstrap. This is repeated for each fold, and "CV-corrected" subgroup parameter estimates can be obtained by averaging the fold specific subgroup estimates. 
-
-In the example below, we fit PRISM with 5-fold cross validation. "param.dat" shows us log(HR) parameter estimates using the observed data ("est") and the CV estimate ("est_resamp").
-
-```{r default_CV, warning=FALSE, message=FALSE}
-res_CV = PRISM(Y=Y, A=A, X=X, resample = "CV", R=5, ple = "None")
-res_CV$param.dat
-
-```
+Cross-validation resampling (resample="CV") also follows the same general procedure as bootstrap resampling. Given observed data $(Y, A, X)$, fit $PRISM(Y,A,X)$. Based on the identified $k=1,..,K$ subgroups, output subgroup assignment for each patient. Next, split the data into $R$ folds (ex: 5). For fold $r$, fit PRISM on $(Y[-r],A[-r], X[-r])$ and predict the subgroup assignments for patients in fold $r$. The data in fold $r$ is then used to obtain parameter estimates for each subgroup, $\hat{\theta}_{k_r}$. Estimates for the original subgroups are then obtained using the same formula as with the bootstrap. This is repeated for each fold, and "CV-corrected" subgroup parameter estimates can be obtained by averaging the fold specific subgroup estimates. 
 
 # Conclusion
 
