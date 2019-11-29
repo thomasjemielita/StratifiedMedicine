@@ -9,9 +9,12 @@
 #' @param X Covariate space.
 #' @param Xtest Test set
 #' @param mu_train Patient-level estimates (See PLE_models)
+#' @param alpha Significance level for variable selection (default=0.05)
 #' @param minsize Minimum number of observations in a tree node.
 #' Default = floor( dim(train)[1]*0.05  )
 #' @param maxdepth Maximum depth of any node in the tree (default=4)
+#' @param parm Model parameters included in parameter instability tests 
+#' (default=NULL, all parameters)
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #' @import survival
@@ -40,13 +43,14 @@
 #'
 #'
 ## MOB: Weibull ##
-submod_weibull = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0.10  ),
-                          maxdepth = 4, ...){
+submod_weibull = function(Y, A, X, Xtest, mu_train, alpha=0.05,
+                          minsize = floor( dim(X)[1]*0.10  ),
+                          maxdepth = 4, parm=NULL, ...){
 
   ## Fit Model ##
   mod <- mob(Y ~ A | ., data = X,
-             fit = wbreg, control = mob_control(parm=1:3, minsize=minsize,
-                                                maxdepth=maxdepth))
+             fit = wbreg, control = mob_control(alpha=alpha, minsize=minsize,
+                                                maxdepth=maxdepth, parm=parm))
   # Prediction Function #
   pred.fun <- function(mod, X=NULL, type="subgrp"){
     pred <- NULL
