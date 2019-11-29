@@ -60,13 +60,12 @@ norm_norm <- function(PRISM.fit, alpha_ovrl, alpha_s,
         mu_B <- var_B * ( prior.mu/prior.var + obs.mu / (obs.var)    ) 
         alpha <- alpha_s
       }
-      post.prob <- 1-pnorm(0, mean = mu_B, sd = sqrt(var_B) )
       # Bayesian Intervals (q25, q75) #
       LCL <- qnorm( alpha/2, mean = mu_B, sd = sqrt(var_B) )
       UCL <- qnorm( 1-alpha/2, mean = mu_B, sd = sqrt(var_B) )
-      summ <- data.frame(Subgrps=s, N=ns, estimand=e,
-                        est = mu_B, SE = sqrt(var_B), 
-                        LCL=LCL, UCL = UCL, prob.ge0 = post.prob)
+      summ <- data.frame(Subgrps=s, estimand=e,
+                        est.bayes = mu_B, SE.bayes = sqrt(var_B), 
+                        LCL.bayes=LCL, UCL.bayes = UCL)
       return(summ)
     }
     param.B = lapply( c(unique(Subgrps),0), looper)
@@ -78,10 +77,7 @@ norm_norm <- function(PRISM.fit, alpha_ovrl, alpha_s,
     param.B = get_posterior_ests(param.dat=param.dat, e = e)
     bayes_param = suppressWarnings( bind_rows(bayes_param, param.B) )
   }
-  bayes_param = bayes_param[order(bayes_param$Subgrps, bayes_param$estimand),]
-  param.dat = suppressWarnings( 
-              bind_rows( data.frame(type = "obs", param.dat),
-                         data.frame(type = "bayes", bayes_param) ) )
+  param.dat <- left_join(param.dat, bayes_param, by=c("Subgrps", "estimand"))
   bayes.sim = function(mu, sd, n=100000){
     return( rnorm(n=n, mean = mu, sd = sd)  )
   }
@@ -297,7 +293,7 @@ ranger_rmst = function(preds, X, trt){
 }
 
 ### RMST Estimation: based on survRM2 ###
-rmst_calc = function(time, status, tau=NULL){
+rmst_single = function(time, status, tau=NULL){
   if (is.null(tau)){
     tau = max(time)
   }
@@ -323,4 +319,14 @@ pval_convert <- function(p_value) {
   if (p_value < 0.001) return(c("p<0.001"))
   if (p_value >= 0.001) return(paste("p=",(round(p_value,3)),sep=""))
   else return("")
+}
+## RMST calculator: tau is RMST truncation time ##
+rmst_calc <- function(time, surv, tau){
+  idx = time <= tau
+  id.time = sort(c(time[idx], tau))
+  id.surv = surv[idx]
+  time.diff <- diff(c(0, id.time))
+  areas <- time.diff * c(1, id.surv)
+  rmst = sum(areas)
+  return(rmst)
 }
