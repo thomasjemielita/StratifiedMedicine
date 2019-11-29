@@ -31,9 +31,9 @@ plot.PRISM = function(x, type="submod", estimand=NULL, grid.data=NULL, grid.thre
                       ...){
 
   if (type=="submod"){
-    cls = class(x$submod.fit$mod)
+    cls <- class(x$submod.fit$mod)
     if ("party" %in% cls ){
-      res = do.call("plot_submod", list(object=x))
+      res <- do.call("plot_submod", list(object=x))
     }
     if (!("party" %in% cls)){
       stop( paste("Plots for custom submod wrappers not currently supported.") )
@@ -41,30 +41,30 @@ plot.PRISM = function(x, type="submod", estimand=NULL, grid.data=NULL, grid.thre
   }
   if (type=="forest"){
     # Combine parameter-estimates with rules ##
-    parm = x$param.dat
+    parm <- x$param.dat
     if (is.null(x$Rules)){
-      plot.dat = parm
-      plot.dat$Rules = ifelse(plot.dat$Subgrps==0, "Overall",
+      plot.dat <- parm
+      plot.dat$Rules <- ifelse(plot.dat$Subgrps==0, "Overall",
                               as.character(plot.dat$Subgrps))
     }
     if (!is.null(x$Rules)){
-      rules = rbind(data.frame(Subgrps=0,Rules="Overall"), x$Rules)
-      plot.dat = left_join(parm, rules, by="Subgrps")
+      rules <- rbind(data.frame(Subgrps=0,Rules="Overall"), x$Rules)
+      plot.dat <- left_join(parm, rules, by="Subgrps")
     }
     # Create label: Use calibrated bootstrap interval if available #
     if( !is.null(plot.dat$LCL.calib)  ){
-      plot.dat$LCL = plot.dat$LCL.calib
-      plot.dat$UCL = plot.dat$UCL.calib
+      plot.dat$LCL <- plot.dat$LCL.calib
+      plot.dat$UCL <- plot.dat$UCL.calib
     }
     if (is.null(plot.dat$LCL.calib) & !is.null(plot.dat$LCL.pct)){
-      plot.dat$LCL = plot.dat$LCL.pct
-      plot.dat$UCL = plot.dat$UCL.pct
+      plot.dat$LCL <- plot.dat$LCL.pct
+      plot.dat$UCL <- plot.dat$UCL.pct
     }
     if (x$param=="param_cox"){
-      plot.dat$est = exp(plot.dat$est)
-      plot.dat$LCL = exp(plot.dat$LCL)
-      plot.dat$UCL = exp(plot.dat$UCL)
-      plot.dat$estimand = "HR(A=1 vs A=0)"
+      plot.dat$est <- exp(plot.dat$est)
+      plot.dat$LCL <- exp(plot.dat$LCL)
+      plot.dat$UCL <- exp(plot.dat$UCL)
+      plot.dat$estimand <- "HR(A=1 vs A=0)"
     }
     plot.dat$label = with(plot.dat, paste( sprintf("%.2f", round(est,2)),
                                            " [",
@@ -337,7 +337,7 @@ plot_submod = function(object){
         ids = "terminal") +
       geom_node_plot(gglist = list(geom_line(data=pred.surv,
                                              aes(x=time, y=surv,
-                                                 col=A)),
+                                                 col=A), size=1),
                                    xlab("Time"),
                                    ylab( "Survival Probability" ),
                                    theme_bw(),
