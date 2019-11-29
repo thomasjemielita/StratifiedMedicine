@@ -86,7 +86,7 @@
 #' ## Load library ##
 #' library(StratifiedMedicine)
 #'
-#' ##### Examples: Continuous Outcome ###########
+#' ## Examples: Continuous Outcome ##
 #'
 #' dat_ctns = generate_subgrp_data(family="gaussian")
 #' Y = dat_ctns$Y
@@ -119,6 +119,19 @@
 #'   # Plot of distributions and P(est>0) #
 #'   plot(res_boot, type="resample", estimand = "E(Y|A=1)-E(Y|A=0)")+geom_vline(xintercept = 0)
 #'   aggregate(I(est>0)~Subgrps, data=res_boot$resamp.dist, FUN="mean")
+#' }
+#' 
+#' ## Examples: Binary Outcome ##
+#'
+#' dat_ctns = generate_subgrp_data(family="binomial")
+#' Y = dat_ctns$Y
+#' X = dat_ctns$X
+#' A = dat_ctns$A
+#'
+#' # Run Default: filter_glmnet, ple_ranger, submod_glmtree, param_ple #
+#' res0 = PRISM(Y=Y, A=A, X=X)
+#' \donttest{
+#' plot(res0)
 #' }
 #'
 #' # Survival Data ##
@@ -175,8 +188,13 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
   if (is.null(Xtest)){ Xtest = X   }
 
   ## Is the Outcome Survival? ##
-  if (is.Surv(Y) & family!="survival"){ family="survival"  }
-
+  if (is.Surv(Y)){
+    if (family!="survival"){ family = "survival" }
+  }
+  ## Is the outcome binary? #
+  if (!is.Surv(Y)){
+    if ( mean( unique(Y) %in% c(0,1) )==1 ){ family = "binomial" }
+  }
   # Missing data? #
   if ( sum(is.na(Y))>0 | sum(is.na(A))>0 | sum(is.na(X))>0 ){
     message("Missing Data (in outcome, treatment, or covariates)")
@@ -185,8 +203,9 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
   if (family=="gaussian" | family=="binomial"){
     if (is.null(ple) ){ ple = "ple_ranger" }
     if (is.null(submod) ){ 
+      if (family=="gaussian"){ submod = "submod_lmtree"}
+      if (family=="binomial"){ submod = "submod_glmtree"}
       if (is.null(A)){ submod = "submod_ctree" }
-      else { submod = "submod_lmtree" }
     }
     if (is.null(param) ){ 
       if (is.null(A)){ param = "param_lm" }
