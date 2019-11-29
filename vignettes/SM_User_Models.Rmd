@@ -41,13 +41,21 @@ summ.table = data.frame( `Model` = c("filter", "ple", "submod", "param"),
 kable( summ.table, caption = "Key Outputs by Model" )
 ```
 
-For the filter model, the only required output is a vector of variable names that pass the filter (for example: covariates with non-zero coefficients in elastic net model). For the patient-level estimate (ple) model and subgroup model (submod), the required outputs are the model fit(s) and an associated prediction function. The prediction function can also be swapped with pre-computed predictions (details below). Lastly, for parameter estimation (param), the only required output is "param.dat", which is a data frame of parameter estimates/SEs/CIs for the overall population and the identified subgroups (if any). Template functions for each step can also be generated using the model_template() function within the StratifiedMedicine package.
+For the filter model, the only required output is a vector of variable names that pass the filter (for example: covariates with non-zero coefficients in elastic net model). For the patient-level estimate (ple) model and subgroup model (submod), the required outputs are the model fit(s) and an associated prediction function. The prediction function can also be swapped with pre-computed predictions (details below). Lastly, for parameter estimation (param), the only required output is "param.dat", which is a data frame of parameter estimates/SEs/CIs for the overall population and the identified subgroups (if any).
 
 
 # Filter Model (filter)
 The template filter function is:
 ```{r user_filter_template}
-model_template(type="filter")
+filter_template = function(Y, A, X, ...){
+  # Step 1: Fit Filter Model #
+  mod <- # model call 
+  # Step 2: Extract variables that pass the filter #
+  filter.vars <- # depends on mod fit
+  # Return model fit and filtered variables #
+  res = list(mod=mod, filter.vars=filter.vars)
+  return( res )
+}
 ```
 Note that the filter uses the observed data (Y,A,X), which are required inputs, and outputs an object called "filter.vars." This needs to contain the variable names of the variables that pass the filtering step. For example, consider the lasso:
 
@@ -57,7 +65,7 @@ filter_lasso = function(Y, A, X, lambda="lambda.min", family="gaussian", ...){
   ## Model matrix X matrix #
   X = model.matrix(~. -1, data = X )
 
-  ##### Elastic Net on estimated ITEs #####
+  ##### Elastic Net ##
   set.seed(6134)
   if (family=="survival") { family = "cox"  }
   mod <- cv.glmnet(x = X, y = Y, nlambda = 100, alpha=1, family=family)
@@ -75,7 +83,25 @@ An option to change lambda, which can change which variables remain after filter
 
 The template ple function is:
 ```{r user_ple_template}
-model_template(type="ple")
+ple_template <- function(Y, A, X, Xtest, ...){
+  # Step 1: Fit PLE Model #
+  # for example: Estimate E(Y|A=1,X), E(Y|A=0,X), E(Y|A=1,X)-E(Y|A=0,X)
+  mod <- # ple model call 
+  # mod = list(mod0=mod0, mod1=mod1) # If multiple fitted models, combine into list
+  # Step 2: Predictions
+  # Option 1: Create a Prediction Function #
+  pred.fun <- function(mod, X){
+    mu_hat <- # data-frame of predictions 
+    return(mu_hat)
+  }
+  # Option 2: Directly Output Predictions (here, we still use pred.fun) #
+  mu_train <- pred.fun(mod, X)
+  mu_test <- pred.fun(mod, Xtest)
+      
+  # Return model fits and pred.fun (or just mu_train/mu_test) #
+  res <- list(mod=mod, pred.fun=pred.fun, mu_train=mu_train, mu_test=mu_test)
+  return( res )
+}
 ```
 For the "ple" model, the only required arguments are the observed data (Y,A,X) and Xtest. By default, if Xtest is not provided in PRISM, it uses the training X instead. The only required outputs are mod (fitted models(s)) and a prediction function or pre-computed predictions in the training/test set (mu_train, mu_test). However, certain features in PRISM, such as the heat map plots, cannot be utilized without providing a prediction funcion. In the example below, treatment-specific random forest models are fit with hyperparameter "mtry" (number of variables randomly selected at each split). This can be altered in the "ple.hyper" argument in PRISM. Notably, certain default plots or parameter functions require the ple predictions to be named as "mu0", "mu1", and "PLE". 
 ```{r user_ple}
@@ -104,7 +130,23 @@ ple_ranger_mtry = function(Y, A, X, Xtest, mtry=5, ...){
 
 The template submod function is:
 ```{r user_submod_template}
-model_template(type="submod")
+submod_template <- function(Y, A, X, Xtest, mu_train, ...){
+  # Step 1: Fit subgroup model #
+  mod <- # model call 
+  # Step 2: Predictions #
+  # Option 1: Create Prediction Function #
+  pred.fun <- function(mod, X=NULL){
+    Subgrps <- # Predict subgroup assignment
+    return( list(Subgrps=Subgrps) )
+  }
+  # Option 2: Output Subgroups for train/test (here we use pred.fun)
+  Subgrps.train = pred.fun(mod, X)
+  Subgrps.test = pred.fun(mod, X)
+  #Return fit and pred.fun (or just Subgrps.train/Subgrps.test)
+  res <- list(mod=mod, pred.fun=pred.fun, Subgrps.train=Subgrps.train,
+                  Subgrps.test=Subgrps.test)
+  return(res)
+}
 ```
 For the "submod" model, the only required arguments are the observed data (Y,A,X) and Xtest. "mu_train" (based on ple predictions) can also be passed through. The only required outputs are mod (fitted models(s)) and a prediction function or pre-computed subgroup predictions in the training/test set (Subgrps.train, Subgrps.test). In the example below, 
 consider a modified version of "submod_lmtree" where we search for predictive effects only. By default, "submod_lmtree" searches for prognostic and/or predictive effects. 
@@ -127,7 +169,24 @@ submod_lmtree_pred = function(Y, A, X, Xtest, mu_train, ...){
 
 The template param function is:
 ```{r user_param_template}
-model_template(type="param")
+param_template <- function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s,...){
+  # Key Outputs: Subgroup specific and overall parameter estimates
+  # Overall/Subgroup Specific Estimate ##
+  looper = function(s, alpha){
+    # Extract parameter estimates #
+    return( summ )
+  }
+   # Across Subgroups #
+  S_levels = as.numeric( names(table(Subgrps)) )
+  param.dat = lapply(S_levels, looper, alpha_s)
+  param.dat = do.call(rbind, param.dat)
+  param.dat = data.frame( param.dat )
+  ## Overall ##
+  param.dat0 = looper(S_levels, alpha_ovrl)
+  # Combine and return ##
+  param.dat = rbind(param.dat0, param.dat)
+  return( param.dat )
+}
 ```
 For the parameter model, the key arguments are (Y, A, X) (observed data), mu_hat (ple predictions), Subgrps, alpha_ovrl and alpha_s (overall and subgroup alpha levels). The only required output is "param.dat", which contains parameter estimates/variability metrics. For all PRISM functionality to work, param.dat should contain column names of "est" (parameter estimate), "SE" (standard error), and "LCL"/"UCL" (lower and upper confidence limits). It is recommended to include an "estimand" column for labeling purpose. In the example below, M-estimation models are fit for each subgroup and overall. Alternatively, a single M-estimation model could've been fit. 
 
@@ -181,7 +240,7 @@ res_user1 = PRISM(Y=Y, A=A, X=X, family="gaussian", filter="filter_lasso",
 ## variables that remain after filtering ##
 res_user1$filter.vars
 ## Subgroup model: lmtree searching for predictive only ##
-plot(res_user1$submod.fit$mod)
+plot(res_user1)
 ## Parameter estimates/inference
 res_user1$param.dat
 plot(res_user1, type="forest")
