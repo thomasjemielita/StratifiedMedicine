@@ -72,7 +72,7 @@ param_rmst = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="ad
     status = indata$Y[Subgrps %in% s,2]
     n.s = length(status)
     if (noA){
-      obj = tryCatch( rmst_calc(time, status, tau=NULL),
+      obj = tryCatch( rmst_single(time, status, tau=NULL),
                       error = function(e) "param error" )
       if (is.character(obj)){
         est = NA; SE = NA; pval = NA; LCL = NA; UCL = NA;
