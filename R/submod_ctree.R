@@ -9,6 +9,7 @@
 #' @param X Covariate space.
 #' @param Xtest Test set
 #' @param mu_train Patient-level estimates (See PLE_models)
+#' @param alpha Significance level for variable selection (default=0.05)
 #' @param minbucket Minimum number of observations in a tree node.
 #' Default = floor( dim(train)[1]*0.05  )
 #' @param maxdepth Maximum depth of any node in the tree (default=4)
@@ -40,7 +41,8 @@
 #'
 #'
 #### CTREE ###
-submod_ctree = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0.10  ),
+submod_ctree = function(Y, A, X, Xtest, mu_train, alpha=0.05,
+                        minbucket = floor( dim(X)[1]*0.10  ),
                         maxdepth = 4, outcome_PLE=FALSE, family="gaussian", ...){
 
   ## Use PLE as outcome? ##
@@ -50,7 +52,8 @@ submod_ctree = function(Y, A, X, Xtest, mu_train, minbucket = floor( dim(X)[1]*0
   }
   # Fit Model #
   mod <- ctree(Y ~ ., data = X,
-               control = ctree_control(minbucket=minbucket, maxdepth=maxdepth))
+               control = ctree_control(alpha=alpha, 
+                                       minbucket=minbucket, maxdepth=maxdepth))
   
   # Prediction Function #
   pred.fun <- function(mod, X=NULL, type="subgrp"){
