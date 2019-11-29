@@ -8,9 +8,12 @@
 #' @param X Covariate space.
 #' @param Xtest Test set
 #' @param mu_train Patient-level estimates (See PLE_models)
+#' @param alpha Significance level for variable selection (default=0.05)
 #' @param minsize Minimum number of observations in a tree node.
 #' Default = floor( dim(train)[1]*0.05  )
 #' @param maxdepth Maximum depth of any node in the tree (default=4)
+#' @param parm Model parameters included in parameter instability tests 
+#' (default=NULL, all parameters)
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #' @import partykit
@@ -39,11 +42,13 @@
 #'
 #'
 #### lmtree (MOB) ###
-submod_lmtree = function(Y, A, X, Xtest, mu_train, minsize = floor( dim(X)[1]*0.10  ),
-                         maxdepth = 4, ...){
+submod_lmtree = function(Y, A, X, Xtest, mu_train, alpha=0.05,
+                         minsize = floor( dim(X)[1]*0.10  ),
+                         maxdepth = 4, parm=NULL, ...){
 
   ## Fit Model ##
-  mod <- lmtree(Y~A | ., data = X, maxdepth = maxdepth, minsize=minsize)
+  mod <- lmtree(Y~A | ., data = X, alpha=alpha, maxdepth = maxdepth, 
+                minsize=minsize, parm=parm)
   
   # Prediction Function #
   pred.fun <- function(mod, X=NULL, type="subgrp"){
