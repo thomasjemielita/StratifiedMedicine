@@ -243,7 +243,7 @@ plot_submod = function(object){
   
   # Add estimates into tree #
   ct_node <- as.list(ct$node)
-  for (s in unique(param.dat$Subgrps)) {
+  for (s in Subgrps) {
     ct_node[[s]]$info$label <- param.dat$label[param.dat$Subgrps==s] 
     ct_node[[s]]$info$N <- param.dat$N[param.dat$Subgrps==s] 
     ct_node[[s]]$info$estimand <- param.dat$estimand[param.dat$Subgrps==s] 
@@ -266,7 +266,6 @@ plot_submod = function(object){
                                  label = "$node$info$label")) +
     geom_edge() +
     geom_edge_label() +
-    geom_node_splitvar() + 
     geom_node_label(line_list = list(aes(label = splitvar),
                                      aes(label = pval_convert(p.value))
                     ),
