@@ -39,31 +39,44 @@ where $\mathbf{S}(X^{\star})$ is a distinct set of rules that define the $k=0,..
 $$ param(Y, A, X^{\star}, \hat{\mathbf{\theta}}(X^{\star}), \mathbf{S}(X^{\star}) ) \longrightarrow \{ \hat{\theta}_{k}, SE(\hat{\theta}_k), CI_{\alpha}(\hat{\theta}_{k}), P(\hat{\theta}_{k} > c) \} \text{ for } k=0,...K $$
 where $\hat{\theta}_{k}$ is the point-estimate, $SE(\hat{\theta}_k)$ is the standard error, $CI_{\alpha}(\hat{\theta}_{k})$ is a two (or one) sided confidence interval with nominal coverage $1-\alpha$, and $P(\hat{\theta}_{k} > c)$ is a probability statement for some constant $c$ (ex: $c=0$). These outputs are crucial for Go-No-Go decision making. There can also be multiple parameter estimates by subgroup, such as a survival curve across fixed time points). 
 
-Ultimately, PRISM provides information at the patient-level, the subgroup-level (if any), and the overall population. While there are defaults in place, the user can also input their own functions/model wrappers into the PRISM algorithm. We will demonstrate this later. PRISM can also run without treatment assignment (A=NULL); in this setting, the focus is on finding subgroups based on prognostic effects. Lastly, the below table describes default PRISM configurations for different family (gaussian, biomial, survival) and treatment (no treatment vs treatment) settings, including the associated estimands. Note that HR refers the hazard ratio while RMST refers to the restricted mean survival time. 
+Ultimately, PRISM provides information at the patient-level, the subgroup-level (if any), and the overall population. While there are defaults in place, the user can also input their own functions/model wrappers into the PRISM algorithm. We will demonstrate this later. PRISM can also run without treatment assignment (A=NULL); in this setting, the focus is on finding subgroups based on prognostic effects. Lastly, the below table describes default PRISM configurations for different family (gaussian, biomial, survival) and treatment (no treatment vs treatment) settings, including the associated estimands. Note that OLS refers to ordinary least squares (linear regression), GLM refers to generalized linear model, MOB refers to model based partitioning, and RMST refers to the restricted mean survival time. 
 
 ```{r table_steps, echo=FALSE}
 library(knitr)
 summ.table = data.frame( `Step` = c("estimand(s)", "filter", "ple", "submod", "param"),
                         `gaussian` = c("E(Y|A=0)<br>E(Y|A=1)<br>E(Y|A=1)-E(Y|A=0)",
-                                       "filter_glmnet", "ple_ranger",
-                                       "submod_lmtree", "param_ple"),
+                                       "Elastic Net<br>(filter_glmnet)", 
+                                       "Random Forest<br>(ple_ranger)",
+                                       "MOB(OLS)<br>(submod_lmtree)", 
+                                       "Average of PLEs<br>(param_ple)"),
                         `binomial` = c("E(Y|A=0)<br>E(Y|A=1)<br>E(Y|A=1)-E(Y|A=0)",
-                                       "filter_glmnet", "ple_ranger",
-                                       "submod_lmtree", "param_ple"),    
-                        `survival` = c("HR(A=1 vs A=0)", "filter_glmnet", "ple_ranger",
-                                       "submod_weibull", "param_ple") )                        
+                                       "Elastic Net<br>(filter_glmnet)", 
+                                       "Random Forest<br>(ple_ranger)",
+                                       "MOB(GLM)<br>(submod_glmtree)", 
+                                       "Average of PLEs<br>(param_ple)"),    
+                        `survival` = c("HR(A=1 vs A=0)",
+                                       "Elastic Net<br>(filter_glmnet)", 
+                                       "Random Forest (ranger)<br>(ple_ranger)",
+                                       "MOB(weibull)<br>(submod_weibull)", 
+                                       "Hazard Ratios<br>(param_HR)") )                        
                       
 kable( summ.table, caption = "Default PRISM Configurations (With Treatment)", full_width=T)
 
 summ.table = data.frame( `Step` = c("estimand(s)", "filter", "ple", "submod", "param"),
                         `gaussian` = c("E(Y)",
-                                       "filter_glmnet", "ple_ranger",
-                                       "submod_ctree", "param_lm"),
+                                       "Elastic Net<br>(filter_glmnet)", 
+                                       "Random Forest<br>(ple_ranger)",
+                                       "Conditional Inference Trees<br>submod_ctree",
+                                       "OLS<br>(param_lm)"),
                         `binomial` = c("Prob(Y)",
-                                       "filter_glmnet", "ple_ranger",
-                                       "submod_ctree", "param_lm"),    
-                        `survival` = c("RMST", "filter_glmnet", "ple_ranger",
-                                       "submod_ctree", "param_rmst") )                        
+                                       "Elastic Net<br>(filter_glmnet)", 
+                                       "Random Forest<br>(ple_ranger)",
+                                       "Conditional Inference Trees<br>submod_ctree", 
+                                       "OLS<br>(param_lm)"),    
+                        `survival` = c("RMST", "Elastic Net<br>(filter_glmnet)", 
+                                       "Random Forest<br>(ple_ranger)",
+                                       "Conditional Inference Trees<br>submod_ctree",
+                                       "RMST<br>(param_rmst)") )                        
                       
 kable( summ.table, caption = "Default PRISM Configurations (Without Treatment, A=NULL)", full_width=T)
 ```
@@ -167,7 +180,23 @@ res_new_hyper = PRISM(Y=Y, A=A, X=X, filter.hyper = list(lambda="lambda.1se"),
                       submod.hyper = list(minsize=200), verbose=FALSE)
 plot(res_new_hyper)
 ```
+# Example: Binary Outcome with Binary Treatment
 
+Consider a binary outcome (ex: % overall response rate) with a binary treatment (study drug vs standard of care). The estimand of interest is the risk difference, $\theta_0 = E(Y|A=1)-E(Y|A=0)$. Similar to the continous example, we simulate binomial data where roughly 30\% of the patients receive no treatment-benefit for using $A=1$ vs $A=0$. Responders vs non-responders are defined by the continuous predictive covariates $X_1$ and $X_2$ for a total of four subgroups. Subgroup treatment effects are: $\theta_{1} = 0$ ($X_1 \leq 0, X_2 \leq 0$), $\theta_{2} = 0.11 (X_1 > 0, X_2 \leq 0)$, $\theta_{3} = 0.21 (X_1 \leq 0, X2 > 0$), $\theta_{4} = 0.31 (X_1>0, X_2>0)$.
+
+For binary outcomes (Y=0,1), the default settings use glmnet to filter ("filter_glmnet"), randomforest patient-level estimates ("ple_ranger"; for binary, the output is the risk difference), "submod_glmtree"" (GLM MOB with binomial(link=identity)) for subgroup identification, and param_ple (average counterfactual risk differences within each subgroup; same formulas as continuous setting). 
+
+```{r default_binary}
+dat_bin = generate_subgrp_data(family="binomial", seed = 5558)
+Y = dat_bin$Y
+X = dat_bin$X # 50 covariates, 46 are noise variables, X1 and X2 are truly predictive
+A = dat_bin$A # binary treatment, 1:1 randomized 
+
+res0 = PRISM(Y=Y, A=A, X=X)
+summary(res0)
+plot(res0)
+
+```
 
 # Example: Survival Outcome with Binary Treatment
 
@@ -197,14 +226,16 @@ plot(res_ctree1)
 
 # Resampling
 
-Resampling methods are also a feature in PRISM. Bootstrap (resample="Bootstrap"), permutation (resample="Permutation"), and cross-validation (resample="CV") based-resampling are included. Resampling can be used for obtaining de-biased or "honest" subgroup estimates, inference, and/or probability statements. For each resampling method, the sampling mechanism can abestratified by the discovered subgroups (default: stratify=TRUE). To summarize:
+Resampling methods are also a feature in PRISM. Bootstrap (resample="Bootstrap"), permutation (resample="Permutation"), and cross-validation (resample="CV") based-resampling are included. Resampling can be used for obtaining de-biased or "honest" subgroup estimates, inference, and/or probability statements. For each resampling method, the sampling mechanism can be stratified by the discovered subgroups (default: stratify=TRUE). To summarize:
 
 **Bootstrap Resampling**
 
 Given observed data $(Y, A, X)$, fit $PRISM(Y,A,X)$. Based on the identified $k=1,..,K$ subgroups, output subgroup assignment for each patient. For the overall population and each subgroup ($k=0,...,K$), store the associated parameter estimates ($\hat{\theta}_{k}$).
-For $r=1,..,R$ resamples with replacement ($(Y_r, A_r, X_r)$), fit $PRISM(Y_r, A_r, X_r)$ and obtain new subgroup assignments $k_r=1,..,K_r$ with associated parameter estimates $\hat{\theta}_{k_r}$. The bootstrap estimate for the original identified subgroups are then estimated as:
+For $r=1,..,R$ resamples with replacement ($(Y_r, A_r, X_r)$), fit $PRISM(Y_r, A_r, X_r)$ and obtain new subgroup assignments $k_r=1,..,K_r$ with associated parameter estimates $\hat{\theta}_{k_r}$. For resample $r$, the bootstrap estimates for the original identified subgroups ($k=0,...,K$) are calculated as:
 $$ \hat{\theta}_{rk} =  \frac{\sum_{k_r} n(k \cap k_r) \hat{\theta_{k_r}}}{\sum_{k_r} n(k \cap k_r)}  $$
-where $n(k \cap k_r)$ is the number of subjects in the original subgroup $k$ who are also in the bootstrap subgroup $k_r$. The bootstrap smoothed estimate and standard error can then be calculated as:
+where $n(k \cap k_r)$ is the number of subjects in the $k$ who are also in the bootstrap subgroup $k_r$. Bootstrap bias of the observed subgroup estimates ($\hat{\theta}_{k}$) can also be estimated. For each resample and corresponding PRISM fit, predict the subgroup assignment using the observed data ($(Y, A, X)$) and again using the observed data, estimate the corresponding subgroup estimates, $\hat{\theta}_{k_r,obs}$. For resample $r$, the bootstrap estimates for the original identified subgroups ($k=0,...,K$) are calculated as:
+$$ \widehat{bias}_{rk} =  \frac{\sum_{k_r} n(k \cap k_r) \hat{(\theta_{k_r}}-\hat{\theta}_{k_r,obs})}{\sum_{k_r} n(k \cap k_r)}  $$
+INSERT TEXT and then move to FUNCTION for parameter / CI comparisons. The bootstrap smoothed estimate and standard error can then be calculated as:
 $$ \tilde{\theta}_{k} =  R^{-1} \sum_r \hat{\theta}_{rk}  $$
 $$ SE(\hat{\theta}_{k})_B = \sqrt{ R^{-1} \sum_r (\hat{\theta}_{rk}-\tilde{\theta}_{k})^2   } $$
 Bootstrap confidence intervals can then be formed, $\left[\hat{\theta}_{k} \pm  1.96*SE(\hat{\theta}_k)_B \right]$. Alternatively, the percentile method based on the bootstrap distribution can be used. Bootstrap calibration, where the alpha level is adjusted such that we obtain on average $1-\alpha$ coverage across all identified subgroups, is also implemented for PRISM (default: calibrate=TRUE). See Loh et al 2016 (GUIDE) for more details. Other metrics can also be calculated, such as bias (can be used to adjust initial subgroup estimates) and probability statements.
