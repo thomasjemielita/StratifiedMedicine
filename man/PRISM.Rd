@@ -123,7 +123,7 @@ at each step.
 ## Load library ##
 library(StratifiedMedicine)
 
-##### Examples: Continuous Outcome ###########
+## Examples: Continuous Outcome ##
 
 dat_ctns = generate_subgrp_data(family="gaussian")
 Y = dat_ctns$Y
@@ -156,6 +156,19 @@ plot(res3)
   # Plot of distributions and P(est>0) #
   plot(res_boot, type="resample", estimand = "E(Y|A=1)-E(Y|A=0)")+geom_vline(xintercept = 0)
   aggregate(I(est>0)~Subgrps, data=res_boot$resamp.dist, FUN="mean")
+}
+
+## Examples: Binary Outcome ##
+
+dat_ctns = generate_subgrp_data(family="binomial")
+Y = dat_ctns$Y
+X = dat_ctns$X
+A = dat_ctns$A
+
+# Run Default: filter_glmnet, ple_ranger, submod_glmtree, param_ple #
+res0 = PRISM(Y=Y, A=A, X=X)
+\donttest{
+plot(res0)
 }
 
 # Survival Data ##

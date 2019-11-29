@@ -48,8 +48,6 @@ A = dat_ctns$A
 
 # Counter-factual Random Forest (treatment-specific ranger models) #
 mod1 = ple_ranger(Y, A, X, Xtest=X)
-summary( predict(mod1, newdata=data.frame(A,X) ) ) # oob predictions for training
-summary( predict(mod1, newdata=data.frame(X) ) ) # new-predictions, no oob here
 
 }
 

@@ -4,8 +4,9 @@
 \alias{submod_ctree}
 \title{Subgroup Identification: Conditional Inference Trees (ctree)}
 \usage{
-submod_ctree(Y, A, X, Xtest, mu_train, minbucket = floor(dim(X)[1] *
-  0.1), maxdepth = 4, outcome_PLE = FALSE, family = "gaussian", ...)
+submod_ctree(Y, A, X, Xtest, mu_train, alpha = 0.05,
+  minbucket = floor(dim(X)[1] * 0.1), maxdepth = 4,
+  outcome_PLE = FALSE, family = "gaussian", ...)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
@@ -17,6 +18,8 @@ submod_ctree(Y, A, X, Xtest, mu_train, minbucket = floor(dim(X)[1] *
 \item{Xtest}{Test set}
 
 \item{mu_train}{Patient-level estimates (See PLE_models)}
+
+\item{alpha}{Significance level for variable selection (default=0.05)}
 
 \item{minbucket}{Minimum number of observations in a tree node.
 Default = floor( dim(train)[1]*0.05  )}
