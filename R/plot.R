@@ -221,7 +221,14 @@ plot_submod = function(object){
   ct <- object$submod.fit$mod
   # Extract parameter estimates #
   param.dat <- object$param.dat
-  param.dat <- param.dat[param.dat$Subgrps>0,]
+  if (length(unique(param.dat$Subgrps))==1){
+    param.dat = param.dat
+    param.dat$Subgrps=1
+  }
+  if (length(unique(param.dat$Subgrps))>1){
+    param.dat <- param.dat[param.dat$Subgrps>0,]
+  }
+  Subgrps <- unique(param.dat$Subgrps)
   if (object$param=="param_cox"){
     param.dat$est = exp(param.dat$est)
     param.dat$LCL = exp(param.dat$LCL)
