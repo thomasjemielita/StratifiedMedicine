@@ -32,8 +32,6 @@
 #'
 #' # Counter-factual Random Forest (treatment-specific ranger models) #
 #' mod1 = ple_ranger(Y, A, X, Xtest=X)
-#' summary( predict(mod1, newdata=data.frame(A,X) ) ) # oob predictions for training
-#' summary( predict(mod1, newdata=data.frame(X) ) ) # new-predictions, no oob here
 #'
 #' }
 #'
@@ -45,18 +43,30 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=TRUE, min.node.pct=0.10, family="gau
                       ...){
 
   if (is.null(A)){
-    mod <- ranger(Y ~ ., data = data.frame(Y, X), seed=1, 
+    mod <- ranger(Y ~ ., data = data.frame(Y, X), 
                    min.node.size = min.node.pct*dim(X)[2] )
     mod = list(mod=mod)
     # Prediction Function #
-    pred.fun = function(mod, X){
+    pred.fun = function(mod, X, tau=NULL){
       treetype = mod[[1]]$treetype
       if (treetype!="Survival"){
           mu_hat = data.frame(PLE = predict( mod$mod, X )$predictions )
       }
       if (treetype=="Survival"){
         preds = predict( mod$mod, X )
-        mu_hat = ranger_rmst(preds, X, trt=FALSE)
+        if (is.null(tau)){
+          tau.t <- max(preds$unique.death.times)
+        }
+        looper_rmst <- function(i, surv, time){
+          est.rmst <- rmst_calc(surv = surv[i,],
+                                time = time,
+                                tau=tau.t)
+          return(est.rmst)
+        }
+        rmst <- lapply(1:dim(X)[1], looper_rmst, surv=preds$survival,
+                       time=preds$unique.death.times)
+        mu_hat <- do.call(rbind, rmst)
+        mu_hat <- data.frame(PLE = mu_hat)
       }
       return(mu_hat)
     }
@@ -68,12 +78,12 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=TRUE, min.node.pct=0.10, family="gau
       train0 =  data.frame(Y=Y[A==0], X[A==0,])
       train1 =  data.frame(Y=Y[A==1], X[A==1,])
       # Trt 0 #
-      mod0 <- ranger(Y ~ ., data = train0, seed=1, min.node.size = min.node.pct*dim(train0)[1])
+      mod0 <- ranger(Y ~ ., data = train0, min.node.size = min.node.pct*dim(train0)[1])
       # Trt 1 #
-      mod1 <- ranger(Y ~ ., data = train1, seed=2, min.node.size = min.node.pct*dim(train1)[1])
+      mod1 <- ranger(Y ~ ., data = train1, min.node.size = min.node.pct*dim(train1)[1])
       mod = list(mod0=mod0, mod1=mod1)
       # Prediction Function #
-      pred.fun = function(mod, X){
+      pred.fun = function(mod, X, tau=NULL){
         treetype = mod[[1]]$treetype
         if (treetype!="Survival"){
           mu1_hat = predict( mod$mod1, X )$predictions
@@ -83,23 +93,42 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=TRUE, min.node.pct=0.10, family="gau
         if (treetype=="Survival"){
           pred1 = predict( mod$mod1, X ) 
           pred0 = predict( mod$mod0, X )
-          mu_hat = ranger_rmst(preds=list(pred1=pred1,pred0=pred0), X, trt=TRUE)
+          if (is.null(tau)){
+            tau.t <- min( max(pred0$unique.death.times), max(pred1$unique.death.times))
+          }
+          looper_rmst <- function(i, surv, time){
+            est.rmst <- rmst_calc(surv = surv[i,],
+                                  time = time,
+                                  tau=tau.t)
+            return(est.rmst)
+          }
+          rmst1 <- lapply(1:dim(X)[1], looper_rmst, surv=pred1$survival,
+                         time=pred1$unique.death.times)
+          rmst1 <- do.call(rbind, rmst1)
+          rmst0 <- lapply(1:dim(X)[1], looper_rmst, surv=pred0$survival,
+                          time=pred0$unique.death.times)
+          rmst0 <- do.call(rbind, rmst0)
+          mu_hat <- data.frame(mu1 = rmst1, mu0 = rmst0, PLE=rmst1-rmst0)
         }
         return(mu_hat)
       }
     }
     ## Single Random Forest Model: Generate A*X interactions manually ##
     if (!byTrt){
+      X = model.matrix(~., data = X )
+      X = X[,-1]
       ## Set up A*X interactions in training set ##
       X_inter = X*A
       colnames(X_inter) = paste(colnames(X), "_A", sep="")
       train.inter = data.frame(Y, A, X, X_inter)
       ## Fit RF ##
-      mod.inter <- ranger(Y ~ ., data = train.inter, seed=5,
+      mod.inter <- ranger(Y ~ ., data = train.inter,
                           min.node.size = min.node.pct*dim(train.inter)[1])
       mod = list(mod.inter=mod.inter)
       # Prediction Function #
-      pred.fun = function(mod, X){
+      pred.fun = function(mod, X, tau=NULL){
+        X = model.matrix(~., data = X )
+        X = X[,-1]
         mod.inter = mod$mod.inter
         treetype = mod$mod.inter$treetype
         X0 = data.frame(0, X, X*0)
@@ -112,13 +141,35 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=TRUE, min.node.pct=0.10, family="gau
           mu_hat$PLE = with(mu_hat, mu1-mu0)
         }
         if (treetype=="Survival"){
+          pred1 = predict( mod$mod.inter, X1 ) 
+          pred0 = predict( mod$mod.inter, X0 )
+          if (is.null(tau)){
+            tau.t <- min( max(pred0$unique.death.times), 
+                          max(pred1$unique.death.times)  )
+          }
+          looper_rmst <- function(i, surv, time){
+            est.rmst <- rmst_calc(surv = surv[i,],
+                                  time = time,
+                                  tau=tau.t)
+            return(est.rmst)
+          }
+          # A = 0 #
+          rmst0 <- lapply(1:dim(X)[1], looper_rmst, surv=pred0$survival,
+                          time=pred0$unique.death.times)
+          rmst0 <- do.call(rbind, rmst0)
+          # A = 1 #
+          rmst1 <- lapply(1:dim(X)[1], looper_rmst, surv=pred1$survival,
+                          time=pred1$unique.death.times)
+          rmst1 <- do.call(rbind, rmst1)
+          mu_hat <- data.frame(mu1 = rmst1, mu0 = rmst0)
+          mu_hat$PLE <- with(mu_hat, mu1 - mu0)
+          
           pred1 = predict( mod$mod.inter, data=X1) 
           pred0 = predict( mod$mod.inter, data=X0)
           mu_hat = ranger_rmst(preds=list(pred1=pred1, pred0=pred0), X, trt=TRUE)
         }
         return(mu_hat)
       }
-      summary(pred.fun(mod, X))
     }
   }
   res = list(mod=mod, pred.fun=pred.fun, A=A, X=X)
