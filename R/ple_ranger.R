@@ -8,7 +8,8 @@
 #' @param X Covariate space.
 #' @param Xtest Test set
 #' @param byTrt If TRUE, fit treatment-specific ranger models. If FALSE, fit a single ranger
-#' model with covariate space (X, A, X*A).
+#' model with covariate space (X, A, X*A). For "gaussian" or "binomial", default is TRUE.
+#' For "survival", default is FALSE. 
 #' @param min.node.pct Minimum sample size in forest nodes (n*min.node.pct)
 #' @param family Outcome type ("gaussian", "binomial"), default is "gaussian"
 #' @param ... Any additional parameters, not currently passed through.
@@ -39,9 +40,13 @@
 #' @seealso \code{\link{PRISM}}, \code{\link{ranger}}
 #'
 #### Counterfactual Forest: Ranger ####
-ple_ranger = function(Y, A, X, Xtest, byTrt=TRUE, min.node.pct=0.10, family="gaussian",
-                      ...){
+ple_ranger = function(Y, A, X, Xtest, family="gaussian", 
+                      byTrt=FALSE,
+                      min.node.pct=0.10,...){
 
+  if (is.Surv(Y) & family!="survival"){
+    byTrt = FALSE
+  }
   if (is.null(A)){
     mod <- ranger(Y ~ ., data = data.frame(Y, X), 
                    min.node.size = min.node.pct*dim(X)[2] )
@@ -163,10 +168,6 @@ ple_ranger = function(Y, A, X, Xtest, byTrt=TRUE, min.node.pct=0.10, family="gau
           rmst1 <- do.call(rbind, rmst1)
           mu_hat <- data.frame(mu1 = rmst1, mu0 = rmst0)
           mu_hat$PLE <- with(mu_hat, mu1 - mu0)
-          
-          pred1 = predict( mod$mod.inter, data=X1) 
-          pred0 = predict( mod$mod.inter, data=X0)
-          mu_hat = ranger_rmst(preds=list(pred1=pred1, pred0=pred0), X, trt=TRUE)
         }
         return(mu_hat)
       }
