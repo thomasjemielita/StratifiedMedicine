@@ -243,55 +243,6 @@ logLik.survreg <- function(object, ...){
   structure(object$loglik[2], df = sum(object$df), class = "logLik")
 }
 
-## Ranger: RMST estimation ##
-ranger_rmst = function(preds, X, trt){
-  
-  if (!trt){
-    times = preds$unique.death.times
-    mu_hat = preds$survival
-    # Order times and calculate RMST #
-    ids <- order(times)
-    ple_hat = NULL
-    dim.length = ifelse(is.null(X), preds$num.samples, dim(X)[1])
-    for (ii in 1:dim.length){
-      ## Trt 1 ##
-      y <- mu_hat[ii,]
-      rmst <- sum(diff(times[ids])*zoo::rollmean(y[ids],2))
-      # Store #
-      ple_hat = c(ple_hat, rmst )
-    }
-    mu_hat = data.frame(PLE=ple_hat)
-  }
-  if (trt){
-    pred0 = preds$pred0
-    pred1 = preds$pred1
-    times0 = pred0$unique.death.times
-    mu0_hat = pred0$survival
-    times1 = pred1$unique.death.times
-    mu1_hat = pred1$survival
-    # Order times and calculate RMST (A=1 vs A=0) #
-    id1 <- order(times1)
-    id0 <- order(times0)
-    ple_hat = NULL
-    dim.length = ifelse(is.null(X), pred0$num.samples, dim(X)[1])
-    for (ii in 1:dim.length){
-      ## Trt 1 ##
-      y <- mu1_hat[ii,]
-      rmst1 <- sum(diff(times1[id1])*zoo::rollmean(y[id1],2))
-      ## Trt 0 ##
-      y <- mu0_hat[ii,]
-      rmst0 <- sum(diff(times0[id0])*zoo::rollmean(y[id0],2))
-      # Store #
-      ple_hat = c(ple_hat, (rmst1-rmst0) )
-    }
-    ## take average of individual survival probabilities for mu1_hat and mu0_hat ##
-    mu1_hat = apply(mu1_hat, 1, mean)
-    mu0_hat = apply(mu0_hat, 1, mean)
-    mu_hat = data.frame(mu1 = mu1_hat, mu0 = mu0_hat, PLE = ple_hat)
-  }
-  return(mu_hat)
-}
-
 ### RMST Estimation: based on survRM2 ###
 rmst_single = function(time, status, tau=NULL){
   if (is.null(tau)){
