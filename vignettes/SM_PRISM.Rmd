@@ -28,18 +28,18 @@ $$ filter(Y, A, X) \longrightarrow (Y, A, X^{\star}) $$
 where $X^{\star}$ has potentially lower dimension than $X$.
 
 2. **Patient-level estimate (ple)**: Estimate counterfactual patient-level quantities, for example the individual treatment effect, $\theta(x) = E(Y|X=x,A=1)-E(Y|X=x,A=0)$. Formally:
-$$ ple(Y, A, X^{\star}) \longrightarrow \hat{\mathbf{\theta}}(X^{\star}) $$
-where $\hat{\mathbf{\theta}}(X^{\star})$ is the matrix of patient-level estimates.
+$$ ple(Y, A, X^{\star}) \longrightarrow \hat{\mathbf{\Theta}}(X^{\star}) $$
+where $\hat{\mathbf{\theta}}(X^{\star})$ is the matrix of patient-level estimates.For example, these could refer to counterfactual estimates of $[E(Y|A=1,X=x), E(Y|A=0, X=X), E(Y|A=1,X=x)-E(Y|A=0,X=x)]$, or $[RMST(Y|A=1,X=x), RMST(Y|A=0, X=X), RMST(Y|A=1,X=x)-RMST(Y|A=0,X=x)]$ where RMST refers to the restricted mean survival time.
 
 3. **Subgroup model (submod)**: Partition the data into subsets of patients (likely with similar treatment effects). Formally:
-$$ submod(Y, A, X^{\star}, \hat{\mathbf{\theta}}(X^{\star})) \longrightarrow \mathbf{S}(X^{\star}) $$
+$$ submod(Y, A, X^{\star}, \hat{\mathbf{\Theta}}(X^{\star})) \longrightarrow \mathbf{S}(X^{\star}) $$
 where $\mathbf{S}(X^{\star})$ is a distinct set of rules that define the $k=0,...,K$ discovered subgroups, for example $\mathbf{S}(X^{\star}) = \{X_1=0, X_2=0\}$. Note that subgroups could be formed using the observed outcomes, PLEs, or both. By default, $k=0$ corresponds to the overall population. 
 
 4. **Parameter estimation and inference (param)**: For the overall population and discovered subgroups, output point estimates and variability metrics. Formally:
 $$ param(Y, A, X^{\star}, \hat{\mathbf{\theta}}(X^{\star}), \mathbf{S}(X^{\star}) ) \longrightarrow \{ \hat{\theta}_{k}, SE(\hat{\theta}_k), CI_{\alpha}(\hat{\theta}_{k}), P(\hat{\theta}_{k} > c) \} \text{ for } k=0,...K $$
-where $\hat{\theta}_{k}$ is the point-estimate, $SE(\hat{\theta}_k)$ is the standard error, $CI_{\alpha}(\hat{\theta}_{k})$ is a two (or one) sided confidence interval with nominal coverage $1-\alpha$, and $P(\hat{\theta}_{k} > c)$ is a probability statement for some constant $c$ (ex: $c=0$). These outputs are crucial for Go-No-Go decision making. There can also be multiple parameter estimates by subgroup, such as a survival curve across fixed time points). 
+where $\hat{\theta}_{k}$ is the point-estimate, $SE(\hat{\theta}_k)$ is the standard error, $CI_{\alpha}(\hat{\theta}_{k})$ is a two (or one) sided confidence interval with nominal coverage $1-\alpha$, and $P(\hat{\theta}_{k} > c)$ is a probability statement for some constant $c$ (ex: $c=0$). These outputs are crucial for decision making and can also correspond to multiple estimates for each subgroup and overall. For binary/continuous outcomes, the default is to output point-estimates, SEs, CIs, and p-values for corresponding estimands $[E(Y|A=1,X=x), E(Y|A=0,X=X), E(Y|A=1,X=x)-E(Y|A=0,X=x)]$ in each discovered subgroup and overall. 
 
-Ultimately, PRISM provides information at the patient-level, the subgroup-level (if any), and the overall population. While there are defaults in place, the user can also input their own functions/model wrappers into the PRISM algorithm. We will demonstrate this later. PRISM can also run without treatment assignment (A=NULL); in this setting, the focus is on finding subgroups based on prognostic effects. Lastly, the below table describes default PRISM configurations for different family (gaussian, biomial, survival) and treatment (no treatment vs treatment) settings, including the associated estimands. Note that OLS refers to ordinary least squares (linear regression), GLM refers to generalized linear model, MOB refers to model based partitioning, and RMST refers to the restricted mean survival time. 
+Ultimately, PRISM provides information at the patient-level, the subgroup-level (if any), and the overall population. While there are defaults in place, the user can also input their own functions/model wrappers into the PRISM algorithm. We will demonstrate this later. PRISM can also be run without treatment assignment (A=NULL); in this setting, the focus is on finding subgroups based on prognostic effects. The below table describes default PRISM configurations for different family (gaussian, biomial, survival) and treatment (no treatment vs treatment) settings, including the associated estimands. Note that OLS refers to ordinary least squares (linear regression), GLM refers to generalized linear model, and MOB refers to model based partitioning (Zeileis, Hothorn, Hornik 2008; Seibold, Zeileis, Hothorn 2016). To summarise, default models include elastic net (Zou and Hastie 2005) for filtering, random forest ("ranger" R package) for patient-level /counterfactual estimation, and MOB (through "partykit" R package; lmtree, glmtree, and ctree (Hothorn, Hornik, Zeileis 2005)). When treatment assignment is provided, parameter estimation for continuous and binary outcomes involves averaging the patient-level estimates within the overall population and discovered subgroups (more details later). For survival outcomes, the cox regression hazard ratio (HR) or RMST (from the survR2 package) is used. 
 
 ```{r table_steps, echo=FALSE}
 library(knitr)
@@ -56,7 +56,7 @@ summ.table = data.frame( `Step` = c("estimand(s)", "filter", "ple", "submod", "p
                                        "Average of PLEs<br>(param_ple)"),    
                         `survival` = c("HR(A=1 vs A=0)",
                                        "Elastic Net<br>(filter_glmnet)", 
-                                       "Random Forest (ranger)<br>(ple_ranger)",
+                                       "Random Forest<br>(ple_ranger)",
                                        "MOB(weibull)<br>(submod_weibull)", 
                                        "Hazard Ratios<br>(param_HR)") )                        
                       
@@ -98,7 +98,7 @@ length(Y)
 table(A)
 dim(X)
 ```
-For continuous data (family="gaussian"), the default PRISM configuration is: filter_glmnet (elastic net), ple_ranger (treatment-specific random forest models), submod_lmtree (model-based partitioning with OLS loss), and param_ple (parameter estimation/inference through the PLEs). Jemielita and Mehrotra 2019 (in progress) show that this configuration performs quite well in terms of bias, efficiency, coverage, and selecting the right predictive covariates. To run PRISM, at a minimum, the outcome (Y), treatment (A), and covariates (X) must be provided. See below. 
+For continuous outcome data (family="gaussian"), the default PRISM configuration is: (1) filter_glmnet (elastic net), (2) ple_ranger (treatment-specific random forest models), (3) submod_lmtree (model-based partitioning with OLS loss), and (4) param_ple (parameter estimation/inference through the PLEs). Jemielita and Mehrotra 2019 (to appear) show that this configuration performs quite well in terms of bias, efficiency, coverage, and selecting the right predictive covariates. To run PRISM, at a minimum, the outcome (Y), treatment (A), and covariates (X) must be provided. See below. 
 
 ```{r default_ctns, warning=FALSE}
 # PRISM Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
@@ -109,11 +109,12 @@ plot(res0) # same as plot(res0, type="submod")
 # res1 = PRISM(Y=Y, A=A, X=X, family="gaussian", filter="filter_glmnet", 
 #              ple = "ple_ranger", submod = "submod_lmtree", param="param_ple")
 ```
-The summary gives a high-level overview of the findings (number of subgroups, parameter estimates, variables that survived the filter). The default Plot() function currently combines tree plots with parameter estimates using the "ggparty" package. We can also look directly for prognostic effects by specifying omitting A (treatment) from PRISM:
+The summary gives a high-level overview of the findings (number of subgroups, parameter estimates, variables that survived the filter). The default plot() function currently combines tree plots with parameter estimates using the "ggparty" package. We can als directly look for prognostic effects by specifying omitting A (treatment) from PRISM:
 
 ```{r default_ctns_prog, warning=FALSE}
 # PRISM Default: filter_glmnet, ple_ranger, submod_ctree, param_lm #
 res_prog = PRISM(Y=Y, X=X)
+# res_prog = PRISM(Y=Y, A=NULL, X=X) #also works
 summary(res_prog)
 plot(res_prog)
 ```
@@ -142,11 +143,13 @@ plot(res0$submod.fit$mod, terminal_panel = NULL)
 table(res0$out.train$Subgrps)
 table(res0$out.test$Subgrps)
 ```
-These estimates tend to be overly positive or negative, as the same data that trains the subgroup model is used to estimate the treatment effects. Resampling, such as bootstrapping, can generally be used for"de-biased" treatment effect estimates and obtain valid inference (more details later). An alternative approach without resampling is the use the PLEs for parameter estimation and inference (param="param_ple"). Currently, "param_ple" is only implemented for continuous and binary data. For the overall population and each subgroup ($s=0,,,.S$), parameter estimates are obtained by averaging the PLEs:
+These estimates tend to be overly positive or negative, as the same data that trains the subgroup model is used to estimate the treatment effects. Resampling, such as bootstrapping, can generally be used for "de-biased" treatment effect estimates and obtain valid inference (more details later). 
 
-$$ \hat{\theta}_k = \frac{1}{n_k} \sum_{i \in S_k} {\theta}(x_i) $$
-For SEs / CIs, we utilize "pseudo-outcomes":
-$$ Y^{\star}_i = \frac{AY - (A-P(A|X))E(Y|A=1,X)}{P(A|X)} - \frac{(1-A)Y - (A-P(A|X))E(Y|A=0,X)}{1-P(A|X)}$$
+For continuous and binary data, an alternative approach without resampling is to directly use the PLEs for parameter estimation and inference (param="param_ple"). Let $E(Y|X=x,A=a) = \mu(x, a)$ correspond to the outcome regression model(s) with estimates $\hat{\mu}(x, a)$. These estimates come directly from the fitted PLE model(s), in this case, treatment-specific random forest models. For the overall population and each discovered subgroup ($s=0,...,S$), the treatment effect (or risk difference) can be estimated by averaging the patient-specific treatment effect estimates (PLEs):
+$$ \hat{\theta}_k = \frac{1}{n_k} \sum_{i \in S_k} {\hat{\theta}}(x_i) $$
+where $\hat{\theta}}(x_i)=\hat{\mu}(a=1,x)-\hat{\mu}(a=0,x)$.  For SEs / CIs, we utilize "pseudo-outcomes":
+$$ Y^{\star}_i = \frac{AY - (A-\hat{\pi}(x))\hat{\mu}(a=1,x)}{\hat{\pi}(x)} - \frac{(1-A)Y - (A-\hat{\pi}(x))\hat{\mu}(a=0,x)}{1-\hat{\pi}(x)}$$
+where $\pi(x)=P(A=1|X)$, or the treatment assignment probability for an individual. In a randomized controlled trial, this can be replaced by the marginal probability, $P(A=1|X)$.
 Note that $E(Y^{\star}_i)=E(Y|A=1,X)-E(Y|A=0,X)$ and $E(n_k^{-1}\sum_{i \in S_k} Y^{\star}_i)= E(Y|A=1, X \in S_k)-E(Y|A=0, X \in S_k)$. Next:
 $$SE(\hat{\theta}_k) = \sqrt{  n_k ^ {-2} \sum_{i \in S_k} \left( Y^{\star}_i-\hat{\theta}(x_i) \right)^2   } $$
 CIs can then be formed using t- or Z-intervals. For example, a two-sided 95\% Z-interval, $CI_{\alpha}(\hat{\theta}_{k}) = \left[\hat{\theta}_{k} \pm  1.96*SE(\hat{\theta}_k) \right]$
@@ -211,6 +214,7 @@ surv.dat = GBSG2
 # Design Matrices ###
 Y = with(surv.dat, Surv(time, cens))
 X = surv.dat[,!(colnames(surv.dat) %in% c("time", "cens")) ]
+set.seed(6341)
 A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
 
 # Default: filter_glmnet ==> ple_ranger (estimates patient-level RMST(1 vs 0) ==> submod_weibull (MOB with Weibull) ==> param_cox (Cox regression)
@@ -233,14 +237,14 @@ Resampling methods are also a feature in PRISM. Bootstrap (resample="Bootstrap")
 Given observed data $(Y, A, X)$, fit $PRISM(Y,A,X)$. Based on the identified $k=1,..,K$ subgroups, output subgroup assignment for each patient. For the overall population and each subgroup ($k=0,...,K$), store the associated parameter estimates ($\hat{\theta}_{k}$).
 For $r=1,..,R$ resamples with replacement ($(Y_r, A_r, X_r)$), fit $PRISM(Y_r, A_r, X_r)$ and obtain new subgroup assignments $k_r=1,..,K_r$ with associated parameter estimates $\hat{\theta}_{k_r}$. For resample $r$, the bootstrap estimates for the original identified subgroups ($k=0,...,K$) are calculated as:
 $$ \hat{\theta}_{rk} =  \frac{\sum_{k_r} n(k \cap k_r) \hat{\theta_{k_r}}}{\sum_{k_r} n(k \cap k_r)}  $$
-where $n(k \cap k_r)$ is the number of subjects in the $k$ who are also in the bootstrap subgroup $k_r$. Bootstrap bias of the observed subgroup estimates ($\hat{\theta}_{k}$) can also be estimated. For each resample and corresponding PRISM fit, predict the subgroup assignment using the observed data ($(Y, A, X)$) and again using the observed data, estimate the corresponding subgroup estimates, $\hat{\theta}_{k_r,obs}$. For resample $r$, the bootstrap estimates for the original identified subgroups ($k=0,...,K$) are calculated as:
-$$ \widehat{bias}_{rk} =  \frac{\sum_{k_r} n(k \cap k_r) \hat{(\theta_{k_r}}-\hat{\theta}_{k_r,obs})}{\sum_{k_r} n(k \cap k_r)}  $$
-INSERT TEXT and then move to FUNCTION for parameter / CI comparisons. The bootstrap smoothed estimate and standard error can then be calculated as:
-$$ \tilde{\theta}_{k} =  R^{-1} \sum_r \hat{\theta}_{rk}  $$
-$$ SE(\hat{\theta}_{k})_B = \sqrt{ R^{-1} \sum_r (\hat{\theta}_{rk}-\tilde{\theta}_{k})^2   } $$
-Bootstrap confidence intervals can then be formed, $\left[\hat{\theta}_{k} \pm  1.96*SE(\hat{\theta}_k)_B \right]$. Alternatively, the percentile method based on the bootstrap distribution can be used. Bootstrap calibration, where the alpha level is adjusted such that we obtain on average $1-\alpha$ coverage across all identified subgroups, is also implemented for PRISM (default: calibrate=TRUE). See Loh et al 2016 (GUIDE) for more details. Other metrics can also be calculated, such as bias (can be used to adjust initial subgroup estimates) and probability statements.
+where $n(k \cap k_r)$ is the number of subjects in the $k$ who are also in the bootstrap subgroup $k_r$. The bootstrap smoothed estimate and standard error, as well as probability statements, are calculated as:
+$$ \tilde{\theta}_{k} =  \frac{1}{R}  \sum_r \hat{\theta}_{rk}  $$
+$$ SE(\hat{\theta}_{k})_B = \sqrt{ \frac{1}{R} \sum_r (\hat{\theta}_{rk}-\tilde{\theta}_{k})^2   } $$
+$$ \hat{P}(\hat{\theta}_{k}>c) =  \frac{1}{R}  \sum_r I(\hat{\theta}_{rk}>c)  $$
 
-Returning to the survival example, we now re-run PRISM with 50 bootstrap resamples. The smoothed bootstrap estimates, bootstrap standard errors, bootstrap bias, percentile CI, and calibrated CI correspond to "est_resamp", "SE_resamp", "bias.boot", "LCL.pct"/"UCL.pct", and "LCL.calib"/"UCL.calib" respectively. We can also plot a density plot of the bootstrap distributions through the plot(...,type="resample") option.
+Bootstrap confidence intervals can then be formed, $\left[\hat{\theta}_{k} \pm  1.96*SE(\hat{\theta}_k)_B \right]$. Alternatively, the percentile method based on the bootstrap distribution can be used. Bootstrap calibration, where the alpha level is adjusted such that we obtain on average $1-\alpha$ coverage across all identified subgroups, is also implemented for PRISM (default: calibrate=TRUE). See Loh et al 2016 (GUIDE) for more details. Importantly, for calibration to be effective,$\hat{\theta}_{k}$ should be relatively unbiased. Other metrics are also automatically calculated, such as bootstrap bias (can be used to adjust initial subgroup estimates).
+
+Returning to the survival example, we now re-run PRISM with 50 bootstrap resamples (for increased accuracy, use >1000). The smoothed bootstrap estimates, bootstrap standard errors, bootstrap bias, percentile CI, and calibrated CI correspond to "est_resamp", "SE_resamp", "bias.boot", "LCL.pct"/"UCL.pct", and "LCL.calib"/"UCL.calib" respectively. We can also plot a density plot of the bootstrap distributions through the plot(...,type="resample") option.
 
 ```{r default_boot, warning=FALSE, message=FALSE}
 library(ggplot2)
