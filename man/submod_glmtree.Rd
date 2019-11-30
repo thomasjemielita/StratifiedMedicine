@@ -54,10 +54,12 @@ Y = dat_bin$Y
 X = dat_bin$X
 A = dat_bin$A
 
+\donttest{
 res_glmtree1 = submod_glmtree(Y, A, X, Xtest=X)
 res_glmtree2 = submod_glmtree(Y, A, X, Xtest=X, link="logit")
 plot(res_glmtree1$mod)
 plot(res_glmtree2$mod)
+}
 
 
 }

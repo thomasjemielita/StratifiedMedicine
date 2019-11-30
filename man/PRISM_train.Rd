@@ -31,9 +31,10 @@ match X.}
 covariates than X. Default is "filter_glmnet", "None" uses no filter.}
 
 \item{ple}{PLE (Patient-Level Estimate) function. Maps the observed data to PLEs.
-(Y,A,X) ==> PLE(X). Default for "gaussian"/"binomial" is "ple_ranger"
-(treatment-specific random forest models). The default for "survival" is
-"ple_glmnet" (elastic net (glmnet) cox regression). "None" uses no ple.}
+(Y,A,X) ==> PLE(X). Default for is "ple_ranger". For continuous/binomial outcome data,
+this fits treatment specific random forest models. For survival outcome data, this 
+fits a single forest, with expanded covariate space (A, X, X*A). 
+(treatment-specific random forest models).  "None" uses no ple.}
 
 \item{submod}{Subgroup identification model function. Maps the observed data and/or PLEs
 to subgroups. Default of "gaussian"/"binomial" is "submod_lmtree" (MOB with OLS loss).
