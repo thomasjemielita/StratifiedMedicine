@@ -4,8 +4,8 @@
 \alias{ple_ranger}
 \title{Patient-level Estimates: Ranger}
 \usage{
-ple_ranger(Y, A, X, Xtest, byTrt = TRUE, min.node.pct = 0.1,
-  family = "gaussian", ...)
+ple_ranger(Y, A, X, Xtest, family = "gaussian", byTrt = FALSE,
+  min.node.pct = 0.1, ...)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
@@ -16,12 +16,13 @@ ple_ranger(Y, A, X, Xtest, byTrt = TRUE, min.node.pct = 0.1,
 
 \item{Xtest}{Test set}
 
+\item{family}{Outcome type ("gaussian", "binomial"), default is "gaussian"}
+
 \item{byTrt}{If TRUE, fit treatment-specific ranger models. If FALSE, fit a single ranger
-model with covariate space (X, A, X*A).}
+model with covariate space (X, A, X*A). For "gaussian" or "binomial", default is TRUE.
+For "survival", default is FALSE.}
 
 \item{min.node.pct}{Minimum sample size in forest nodes (n*min.node.pct)}
-
-\item{family}{Outcome type ("gaussian", "binomial"), default is "gaussian"}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
