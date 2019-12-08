@@ -4,10 +4,11 @@
 \alias{ple_bart}
 \title{Patient-level Estimates: BART}
 \usage{
-ple_bart(Y, A, X, Xtest, family = "gaussian", ...)
+ple_bart(Y, A, X, Xtest, family = "gaussian", sparse = FALSE, K = 10,
+  ...)
 }
 \arguments{
-\item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
+\item{Y}{The outcome variable. Must be numeric.}
 
 \item{A}{Treatment variable. (a=1,...A)}
 
@@ -15,7 +16,16 @@ ple_bart(Y, A, X, Xtest, family = "gaussian", ...)
 
 \item{Xtest}{Test set}
 
-\item{family}{Outcome type ("gaussian", "binomial"), default is "gaussian"}
+\item{family}{Outcome type ("gaussian", "binomial"), default is "gaussian"
+which uses wbart (BART for continuous outcomes). Probit-based BART ("pbart") is
+used for family="binomial"}
+
+\item{sparse}{Whether to perform variable selection based on sparse Dirichlet prior
+instead of uniform. See "gbart" in the BART R package for more details as well as
+Linero 2016. Default is FALSE.}
+
+\item{K}{For survival, coarse times per the quantiles 1/K,..,K/K. For AFT (abart),
+K=10. For more accurate survival predictions, set K=100 (default in abart).}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
