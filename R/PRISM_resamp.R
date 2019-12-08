@@ -38,6 +38,7 @@ PRISM_resamp <- function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
   if (length(PRISM.fit$filter.vars)>0 & prefilter_resamp == TRUE){
     obs.data <- obs.data[, colnames(obs.data) %in%
                           c("id", "Y", "A", PRISM.fit$filter.vars, "Subgrps")]
+    filter = "None"
   }
   
   # Generate resampling indices #
