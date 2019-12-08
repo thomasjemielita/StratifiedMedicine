@@ -235,21 +235,23 @@ Resampling methods are also a feature in PRISM. Bootstrap (resample="Bootstrap")
 **Bootstrap Resampling**
 
 Given observed data $(Y, A, X)$, fit $PRISM(Y,A,X)$. Based on the identified $k=1,..,K$ subgroups, output subgroup assignment for each patient. For the overall population and each subgroup ($k=0,...,K$), store the associated parameter estimates ($\hat{\theta}_{k}$).
-For $r=1,..,R$ resamples with replacement ($(Y_r, A_r, X_r)$), fit $PRISM(Y_r, A_r, X_r)$ and obtain new subgroup assignments $k_r=1,..,K_r$ with associated parameter estimates $\hat{\theta}_{k_r}$. For resample $r$, the bootstrap estimates for the original identified subgroups ($k=0,...,K$) are calculated as:
-$$ \hat{\theta}_{rk} =  \frac{\sum_{k_r} n(k \cap k_r) \hat{\theta_{k_r}}}{\sum_{k_r} n(k \cap k_r)}  $$
-where $n(k \cap k_r)$ is the number of subjects in the $k$ who are also in the bootstrap subgroup $k_r$. The bootstrap smoothed estimate and standard error, as well as probability statements, are calculated as:
+For $r=1,..,R$ resamples with replacement ($(Y_r, A_r, X_r)$), fit $PRISM(Y_r, A_r, X_r)$ and obtain new subgroup assignments $k_r=1,..,K_r$ with associated parameter estimates $\hat{\theta}_{k_r}$. For resample $r$, the bootstrap estimates and SEs for the original identified subgroups ($k=0,...,K$) are calculated respectively as:
+$$ \hat{\theta}_{rk} =  \sum_{k_r} w_{k_r} \hat{\theta_{k_r}}  $$
+$$ SE(\hat{\theta})_{rk} =  \sqrt{ \sum_{k_r} w_{k_r}^2 SE(\hat{\theta}_{k_r})^2 }  $$
+where $w_{k_r} = n(k \cap k_r)/ \sum_{k_r} n(k \cap k_r)$ and $n(k \cap k_r)$ is the number of subjects in the original subgroup $k$ who are also in the bootstrap subgroup $k_r$. The bootstrap smoothed estimate and standard error, as well as probability statements, are calculated as:
 $$ \tilde{\theta}_{k} =  \frac{1}{R}  \sum_r \hat{\theta}_{rk}  $$
 $$ SE(\hat{\theta}_{k})_B = \sqrt{ \frac{1}{R} \sum_r (\hat{\theta}_{rk}-\tilde{\theta}_{k})^2   } $$
 $$ \hat{P}(\hat{\theta}_{k}>c) =  \frac{1}{R}  \sum_r I(\hat{\theta}_{rk}>c)  $$
 
-Bootstrap confidence intervals can then be formed, $\left[\hat{\theta}_{k} \pm  1.96*SE(\hat{\theta}_k)_B \right]$. Alternatively, the percentile method based on the bootstrap distribution can be used. Bootstrap calibration, where the alpha level is adjusted such that we obtain on average $1-\alpha$ coverage across all identified subgroups, is also implemented for PRISM (default: calibrate=TRUE). See Loh et al 2016 (GUIDE) for more details. Importantly, for calibration to be effective,$\hat{\theta}_{k}$ should be relatively unbiased. Other metrics are also automatically calculated, such as bootstrap bias (can be used to adjust initial subgroup estimates).
+Bootstrap confidence intervals can then be formed, $\left[\hat{\theta}_{k} \pm  1.96*SE(\hat{\theta}_k)_B \right]$. Alternatively, the percentile method based on the bootstrap distribution can be used. Bootstrap calibration, where the alpha level is adjusted such that we obtain on average $1-\alpha$ coverage across all identified subgroups, is also implemented for PRISM (default: calibrate=FALSE). See Loh et al 2016 (GUIDE) for more details. Importantly, for calibration to be effective,$\hat{\theta}_{k}$ should be relatively unbiased. Other metrics are also automatically calculated, such as bootstrap bias (can be used to adjust initial subgroup estimates).
 
 Returning to the survival example, we now re-run PRISM with 50 bootstrap resamples (for increased accuracy, use >1000). The smoothed bootstrap estimates, bootstrap standard errors, bootstrap bias, percentile CI, and calibrated CI correspond to "est_resamp", "SE_resamp", "bias.boot", "LCL.pct"/"UCL.pct", and "LCL.calib"/"UCL.calib" respectively. We can also plot a density plot of the bootstrap distributions through the plot(...,type="resample") option.
 
 ```{r default_boot, warning=FALSE, message=FALSE}
 library(ggplot2)
 library(dplyr)
-res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, ple = "None")
+res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, ple = "None", 
+                 calibrate=TRUE)
 # Plot of distributions #
 plot(res_boot, type="resample", estimand = "HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
 ```
@@ -260,7 +262,11 @@ Permutation resampling (resample="Permutation") follows the same general procedu
 
 **Cross-Validation**
 
-Cross-validation resampling (resample="CV") also follows the same general procedure as bootstrap resampling. Given observed data $(Y, A, X)$, fit $PRISM(Y,A,X)$. Based on the identified $k=1,..,K$ subgroups, output subgroup assignment for each patient. Next, split the data into $R$ folds (ex: 5). For fold $r$, fit PRISM on $(Y[-r],A[-r], X[-r])$ and predict the subgroup assignments for patients in fold $r$. The data in fold $r$ is then used to obtain parameter estimates for each subgroup, $\hat{\theta}_{k_r}$. Estimates for the original subgroups are then obtained using the same formula as with the bootstrap. This is repeated for each fold, and "CV-corrected" subgroup parameter estimates can be obtained by averaging the fold specific subgroup estimates. 
+Cross-validation resampling (resample="CV") also follows the same general procedure as bootstrap resampling. Given observed data $(Y, A, X)$, fit $PRISM(Y,A,X)$. Based on the identified $k=1,..,K$ subgroups, output subgroup assignment for each patient. Next, split the data into $R$ folds (ex: 5). For fold $r$ with sample size $n_r$, fit PRISM on $(Y[-r],A[-r], X[-r])$ and predict the patient-level estimates and subgroup assignments for patients in fold $r$. The data in fold $r$ is then used to obtain parameter estimates for each subgroup, $\hat{\theta}_{k_r}$. For parameter estimation models that involve nuisance parameters (i.e. average of individual treatment effects (param_ple) or double robust estimators (param_dr)), this involves For fold $r$, estimates and SEs the original subgroups ($k=1,...,K$) are then obtained using the same formula as with bootstrap resampling, again, denoted as ($\hat{\theta_{rk}}$, $SE(\hat{\theta_{rk}})$). This is repeated for each fold and "CV" estimates and SEs are calculated for each identified subgroup. Let $w_r = n_r / sum(n_r)$, then:
+
+$$ \hat{\theta}_{k,CV} = \sum w_r * \hat{\theta}_{rk} $$
+$$ SE(\hat{\theta}_k)_{CV} =  \sqrt{ \sum_{r} w_{r}^2 SE(\hat{\theta}_{rk})^2 }$$
+CV-based confidence intervals can then be formed, $\left[\hat{\theta}_{k} \pm  1.96*SE(\hat{\theta}_k)_B \right]$. 
 
 # Conclusion
 
