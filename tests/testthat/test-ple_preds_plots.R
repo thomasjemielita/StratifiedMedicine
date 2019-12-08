@@ -23,7 +23,7 @@ test_that("Test whether individual ple models run alone and within PRISM; check 
   }
   
   # Loop through ple options #
-  ple.vec = c("ple_ranger", "ple_bart", "ple_causal_forest", "ple_glmnet")
+  ple.vec = c("ple_ranger", "ple_bart", "ple_glmnet")
   eql.dat = NULL
   for (ple in ple.vec){
     eqlz <- ple_checker(Y=Y, A=A, X=Xstar,ple=ple)
