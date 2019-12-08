@@ -5,7 +5,7 @@
 \title{plot.PRISM}
 \usage{
 \method{plot}{PRISM}(x, type = "submod", estimand = NULL,
-  grid.data = NULL, grid.thres = ">0", ...)
+  grid.data = NULL, grid.thres = ">0", est.resamp = TRUE, ...)
 }
 \arguments{
 \item{x}{PRISM object}
@@ -27,6 +27,11 @@ be continuous). This is required for type="heatmap". Default=NULL.}
 \item{grid.thres}{Threshold for PLE, ex: I(PLE>thres). Used to estimate P(PLE>thres) for
 type="heatmap". Default is ">0". Direction can be reversed and can include equality
 sign (ex: "<=").}
+
+\item{est.resamp}{Should plot present resampling based estimates? Default=TRUE if 
+bootstrap or CV  based resampling is used. Only applicable for type="submod". 
+If bootstrap calibration is used, calibrated CIs are presented. If no calibration,
+then percentile Cis are presented with the smoothed bootstrap point-estimates.}
 
 \item{...}{Additional arguments (currently ignored).}
 }
