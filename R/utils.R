@@ -202,30 +202,38 @@ resamp_metrics = function(param.dat, resamp_param, resamp_calib, resample){
       }
     }
     for (sub in unique(final_ests$Subgrps)){
-      if (sub<=0){ alpha = ifelse(calibrate, alpha.ovrl_c, alpha_ovrl) }
-      if (sub>0 ){ alpha = ifelse(calibrate, alpha.s_c, alpha_s) }
+      if (sub<=0){ alpha = alpha_ovrl }
+      if (sub>0 ){ alpha = alpha_s }
       hold = final_ests[final_ests$Subgrps==sub,]
       hold.R = resamp_param[resamp_param$Subgrps==sub & resamp_param$estimand==e,]
       est0 = hold$est
       est.vec = hold.R$est
-      est.R = mean(hold.R$est, na.rm=TRUE)
-      bias.R = mean(hold.R$bias, na.rm=TRUE)
-      final_ests$est_resamp[final_ests$Subgrps==sub] = est.R
-      final_ests$SE_resamp[final_ests$Subgrps==sub] = sd( est.vec, na.rm=TRUE)
-      ## Permutation p-value ##
+      ## Permutation (est, SE, p-value) ##
       if (resample=="Permutation"){
+        final_ests$est_resamp[final_ests$Subgrps==sub] = mean(hold.R$est, na.rm=TRUE)
+        final_ests$SE_resamp[final_ests$Subgrps==sub] = sd( est.vec, na.rm=TRUE)
         final_ests$pval_perm[final_ests$Subgrps==sub] =
           (sum(abs(est.vec)>abs(est0), na.rm=TRUE) + 1 ) / (length(na.omit(est.vec))+1)
       }
-      ## Bootstrap Covariance/acceleration/bias/smoothed SE ##
+      ## Bootstrap (smoothed est, SE, bias, pct CI) ##
       if (resample=="Bootstrap"){
-        # bias #
-        final_ests$bias.boot[final_ests$Subgrps==sub] = bias.R
-        ### Confidence Intervals (Pct) ###
+        final_ests$est_resamp[final_ests$Subgrps==sub] = mean(hold.R$est, na.rm=TRUE)
+        final_ests$SE_resamp[final_ests$Subgrps==sub] = sd( est.vec, na.rm=TRUE)
+        final_ests$bias.boot[final_ests$Subgrps==sub] = mean(hold.R$bias, na.rm=TRUE)
         quants = as.numeric(
           quantile(est.vec, probs=c(alpha/2, (1-alpha/2)), na.rm = TRUE) )
         final_ests$LCL.pct[final_ests$Subgrps==sub] = quants[1]
         final_ests$UCL.pct[final_ests$Subgrps==sub] = quants[2]
+      }
+      ## Cross-validation (Cross-fitting estimate) ##
+      if (resample=="CV"){
+        N.tot = sum(hold.R$N)
+        est.CF <- with(hold.R, weighted.mean(est, N))
+        SE.CF <- with(hold.R, sqrt(  sum( (N/N.tot)^2*SE^2) ) )
+        final_ests$est_resamp[final_ests$Subgrps==sub] = est.CF
+        final_ests$SE_resamp[final_ests$Subgrps==sub] = SE.CF
+        final_ests$LCL.CV[final_ests$Subgrps==sub] = est.CF - qnorm(1-alpha/2)*SE.CF
+        final_ests$UCL.CV[final_ests$Subgrps==sub] = est.CF + qnorm(1-alpha/2)*SE.CF
       }
     }
     return(final_ests)
