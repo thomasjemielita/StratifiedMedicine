@@ -24,9 +24,9 @@ param_dr(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...)
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
-Data-set with parameter estimates (average treatment effect) and corresponding
-variability metrics, for overall and subgroups. Subgrps=0 corresponds to the overall
-population by default.
+Data-set with parameter estimates and corresponding variability metrics, 
+for overall and subgroups. Subgrps=0 corresponds to the overall population by 
+default.
  \itemize{
   \item param.dat - Parameter estimates and variability metrics (est, SE,
   LCL/UCL = lower/upper confidence limits, pval = p-value).
@@ -34,8 +34,11 @@ population by default.
 }
 \description{
 For each identified subgroup and in the overall population, use the double robust
-estimator (Funk et al 2011). Usable for continuous and binary outcomes, specifically
-for the estimand E(Y|X,A=1)-E(Y|X,A=0).
+estimator (Funk et al 2011). For continuous and binary outcomes, this outputs 
+estimates for E(Y|A=1), E(Y|A=0), and E(Y|A=1)-E(Y|A=0). For survival, point 
+estimates correspond to E(logT|A=1), E(logT|A=0), and E(logT|A=1)-E(logT|A=0). 
+Here, patient-level estimates (mu_hat) must correspond to the accelerated failure 
+time (AFT) survival model framework (default uses AFT-based bart, "abart").
 }
 \examples{
 library(StratifiedMedicine)

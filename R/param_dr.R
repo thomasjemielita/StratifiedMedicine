@@ -1,8 +1,11 @@
 #' Parameter Estimation: Double-robust estimator
 #'
 #' For each identified subgroup and in the overall population, use the double robust
-#' estimator (Funk et al 2011). Usable for continuous and binary outcomes, specifically
-#' for the estimand E(Y|X,A=1)-E(Y|X,A=0).
+#' estimator (Funk et al 2011). For continuous and binary outcomes, this outputs 
+#' estimates for E(Y|A=1), E(Y|A=0), and E(Y|A=1)-E(Y|A=0). For survival, point 
+#' estimates correspond to E(logT|A=1), E(logT|A=0), and E(logT|A=1)-E(logT|A=0). 
+#' Here, patient-level estimates (mu_hat) must correspond to the accelerated failure 
+#' time (AFT) survival model framework (default uses AFT-based bart, "abart").
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -13,9 +16,9 @@
 #' @param alpha_s Two-sided alpha level at subgroup
 #' @param ... Any additional parameters, not currently passed through.
 #'
-#' @return Data-set with parameter estimates (average treatment effect) and corresponding
-#' variability metrics, for overall and subgroups. Subgrps=0 corresponds to the overall
-#' population by default.
+#' @return Data-set with parameter estimates and corresponding variability metrics, 
+#' for overall and subgroups. Subgrps=0 corresponds to the overall population by 
+#' default.
 #'  \itemize{
 #'   \item param.dat - Parameter estimates and variability metrics (est, SE,
 #'   LCL/UCL = lower/upper confidence limits, pval = p-value).
@@ -49,14 +52,23 @@ param_dr = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
   if (is.null(A)){
     stop("param_dr not applicable for no treatment (A=NULL)") 
   }
-  indata = data.frame(Y=Y, A=A, X)
+  if (is.Surv(Y)){
+    estimands <- c("E(logT|A=0)", "E(logT|A=1)", "E(logT|A=1)-E(logT|A=0)")
+  }
+  if (!is.Surv(Y)){
+    estimands <- c("E(Y|A=0)", "E(Y|A=1)", "E(Y|A=1)-E(Y|A=0)")
+  }
+  indata <- data.frame(Y=Y, A=A, X)
   # Subgroup and overall estimates #
-  looper = function(s, alpha){
-    Y.s = indata$Y[Subgrps %in% s]
-    A.s = indata$A[Subgrps %in% s]
-    n.s = length(Y.s)
-    probA = mean(A.s)
-    mu.s = mu_hat[Subgrps %in% s,]
+  looper <- function(s, alpha){
+    Y.s <- indata$Y[Subgrps %in% s]
+    if (is.Surv(Y)){
+      Y.s = log(Y.s[,1])
+    }
+    A.s <- indata$A[Subgrps %in% s]
+    n.s <- length(Y.s)
+    probA <- mean(A.s)
+    mu.s <- mu_hat[Subgrps %in% s,]
     # EIF ###
     eif.0 = ( (1-A.s)*Y.s + (A.s-probA)*mu.s$mu0 ) / (1-probA)
     eif.1 = ( A.s*Y.s - (A.s-probA)*mu.s$mu1 )/ probA
@@ -72,9 +84,9 @@ param_dr = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
     LCL = est-qt( (1-alpha/2), df=n.s-1 )*SE
     UCL = est+qt( (1-alpha/2), df=n.s-1 )*SE
     pval = 2*pt(-abs(est/SE), df=n.s-1)
-    summ = data.frame( Subgrps = ifelse(n.s==length(Y), 0, s),
+    summ = data.frame( Subgrps = ifelse( mean(S_levels %in% s)==1, 0, s),
                        N = n.s, 
-                       estimand = c("E(Y|A=0)", "E(Y|A=1)", "E(Y|A=1)-E(Y|A=0)"),
+                       estimand = estimands,
                        est, SE, LCL, UCL, pval)
     return( summ )
   }
