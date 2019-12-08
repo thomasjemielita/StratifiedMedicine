@@ -43,13 +43,13 @@
 #' @param prefilter_resamp Option to filter the covariate space (based on filter model) prior
 #' to resampling. Default=FALSE.
 #' @param resample Resampling method for resample-based estimates and variability metrics.
-#' Options include "Boostrap", "Permutation", and "CV" (cross-validation). 
+#' Options include "Bootstrap", "Permutation", and "CV" (cross-validation). 
 #' Default=NULL (No resampling).
 #' @param stratify Stratified resampling (Default=TRUE)
 #' @param R Number of resamples (default=NULL; R=100 for Permutation/Bootstrap and 
 #' R=5 for CV)
 #' @param calibrate Bootstrap calibration for nominal alpha (Loh et al 2016).
-#' Default=TRUE which outputs the calibrated alpha level and calibrated CIs for 
+#' Default=FALSE. For TRUE, outputs the calibrated alpha level and calibrated CIs for 
 #' the overall population and subgroups. Not applicable for permutation/CV resampling.
 #' @param alpha.mat Grid of alpha values for calibration. Default=NULL, which uses
 #' seq(alpha/1000,alpha,by=0.005) for alpha_ovrl/alpha_s. 
@@ -171,7 +171,7 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
                  filter.hyper=NULL, ple.hyper=NULL, submod.hyper = NULL,
                  param.hyper = NULL, bayes = NULL, prefilter_resamp=FALSE,
                  resample = NULL, stratify=TRUE,
-                 R = NULL, calibrate=TRUE, alpha.mat=NULL,
+                 R = NULL, calibrate=FALSE, alpha.mat=NULL,
                  filter.resamp = NULL, ple.resamp = NULL,
                  submod.resamp = NULL, verbose=TRUE,
                  verbose.resamp = FALSE, seed=777){
@@ -296,7 +296,7 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
               out.train = out.train,
               out.test = data.frame(Xtest, Subgrps=res0$Subgrps.test),
               Rules=res0$Rules,
-              param.dat = param.dat, resamp.dist = resamp.dist, 
+              param.dat = param.dat, resample=resample, resamp.dist = resamp.dist, 
               resamp.calib = resamp.calib,
               bayes.fun = bayes.fun, family = family,
               filter = filter, ple = ple, submod=submod, param=param,

@@ -9,7 +9,7 @@ PRISM(Y, A = NULL, X, Xtest = NULL, family = "gaussian",
   param = NULL, alpha_ovrl = 0.05, alpha_s = 0.05,
   filter.hyper = NULL, ple.hyper = NULL, submod.hyper = NULL,
   param.hyper = NULL, bayes = NULL, prefilter_resamp = FALSE,
-  resample = NULL, stratify = TRUE, R = NULL, calibrate = TRUE,
+  resample = NULL, stratify = TRUE, R = NULL, calibrate = FALSE,
   alpha.mat = NULL, filter.resamp = NULL, ple.resamp = NULL,
   submod.resamp = NULL, verbose = TRUE, verbose.resamp = FALSE,
   seed = 777)
@@ -70,7 +70,7 @@ Default=NULL.}
 to resampling. Default=FALSE.}
 
 \item{resample}{Resampling method for resample-based estimates and variability metrics.
-Options include "Boostrap", "Permutation", and "CV" (cross-validation). 
+Options include "Bootstrap", "Permutation", and "CV" (cross-validation). 
 Default=NULL (No resampling).}
 
 \item{stratify}{Stratified resampling (Default=TRUE)}
@@ -79,7 +79,7 @@ Default=NULL (No resampling).}
 R=5 for CV)}
 
 \item{calibrate}{Bootstrap calibration for nominal alpha (Loh et al 2016).
-Default=TRUE which outputs the calibrated alpha level and calibrated CIs for 
+Default=FALSE. For TRUE, outputs the calibrated alpha level and calibrated CIs for 
 the overall population and subgroups. Not applicable for permutation/CV resampling.}
 
 \item{alpha.mat}{Grid of alpha values for calibration. Default=NULL, which uses
