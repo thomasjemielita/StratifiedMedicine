@@ -7,7 +7,7 @@
 param_dr(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...)
 }
 \arguments{
-\item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
+\item{Y}{The outcome variable. Must be numeric (binary, continuous)}
 
 \item{A}{Treatment variable. (a=1,...A)}
 
@@ -35,10 +35,7 @@ default.
 \description{
 For each identified subgroup and in the overall population, use the double robust
 estimator (Funk et al 2011). For continuous and binary outcomes, this outputs 
-estimates for E(Y|A=1), E(Y|A=0), and E(Y|A=1)-E(Y|A=0). For survival, point 
-estimates correspond to E(logT|A=1), E(logT|A=0), and E(logT|A=1)-E(logT|A=0). 
-Here, patient-level estimates (mu_hat) must correspond to the accelerated failure 
-time (AFT) survival model framework (default uses AFT-based bart, "abart").
+estimates for E(Y|A=1), E(Y|A=0), and E(Y|A=1)-E(Y|A=0).
 }
 \examples{
 library(StratifiedMedicine)

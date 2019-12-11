@@ -32,8 +32,9 @@ for overall and subgroups. Subgrps=0 corresponds to the overall population by de
   }
 }
 \description{
-Parameter estimation and inference through patient-level estimates. Usable for continuous
-and binary outcomes (possibly survival, needs further evaluation).
+For each identified subgroup and in the overall population, average the patient-level
+estimates of E(Y|A=1), E(Y|A=0), and E(Y|A=1)-E(Y|A=0). Pseudo-outcomes are 
+used for variance estimates (Jemielita and Mehrotra 2019).
 }
 \examples{
 library(StratifiedMedicine)
