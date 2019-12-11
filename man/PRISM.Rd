@@ -184,14 +184,14 @@ plot(res0)
   set.seed(513)
   A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
 
-  # Default: PRISM: glmnet ==> MOB (Weibull) ==> Cox; bootstrapping posterior prob/inference #
-  res_weibull1 = PRISM(Y=Y, A=A, X=X, ple=NULL, resample="Bootstrap", R=100,
+  # PRISM: glmnet ==> MOB (Weibull) ==> Cox; with bootstrap #
+  res_weibull1 = PRISM(Y=Y, A=A, X=X, ple="None", resample="Bootstrap", R=100,
                        verbose.resamp = TRUE)
   plot(res_weibull1)
   plot(res_weibull1, type="resample", estimand = "HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
   aggregate(I(est<1)~Subgrps, data=res_weibull1$resamp.dist, FUN="mean")
 
-  # PRISM: ENET ==> CTREE ==> Cox; bootstrapping for posterior prob/inference #
+  # PRISM: ENET ==> CTREE ==> Cox; with bootstrap #
   res_ctree1 = PRISM(Y=Y, A=A, X=X, ple=NULL, submod = "submod_ctree",
                      resample="Bootstrap", R=100, verbose.resamp = TRUE)
   plot(res_ctree1)
