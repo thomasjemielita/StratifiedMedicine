@@ -2,12 +2,9 @@
 #'
 #' For each identified subgroup and in the overall population, use the double robust
 #' estimator (Funk et al 2011). For continuous and binary outcomes, this outputs 
-#' estimates for E(Y|A=1), E(Y|A=0), and E(Y|A=1)-E(Y|A=0). For survival, point 
-#' estimates correspond to E(logT|A=1), E(logT|A=0), and E(logT|A=1)-E(logT|A=0). 
-#' Here, patient-level estimates (mu_hat) must correspond to the accelerated failure 
-#' time (AFT) survival model framework (default uses AFT-based bart, "abart").
+#' estimates for E(Y|A=1), E(Y|A=0), and E(Y|A=1)-E(Y|A=0).
 #'
-#' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
+#' @param Y The outcome variable. Must be numeric (binary, continuous)
 #' @param A Treatment variable. (a=1,...A)
 #' @param X Covariate space.
 #' @param mu_hat Patient-level estimates (See PLE_models)
@@ -52,19 +49,12 @@ param_dr = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
   if (is.null(A)){
     stop("param_dr not applicable for no treatment (A=NULL)") 
   }
-  if (is.Surv(Y)){
-    estimands <- c("E(logT|A=0)", "E(logT|A=1)", "E(logT|A=1)-E(logT|A=0)")
-  }
-  if (!is.Surv(Y)){
-    estimands <- c("E(Y|A=0)", "E(Y|A=1)", "E(Y|A=1)-E(Y|A=0)")
-  }
+  estimands <- c("E(Y|A=0)", "E(Y|A=1)", "E(Y|A=1)-E(Y|A=0)")
+  
   indata <- data.frame(Y=Y, A=A, X)
   # Subgroup and overall estimates #
   looper <- function(s, alpha){
     Y.s <- indata$Y[Subgrps %in% s]
-    if (is.Surv(Y)){
-      Y.s = log(Y.s[,1])
-    }
     A.s <- indata$A[Subgrps %in% s]
     n.s <- length(Y.s)
     probA <- mean(A.s)

@@ -17,7 +17,8 @@
 #' @return Trained ple models and patient-level estimates for train/test sets. For
 #' family="gaussian" or "binomial", output estimates of
 #' (E(Y|X,A=1), E(Y|X,A=0), E(Y|X,A=1)-E(Y|X,A=0)). For survival, output estimates of
-#' (HR(X,A=1), HR(X,A=0), HR(X, A=1)-HR(X, A=0)).
+#' (HR(X,A=1), HR(X,A=0), HR(X, A=1)-HR(X, A=0)) or (RMST(X,A=1), RMST(X,A=0), 
+#' RMST(X, A=1)-RMST(X, A=0)).
 #'
 #'  \itemize{
 #'   \item mod - trained model(s)
