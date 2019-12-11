@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 # Introduction
 Welcome to the StratifiedMedicine R package. The overall goal of this package is to develop analytic and visualization tools to aid in stratified and personalized medicine. Stratified medicine aims to find subsets or subgroups of patients with similar treatment effects, for example responders vs non-responders, while personalized medicine aims to understand treatment effects at the individual level (does a specific individual respond to treatment A?). Development of this package is ongoing. 
 
-Currently, the main algorithm in this package is "PRISM" (Patient Response Identifiers for Stratified Medicine; Jemielita and Mehrotra 2019 in progress). Given a data-structure of $(Y, A, X)$ (outcome(s), treatments, covariates), PRISM is a five step procedure:
+Currently, the main algorithm in this package is "PRISM" (Patient Response Identifiers for Stratified Medicine; Jemielita and Mehrotra 2019, https://arxiv.org/abs/1912.03337). Given a data-structure of $(Y, A, X)$ (outcome(s), treatments, covariates), PRISM is a five step procedure:
 
 0. **Estimand**: Determine the question(s) or estimand(s) of interest. For example, $\theta_0 = E(Y|A=1)-E(Y|A=0)$, where A is a binary treatment variable. While this isn't an explicit step in the PRISM function, the question of interest guides how to set up PRISM.
 
@@ -29,7 +29,7 @@ where $X^{\star}$ has potentially lower dimension than $X$.
 
 2. **Patient-level estimate (ple)**: Estimate counterfactual patient-level quantities, for example the individual treatment effect, $\theta(x) = E(Y|X=x,A=1)-E(Y|X=x,A=0)$. Formally:
 $$ ple(Y, A, X^{\star}) \longrightarrow \hat{\mathbf{\Theta}}(X^{\star}) $$
-where $\hat{\mathbf{\theta}}(X^{\star})$ is the matrix of patient-level estimates.For example, these could refer to counterfactual estimates of $[E(Y|A=1,X=x), E(Y|A=0, X=X), E(Y|A=1,X=x)-E(Y|A=0,X=x)]$, or $[RMST(Y|A=1,X=x), RMST(Y|A=0, X=X), RMST(Y|A=1,X=x)-RMST(Y|A=0,X=x)]$ where RMST refers to the restricted mean survival time.
+where $\hat{\mathbf{\theta}}(X^{\star})$ is the matrix of patient-level estimates.For example, these could refer to counterfactual estimates of $[E(Y|A=1,X=x), E(Y|A=0, X=X), E(Y|A=1,X=x)-E(Y|A=0,X=x)]$, or $[RMST_{\tau}(Y|A=1,X=x)-RMST_{\tau}(Y|A=0,X=x)]$ where RMST refers to the restricted mean survival time with truncation time $\tau$.
 
 3. **Subgroup model (submod)**: Partition the data into subsets of patients (likely with similar treatment effects). Formally:
 $$ submod(Y, A, X^{\star}, \hat{\mathbf{\Theta}}(X^{\star})) \longrightarrow \mathbf{S}(X^{\star}) $$
@@ -98,7 +98,7 @@ length(Y)
 table(A)
 dim(X)
 ```
-For continuous outcome data (family="gaussian"), the default PRISM configuration is: (1) filter_glmnet (elastic net), (2) ple_ranger (treatment-specific random forest models), (3) submod_lmtree (model-based partitioning with OLS loss), and (4) param_ple (parameter estimation/inference through the PLEs). Jemielita and Mehrotra 2019 (to appear) show that this configuration performs quite well in terms of bias, efficiency, coverage, and selecting the right predictive covariates. To run PRISM, at a minimum, the outcome (Y), treatment (A), and covariates (X) must be provided. See below. 
+For continuous outcome data (family="gaussian"), the default PRISM configuration is: (1) filter_glmnet (elastic net), (2) ple_ranger (treatment-specific random forest models), (3) submod_lmtree (model-based partitioning with OLS loss), and (4) param_ple (parameter estimation/inference through the PLEs). (Jemielita and Mehrotra 2019) show that this configuration performs quite well in terms of bias, efficiency, coverage, and selecting the right predictive covariates. To run PRISM, at a minimum, the outcome (Y), treatment (A), and covariates (X) must be provided. See below. 
 
 ```{r default_ctns, warning=FALSE}
 # PRISM Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
@@ -147,7 +147,7 @@ These estimates tend to be overly positive or negative, as the same data that tr
 
 For continuous and binary data, an alternative approach without resampling is to directly use the PLEs for parameter estimation and inference (param="param_ple"). Let $E(Y|X=x,A=a) = \mu(x, a)$ correspond to the outcome regression model(s) with estimates $\hat{\mu}(x, a)$. These estimates come directly from the fitted PLE model(s), in this case, treatment-specific random forest models. For the overall population and each discovered subgroup ($s=0,...,S$), the treatment effect (or risk difference) can be estimated by averaging the patient-specific treatment effect estimates (PLEs):
 $$ \hat{\theta}_k = \frac{1}{n_k} \sum_{i \in S_k} {\hat{\theta}}(x_i) $$
-where $\hat{\theta}}(x_i)=\hat{\mu}(a=1,x)-\hat{\mu}(a=0,x)$.  For SEs / CIs, we utilize "pseudo-outcomes":
+where $\hat{\theta}(x_i)=\hat{\mu}(a=1,x)-\hat{\mu}(a=0,x)$.  For SEs / CIs, we utilize "pseudo-outcomes":
 $$ Y^{\star}_i = \frac{AY - (A-\hat{\pi}(x))\hat{\mu}(a=1,x)}{\hat{\pi}(x)} - \frac{(1-A)Y - (A-\hat{\pi}(x))\hat{\mu}(a=0,x)}{1-\hat{\pi}(x)}$$
 where $\pi(x)=P(A=1|X)$, or the treatment assignment probability for an individual. In a randomized controlled trial, this can be replaced by the marginal probability, $P(A=1|X)$.
 Note that $E(Y^{\star}_i)=E(Y|A=1,X)-E(Y|A=0,X)$ and $E(n_k^{-1}\sum_{i \in S_k} Y^{\star}_i)= E(Y|A=1, X \in S_k)-E(Y|A=0, X \in S_k)$. Next:

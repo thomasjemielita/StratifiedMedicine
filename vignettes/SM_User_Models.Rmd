@@ -196,34 +196,30 @@ For the parameter model, the key arguments are (Y, A, X) (observed data), mu_hat
 param_rlm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
   require(MASS)
   indata = data.frame(Y=Y,A=A, X)
-  mod.ovrl = rlm(Y ~ A , data=indata)
-  param.dat0 = data.frame( Subgrps=0, N = dim(indata)[1],
-                           estimand = "E(Y|A=1)-E(Y|A=0)",
-                           est = summary(mod.ovrl)$coefficients[2,1],
-                           SE = summary(mod.ovrl)$coefficients[2,2] )
-  param.dat0$LCL = with(param.dat0, est-qt(1-alpha_ovrl/2, N-1)*SE)
-  param.dat0$UCL = with(param.dat0, est+qt(1-alpha_ovrl/2, N-1)*SE)
-  param.dat0$pval = with(param.dat0, 2*pt(-abs(est/SE), df=N-1) )
 
   ## Subgroup Specific Estimate ##
-  looper = function(s){
-    rlm.mod = tryCatch( rlm(Y ~ A , data=indata[Subgrps==s,]),
+  looper = function(s, alpha){
+    rlm.mod = tryCatch( rlm(Y ~ A , data=indata[Subgrps %in% s,]),
                        error = function(e) "param error" )
-    n.s = dim(indata[Subgrps==s,])[1]
+    n.s = dim(indata[Subgrps %in% s,])[1]
     est = summary(rlm.mod)$coefficients[2,1]
     SE = summary(rlm.mod)$coefficients[2,2]
-    LCL =  est-qt(1-alpha_ovrl/2, n.s-1)*SE
-    UCL =  est+qt(1-alpha_ovrl/2, n.s-1)*SE
+    LCL =  est-qt(1-alpha/2, n.s-1)*SE
+    UCL =  est+qt(1-alpha/2, n.s-1)*SE
     pval = 2*pt(-abs(est/SE), df=n.s-1)
-    return( c(est, SE, LCL, UCL, pval) )
+    summ <- data.frame(Subgrps = ifelse(n.s==dim(X)[1], 0, s),
+                       N= n.s, est=est, SE=SE, LCL=LCL, UCL=UCL, pval=pval)
+    return( summ )
   }
+  # Across Subgroups #
   S_levels = as.numeric( names(table(Subgrps)) )
-  S_N = as.numeric( table(Subgrps) )
-  param.dat = lapply(S_levels, looper)
+  param.dat = lapply(S_levels, looper, alpha_s)
   param.dat = do.call(rbind, param.dat)
-  param.dat = data.frame( S = S_levels, N=S_N, estimand="E(Y|A=1)-E(Y|A=0)", param.dat)
-  colnames(param.dat) = c("Subgrps", "N", "estimand", "est", "SE", "LCL", "UCL", "pval")
-  param.dat = rbind( param.dat0, param.dat)
+  param.dat = data.frame( param.dat )
+  ## Overall ##
+  param.dat0 = looper(S_levels, alpha_ovrl)
+  # Combine and return ##
+  param.dat = rbind(param.dat0, param.dat)
   return( param.dat )
 }
 
@@ -243,7 +239,8 @@ res_user1$filter.vars
 plot(res_user1)
 ## Parameter estimates/inference
 res_user1$param.dat
-plot(res_user1, type="forest")
+## Waterfall plot of individual treatment effects
+plot(res_user1, type="PLE:waterfall")
 
 ```
 
