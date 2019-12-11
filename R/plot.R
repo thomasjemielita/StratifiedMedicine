@@ -242,7 +242,7 @@ plot.PRISM = function(x, type="submod", estimand=NULL, grid.data=NULL, grid.thre
 }
 
 ## PRISM submod plot ##
-plot_submod = function(object, est.resamp=TRUE){
+plot_submod = function(object, est.resamp=TRUE, dens.plot = FALSE, prob.thres=">0"){
   
   n <- dim(object$out.train)[1]
   alpha_s <- object$alpha_s
@@ -252,23 +252,23 @@ plot_submod = function(object, est.resamp=TRUE){
   ct <- object$submod.fit$mod
   # Extract parameter estimates #
   param.dat <- object$param.dat
-  if (length(unique(param.dat$Subgrps))==1){
+  if (length(unique(param.dat$Subgrps))==1) {
     param.dat <- param.dat
     param.dat$Subgrps=1
   }
-  if (length(unique(param.dat$Subgrps))>1){
+  if (length(unique(param.dat$Subgrps))>1) {
     param.dat <- param.dat[param.dat$Subgrps>0,]
   }
   # If bootstrap / CV available, use for plots #
   label.param <- ""
-  if (est.resamp & (resample %in% c("Bootstrap", "CV"))){
-    if (resample=="Bootstrap" & is.null(param.dat$LCL.calib)){
+  if (est.resamp & (resample %in% c("Bootstrap", "CV"))) {
+    if (resample=="Bootstrap" & is.null(param.dat$LCL.calib)) {
       param.dat$est <- param.dat$est_resamp
       param.dat$LCL <- param.dat$LCL.pct
       param.dat$UCL <- param.dat$UCL.pct
       label.param <- "(Boot,Pct)"
     }
-    if (resample=="Bootstrap" & !is.null(param.dat$LCL.calib)){
+    if (resample=="Bootstrap" & !is.null(param.dat$LCL.calib)) {
       param.dat$LCL <- param.dat$LCL.calib
       param.dat$UCL <- param.dat$UCL.calib
       label.param <- "(Boot,Calib)"
@@ -281,19 +281,12 @@ plot_submod = function(object, est.resamp=TRUE){
     }
   }
   Subgrps <- unique(param.dat$Subgrps)
-  if (object$family=="survival"){
-    if (object$param=="param_cox"){
+  if (object$family=="survival") {
+    if (object$param=="param_cox") {
       param.dat$est = exp(param.dat$est)
       param.dat$LCL = exp(param.dat$LCL)
       param.dat$UCL = exp(param.dat$UCL)
       param.dat$estimand = "HR(A=1 vs A=0)" 
-    }
-    if (object$param=="param_dr"){
-      param.dat <- param.dat[param.dat$estimand=="E(logT|A=1)-E(logT|A=0)",]
-      param.dat$est = exp(param.dat$est)
-      param.dat$LCL = exp(param.dat$LCL)
-      param.dat$UCL = exp(param.dat$UCL)
-      param.dat$estimand = "ETR(A=1 vs A=0)" 
     }
   }
   param.dat$label <- with(param.dat, paste( sprintf("%.2f", round(est,2)),
@@ -301,6 +294,12 @@ plot_submod = function(object, est.resamp=TRUE){
                                             sprintf("%.2f", round(LCL,2)), ",",
                                             sprintf("%.2f", round(UCL,2)), "]", sep=""))
   param.dat$id <- param.dat$Subgrps
+  plot.dat <- param.dat
+  if (mean(unique(param.dat$estimand) %in% 
+           c("E(Y|A=0)","E(Y|A=1)", "E(Y|A=1)-E(Y|A=0)"))==1){
+    plot.dat <- param.dat[param.dat$estimand %in% c("E(Y|A=0)","E(Y|A=1)"),]
+    param.dat <- param.dat[param.dat$estimand=="E(Y|A=1)-E(Y|A=0)",]
+  }
   
   # Add estimates into tree #
   ct_node <- as.list(ct$node)
@@ -339,16 +338,20 @@ plot_submod = function(object, est.resamp=TRUE){
       geom_node_label(
         line_list = list(
           aes(label = paste("Node ", id) ),
-          aes(label = paste("N = ", N, " (", round(N/n*100,1), "%)", sep=""))
+          aes(label = paste("N = ", N, " (", round(N/n*100,1), "%)", sep="")),
+          aes(label = paste(estimand, " [", (1-alpha_s)*100,"% CI]", sep="")),
+          aes(label = label)
         ),
         line_gpar = list(list(size = 8, fontface="bold"),
-                         list(size = 8) ),
+                         list(size = 8),
+                         list(size = 8, fontface="bold"),
+                         list(size = 8)),
         ids = "terminal") + 
       geom_node_plot(gglist =
-                       list(geom_pointrange(data=param.dat,
+                       list(geom_pointrange(data=plot.dat,
                                             aes(x=estimand, y=est,
                                                 ymin=LCL, ymax=UCL,col=estimand)),
-                            geom_text(data=param.dat,
+                            geom_text(data=plot.dat,
                                       aes(x=estimand, y=est,
                                           label = label, col=estimand), size=3,
                                       position = position_nudge(x = 0.6),
@@ -358,7 +361,7 @@ plot_submod = function(object, est.resamp=TRUE){
                             ylab( paste("Estimate (", (1-alpha_s)*100,"% CI)",sep="")),
                             theme_bw(), theme( axis.text.y = element_blank()),
                             coord_flip()),
-                     nudge_x = 0.05,
+                     nudge_x = 0.09,
                      shared_axis_labels = TRUE,
                      legend_separator = TRUE, scales = "fixed") 
   }
