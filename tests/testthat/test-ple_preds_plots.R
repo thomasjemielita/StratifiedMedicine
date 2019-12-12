@@ -1,5 +1,7 @@
 test_that("Test whether individual ple models run alone and within PRISM; check plots", {
   
+  skip_on_cran()
+  
   ## Continuous ##
   dat_ctns = generate_subgrp_data(family="gaussian")
   Y = dat_ctns$Y

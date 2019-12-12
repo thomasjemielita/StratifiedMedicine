@@ -90,6 +90,7 @@ library(ggplot2)
 library(dplyr)
 library(partykit)
 library(StratifiedMedicine)
+library(survival)
 dat_ctns = generate_subgrp_data(family="gaussian")
 Y = dat_ctns$Y
 X = dat_ctns$X # 50 covariates, 46 are noise variables, X1 and X2 are truly predictive
@@ -163,11 +164,11 @@ plot(res0, type="submod")
 plot(res0, type="forest")
 ```
 
-PLE Heatmaps can also be generated from PRISM outputs. To do this, based on a grid of values (with up to three variables), PLEs are estimated for each patient by fixing the grid variables to specific values. We then average the PLEs to obtain a point-estimate for each specific set of grid values, and can likewise calculate probabilities. See below; note that the heatmap is also consistent with the truth (treatment benefit for $X_1>0, X_2>0$ patients).
+PLE Heatmaps can also be generated from PRISM outputs. This is currently restricted to estimating $E(Y|A=1,X)-E(Y|A=0,X)$ or $RMST(A=1,X)-RMST(A=0,X)$. To do this, based on a grid of values (with up to three variables), PLEs are estimated for each patient by fixing the grid variables to specific values. We then average the PLEs to obtain a point-estimate for each specific set of grid values, and can likewise calculate probabilities. See below; note that the heatmap is also consistent with the truth (treatment benefit for $X_1>0, X_2>0$ patients).
 
 ```{r heat_maps}
-grid.data = expand.grid(X1 = seq(min(X$X1), max(X$X1), by=0.30),
-                    X2 = seq(min(X$X2), max(X$X2), by=0.30))
+grid.data = expand.grid(X1 = seq(min(X$X1), max(X$X1), by=1),
+                    X2 = seq(min(X$X2), max(X$X2), by=1))
 plot(res0, type="heatmap", grid.data = grid.data)
 
 ```
@@ -206,8 +207,6 @@ plot(res0)
 Survival outcomes are also allowed in PRISM. The default settings use glmnet to filter ("filter_glmnet"), ranger patient-level estimates ("ple_ranger"; for survival, the output is the restricted mean survival time treatment difference), "submod_weibull"" (MOB with weibull loss function) for subgroup identification, and param_cox (subgroup-specific cox regression models). Another subgroup option is to use "submod_ctree"", which uses the conditional inference tree (ctree) algorithm to find subgroups; this looks for partitions irrespective of treatment assignment and thus corresponds to finding prognostic effects. 
 
 ```{r default_surv}
-library(survival)
-library(ggplot2)
 # Load TH.data (no treatment; generate treatment randomly to simulate null effect) ##
 data("GBSG2", package = "TH.data")
 surv.dat = GBSG2
@@ -248,10 +247,7 @@ Bootstrap confidence intervals can then be formed, $\left[\hat{\theta}_{k} \pm  
 Returning to the survival example, we now re-run PRISM with 50 bootstrap resamples (for increased accuracy, use >1000). The smoothed bootstrap estimates, bootstrap standard errors, bootstrap bias, percentile CI, and calibrated CI correspond to "est_resamp", "SE_resamp", "bias.boot", "LCL.pct"/"UCL.pct", and "LCL.calib"/"UCL.calib" respectively. We can also plot a density plot of the bootstrap distributions through the plot(...,type="resample") option.
 
 ```{r default_boot, warning=FALSE, message=FALSE}
-library(ggplot2)
-library(dplyr)
-res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, ple = "None", 
-                 calibrate=TRUE)
+res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, ple = "None")
 # Plot of distributions #
 plot(res_boot, type="resample", estimand = "HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
 ```
