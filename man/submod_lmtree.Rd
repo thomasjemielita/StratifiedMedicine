@@ -41,6 +41,8 @@ Uses the lmtree (model-based partitioning, OLS) algorithm to identify subgroups
 (Zeileis, Hothorn, Hornik 2008). Usable for continuous and binary outcomes.
 }
 \examples{
+
+\donttest{
 library(StratifiedMedicine)
 
 ## Continuous ##
@@ -55,6 +57,6 @@ res_lmtree1 = submod_lmtree(Y, A, X, Xtest=X)
 res_lmtree2 = submod_lmtree(Y, A, X, Xtest=X, maxdepth=2, minsize=100)
 plot(res_lmtree1$mod)
 plot(res_lmtree2$mod)
-
+}
 
 }

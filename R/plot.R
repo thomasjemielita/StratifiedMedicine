@@ -299,6 +299,7 @@ plot_submod = function(object, est.resamp=TRUE, dens.plot = FALSE, prob.thres=">
            c("E(Y|A=0)","E(Y|A=1)", "E(Y|A=1)-E(Y|A=0)"))==1){
     plot.dat <- param.dat[param.dat$estimand %in% c("E(Y|A=0)","E(Y|A=1)"),]
     param.dat <- param.dat[param.dat$estimand=="E(Y|A=1)-E(Y|A=0)",]
+    param.dat$estimand <- as.character(param.dat$estimand)
   }
   
   # Add estimates into tree #

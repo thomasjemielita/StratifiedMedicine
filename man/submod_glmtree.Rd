@@ -46,6 +46,8 @@ Uses the glmtree (model-based partitioning, glms) algorithm to identify subgroup
 (Zeileis, Hothorn, Hornik 2008). Usable for continuous and binary outcomes.
 }
 \examples{
+
+\donttest{
 library(StratifiedMedicine)
 
 ## Binomial ##
@@ -54,7 +56,7 @@ Y = dat_bin$Y
 X = dat_bin$X
 A = dat_bin$A
 
-\donttest{
+
 res_glmtree1 = submod_glmtree(Y, A, X, Xtest=X)
 res_glmtree2 = submod_glmtree(Y, A, X, Xtest=X, link="logit")
 plot(res_glmtree1$mod)

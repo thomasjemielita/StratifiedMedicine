@@ -44,6 +44,8 @@ Uses the ctree (conditional inference trees) algorithm to identify subgroups
 Option to use the observed outcome or PLEs for subgroup identification.
 }
 \examples{
+
+\donttest{
 library(StratifiedMedicine)
 
 ## Continuous ##
@@ -56,6 +58,6 @@ res_ctree1 = submod_ctree(Y, A, X, Xtest=X, family="gaussian")
 res_ctree2 = submod_ctree(Y, A, X, Xtest=X, family="gaussian", maxdepth=2, minsize=100)
 plot(res_ctree1$mod)
 plot(res_ctree2$mod)
-
+}
 
 }

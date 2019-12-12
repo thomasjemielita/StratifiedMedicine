@@ -123,7 +123,7 @@
 #' }
 #' 
 #' ## Examples: Binary Outcome ##
-#'
+#' \donttest{
 #' dat_ctns = generate_subgrp_data(family="binomial")
 #' Y = dat_ctns$Y
 #' X = dat_ctns$X
@@ -131,7 +131,7 @@
 #'
 #' # Run Default: filter_glmnet, ple_ranger, submod_glmtree, param_ple #
 #' res0 = PRISM(Y=Y, A=A, X=X)
-#' \donttest{
+#' 
 #' plot(res0)
 #' }
 #'

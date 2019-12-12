@@ -42,10 +42,11 @@ Uses the MOB (with weibull loss function) algorithm to identify subgroups
 survival outcomes.
 }
 \examples{
-library(StratifiedMedicine)
 
 
 \donttest{
+library(StratifiedMedicine)
+
 ## Load TH.data (no treatment; generate treatment randomly to simulate null effect) ##
 data("GBSG2", package = "TH.data", envir = e <- new.env() )
 surv.dat = e$GBSG2

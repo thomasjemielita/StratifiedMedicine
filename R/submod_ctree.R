@@ -26,6 +26,8 @@
 #'
 #' @export
 #' @examples
+#' 
+#' \donttest{
 #' library(StratifiedMedicine)
 #'
 #' ## Continuous ##
@@ -38,7 +40,7 @@
 #' res_ctree2 = submod_ctree(Y, A, X, Xtest=X, family="gaussian", maxdepth=2, minsize=100)
 #' plot(res_ctree1$mod)
 #' plot(res_ctree2$mod)
-#'
+#'}
 #'
 #### CTREE ###
 submod_ctree = function(Y, A, X, Xtest, mu_train, alpha=0.05,

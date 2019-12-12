@@ -44,6 +44,8 @@ Wrapper function to train a subgroup model (submod). Used directly in PRISM and 
 be used to directly fit a submod model by name.
 }
 \examples{
+
+\donttest{
 library(StratifiedMedicine)
 ## Continuous ##
 dat_ctns = generate_subgrp_data(family="gaussian")
@@ -59,6 +61,7 @@ plot(mod1$mod)
 mod2 = submod_train(Y=Y, A=A, X=X, Xtest=X, submod="submod_lmtree")
 plot(mod2$fit$mod)
 
+}
 
 }
 \seealso{

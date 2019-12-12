@@ -26,6 +26,8 @@
 #'   \item Rules - Definitions for subgroups, if provided in fitted submod output.
 #' }
 #' @examples
+#' 
+#' \donttest{
 #' library(StratifiedMedicine)
 #' ## Continuous ##
 #' dat_ctns = generate_subgrp_data(family="gaussian")
@@ -41,6 +43,7 @@
 #' mod2 = submod_train(Y=Y, A=A, X=X, Xtest=X, submod="submod_lmtree")
 #' plot(mod2$fit$mod)
 #'
+#'}
 #'
 #' @export
 #' @seealso \code{\link{PRISM}}

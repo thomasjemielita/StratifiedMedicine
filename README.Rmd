@@ -68,9 +68,9 @@ res0$param.dat
 ## Forest plot: Overall/subgroup specific parameter estimates (CIs)
 plot(res0, type="forest")
 
-## Heatmap of PLEs #
-grid.data = expand.grid(X1 = seq(min(X$X1), max(X$X1), by=0.30),
-                    X2 = seq(min(X$X2), max(X$X2), by=0.30))
+## Heatmap of PLEs (Individual treatment effects, E(Y|A=1,X)-E(Y|A=0,X)) #
+grid.data = expand.grid(X1 = seq(min(X$X1), max(X$X1), by=0.5),
+                    X2 = seq(min(X$X2), max(X$X2), by=0.5))
 plot(res0, type="heatmap", grid.data = grid.data)
 
 ```
