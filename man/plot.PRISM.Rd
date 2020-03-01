@@ -4,19 +4,24 @@
 \alias{plot.PRISM}
 \title{plot.PRISM}
 \usage{
-\method{plot}{PRISM}(x, type = "submod", estimand = NULL,
-  grid.data = NULL, grid.thres = ">0", est.resamp = TRUE, ...)
+\method{plot}{PRISM}(x, type = "tree", estimand = NULL,
+  grid.data = NULL, grid.thres = ">0", tree.thres = NULL,
+  est.resamp = TRUE, tree.plots = "outcome", nudge_out = 0.1,
+  width_out = 0.5, nudge_dens = ifelse(tree.plots == "both", 0.3, 0.1),
+  width_dens = 0.5, ...)
 }
 \arguments{
 \item{x}{PRISM object}
 
-\item{type}{Type of plot (default="submod", tree plot + parameter estimates). Other 
-optins include  "forest" ( forest plot for overall and subgroups),"PLE:waterfall" 
+\item{type}{Type of plot (default="tree", tree plot + parameter estimates/outcome and 
+or probability density plots). Other options include  "forest" 
+(forest plot for overall and subgroups),"PLE:waterfall" 
 (waterfall plot of PLEs), "PLE:density" (density plot of PLEs), "resample" (resampling 
 distribution of parameter estimates for overall and subgroups), and "heatmap" 
-(heatmap of ple estimates/probabilities). For "submod" and "forest", CIs are based on 
-the observed data unless bootstrap resampling. If calibrate=TRUE (the default), then
-calibrated CIs are shown, otherse CIs based on the percentile method are shown.}
+(heatmap of ple estimates/probabilities). For "tree" and "forest", CIs are based on 
+the observed data unless resampling is used. For bootstrap resampling, if 
+calibrate=TRUE, then calibrated CIs along are shown, otherse CIs based on the 
+percentile method are shown.}
 
 \item{estimand}{For "resample" plot only, must be specify which estimand to visualize.
 Default=NULL.}
@@ -28,10 +33,29 @@ be continuous). This is required for type="heatmap". Default=NULL.}
 type="heatmap". Default is ">0". Direction can be reversed and can include equality
 sign (ex: "<=").}
 
+\item{tree.thres}{Probability threshold, ex: P(Mean(A=1 vs A=0)>c. Default=NULL, 
+which defaults to using ">0", unless param="param_cox", which  "P(HR(A=1 vs A=0))<1". 
+If a density plot is included, setting tree.thres=">c" will use green colors 
+for values above c, and red colors for values below c. If tree.thres="<c", the 
+reverse color scheme is used.}
+
 \item{est.resamp}{Should plot present resampling based estimates? Default=TRUE if 
 bootstrap or CV  based resampling is used. Only applicable for type="submod". 
 If bootstrap calibration is used, calibrated CIs are presented. If no calibration,
 then percentile Cis are presented with the smoothed bootstrap point-estimates.}
+
+\item{tree.plots}{Type of plots to include in the "tree" plot. Default="outcome"
+(boxplots of treatment-specific outcomes, or counterfactual estimates if PLE!=NULL).
+For "density", the estimated probability density of the treatment effects is shown 
+(normal approximation, unless resampling is used). "both" combines both plots.}
+
+\item{nudge_out}{Nudge tree outcome plot (see ggparty for details)}
+
+\item{width_out}{Width of tree outcome plot (see ggparty for details)}
+
+\item{nudge_dens}{Nudge tree density plot}
+
+\item{width_dens}{Width of density tree outcome plot}
 
 \item{...}{Additional arguments (currently ignored).}
 }
@@ -39,7 +63,7 @@ then percentile Cis are presented with the smoothed bootstrap point-estimates.}
 Plot (ggplot2) object
 }
 \description{
-Plots PRISM results, either forest plot (estimate with CIs) or resampling distribution.
+Plots PRISM results. Options include "tree", "forest", "resample", and "PLE:waterfall".
 }
 \seealso{
 \code{\link{PRISM}}
