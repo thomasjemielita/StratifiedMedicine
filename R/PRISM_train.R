@@ -18,7 +18,6 @@
 #'   \item Rules - Subgroup rules / definitions
 #'   \item param.dat - Parameter estimates and variablity metrics (depends on param)
 #' }
-#' @export
 #'  
 ##### PRISM: Patient Responder Identifiers for Stratified Medicine ########
 PRISM_train = function(Y, A, X, Xtest=NULL, family="gaussian",

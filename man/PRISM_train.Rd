@@ -13,8 +13,9 @@ PRISM_train(Y, A, X, Xtest = NULL, family = "gaussian",
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
 
-\item{A}{Treatment variable. (ex: a=1,...,A, should be numeric). Default is NULL, which
-searches for prognostic variables (Y~X).}
+\item{A}{Treatment variable. (Default support binary treatment, either numeric or 
+factor). 
+If A=NULL, searches for prognostic variables (Y~X).}
 
 \item{X}{Covariate space. Variables types (ex: numeric, factor, ordinal) should be set
 to align with subgroup model (submod argument). For example, for lmtree, binary variables

@@ -17,8 +17,9 @@ PRISM(Y, A = NULL, X, Xtest = NULL, family = "gaussian",
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
 
-\item{A}{Treatment variable. (ex: a=1,...,A, should be numeric). Default is NULL, which
-searches for prognostic variables (Y~X).}
+\item{A}{Treatment variable. (Default support binary treatment, either numeric or 
+factor). 
+If A=NULL, searches for prognostic variables (Y~X).}
 
 \item{X}{Covariate space. Variables types (ex: numeric, factor, ordinal) should be set
 to align with subgroup model (submod argument). For example, for lmtree, binary variables
@@ -120,6 +121,59 @@ the \code{PRISM} identifies potential subgroup along with point and variability 
 This four step procedure (filter, ple, submod, param) is flexible and accepts user-inputs
 at each step.
 }
+\details{
+PRISM is a general framework with five key steps:
+
+0. Estimand: Determine the question of interest (ex: mean treatment difference)
+
+1. Filter: Reduce covariate space by removing noise covariates. Options include 
+elastic net (filter_glmnet) and random forest variable importance (filter_ranger).
+
+2. Patient-Level Estimates (ple): Estimate counterfactual patient-level quantities, 
+for example, the individual treatment effect, E(Y|A=1)-E(Y|A=0). Options include: 
+treatment-specific or virtual twins (Y~A+X+A*X) through random forest (ple_ranger, 
+ple_rfsrc), elastic net (ple_glmnet), BART (ple_bart) and causal forest 
+(ple_causal_forest).
+
+3. Subgroup Model (submod): Partition the data into subsets or subgroups of patients.
+Options include: conditional inference trees (observed outcome or individual treatment 
+effect/PLE; submod_ctree), MOB GLM (submod_glmtree), MOB OLS (submod_lmtree), 
+optimal treatment regimes (submod_otr), rpart (submod_rpart), and MOB Weibull 
+(submod_weibull).
+
+4. Parameter Estimation (param): For the overall population and the discovered 
+subgroups (if any), obtain point-estimates and variability metrics. Options include:
+cox regression (param_cox), double robust estimator (param_dr), linear regression 
+(param_lm), average of patient-level estimates (param_ple), and restricted mean survival 
+time (param_rmst).
+
+Steps 1-4 also support user-specific models. If treatment is provided (A!=NULL), 
+the default settings are as follows:
+
+Y is continuous (family="gaussian"): 
+Elastic Net Filter ==> Treatment-Specific random forest models ==> MOB (OLS) ==> 
+Average of patient-level estimates (param_ple)
+
+Y is binary (family="binomial"): 
+Elastic Net Filter ==> Treatment-Specific random forest models ==> MOB (GLM) ==> 
+Average of patient-level estimates (param_ple)
+
+Y is right-censored (family="survival"):
+Elastic Net Filter ==> Virtual twin survival random forest models ==> MOB (Weibull) ==> 
+Cox regression (param_cox)
+
+
+If treatment is not provided (A=NULL), the default settings are as follows:
+
+Y is continuous (family="gaussian"): 
+Elastic Net Filter ==> Random Forest ==> ctree ==> linear regression
+
+Y is binary (family="binomial"): 
+Elastic Net Filter ==> Random Forest ==> ctree ==> linear regression
+
+Y is right-censored (family="survival"):
+Elastic Net Filter ==> Survival Random Forest ==> ctree ==> RMST
+}
 \examples{
 ## Load library ##
 library(StratifiedMedicine)
@@ -201,5 +255,6 @@ plot(res0)
 
 }
 \references{
-Jemielita and Mehrotra (2019 to appear)
+Jemielita T, Mehrotra D. PRISM: Patient Response Identifiers for 
+Stratified Medicine. \url{https://arxiv.org/abs/1912.03337}
 }

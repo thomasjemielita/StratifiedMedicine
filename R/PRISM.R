@@ -6,8 +6,9 @@
 #' at each step.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
-#' @param A Treatment variable. (ex: a=1,...,A, should be numeric). Default is NULL, which
-#' searches for prognostic variables (Y~X). 
+#' @param A Treatment variable. (Default support binary treatment, either numeric or 
+#' factor). 
+#' If A=NULL, searches for prognostic variables (Y~X). 
 #' @param X Covariate space. Variables types (ex: numeric, factor, ordinal) should be set
 #' to align with subgroup model (submod argument). For example, for lmtree, binary variables
 #' coded as numeric (ex: 0, 1) are treated differently than the corresponding factor version
@@ -82,7 +83,62 @@
 #' @import ggplot2
 #' @import ggparty
 #' @import survival
+#' 
+#' @details PRISM is a general framework with five key steps:
+#' 
+#' 0. Estimand: Determine the question of interest (ex: mean treatment difference)
+#' 
+#' 1. Filter: Reduce covariate space by removing noise covariates. Options include 
+#' elastic net (filter_glmnet) and random forest variable importance (filter_ranger).
+#' 
+#' 2. Patient-Level Estimates (ple): Estimate counterfactual patient-level quantities, 
+#' for example, the individual treatment effect, E(Y|A=1)-E(Y|A=0). Options include: 
+#' treatment-specific or virtual twins (Y~A+X+A*X) through random forest (ple_ranger, 
+#' ple_rfsrc), elastic net (ple_glmnet), BART (ple_bart) and causal forest 
+#' (ple_causal_forest).
+#' 
+#' 3. Subgroup Model (submod): Partition the data into subsets or subgroups of patients.
+#' Options include: conditional inference trees (observed outcome or individual treatment 
+#' effect/PLE; submod_ctree), MOB GLM (submod_glmtree), MOB OLS (submod_lmtree), 
+#' optimal treatment regimes (submod_otr), rpart (submod_rpart), and MOB Weibull 
+#' (submod_weibull).
+#' 
+#' 4. Parameter Estimation (param): For the overall population and the discovered 
+#' subgroups (if any), obtain point-estimates and variability metrics. Options include:
+#' cox regression (param_cox), double robust estimator (param_dr), linear regression 
+#' (param_lm), average of patient-level estimates (param_ple), and restricted mean survival 
+#' time (param_rmst).
+#' 
+#' Steps 1-4 also support user-specific models. If treatment is provided (A!=NULL), 
+#' the default settings are as follows:
+#' 
+#' Y is continuous (family="gaussian"): 
+#' Elastic Net Filter ==> Treatment-Specific random forest models ==> MOB (OLS) ==> 
+#' Average of patient-level estimates (param_ple)
+#' 
+#' Y is binary (family="binomial"): 
+#' Elastic Net Filter ==> Treatment-Specific random forest models ==> MOB (GLM) ==> 
+#' Average of patient-level estimates (param_ple)
+#' 
+#' Y is right-censored (family="survival"):
+#' Elastic Net Filter ==> Virtual twin survival random forest models ==> MOB (Weibull) ==> 
+#' Cox regression (param_cox)
+#' 
+#' 
+#' If treatment is not provided (A=NULL), the default settings are as follows:
+#' 
+#' Y is continuous (family="gaussian"): 
+#' Elastic Net Filter ==> Random Forest ==> ctree ==> linear regression
+#' 
+#' Y is binary (family="binomial"): 
+#' Elastic Net Filter ==> Random Forest ==> ctree ==> linear regression
+#' 
+#' Y is right-censored (family="survival"):
+#' Elastic Net Filter ==> Survival Random Forest ==> ctree ==> RMST
+#' 
 #'
+#' @references Jemielita T, Mehrotra D. PRISM: Patient Response Identifiers for 
+#' Stratified Medicine. \url{https://arxiv.org/abs/1912.03337}
 #' @examples
 #' ## Load library ##
 #' library(StratifiedMedicine)
@@ -162,7 +218,6 @@
 #'   aggregate(I(est<1)~Subgrps, data=res_ctree1$resamp.dist, FUN="mean")
 #' }
 #'
-#' @references Jemielita and Mehrotra (2019 to appear)
 
 ##### PRISM: Patient Responder Identifiers for Stratified Medicine ########
 PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
@@ -186,47 +241,47 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
     }
   }
   ## "Test" Set ##
-  if (is.null(Xtest)){ Xtest = X   }
+  if (is.null(Xtest)) { Xtest = X   }
 
   ## Is the Outcome Survival? ##
-  if (is.Surv(Y)){
+  if (is.Surv(Y)) {
     if (family!="survival"){ family = "survival" }
   }
   ## Is the outcome binary? #
-  if (!is.Surv(Y)){
+  if (!is.Surv(Y)) {
     if ( mean( unique(Y) %in% c(0,1) )==1 ){ family = "binomial" }
   }
   # Missing data? #
-  if ( sum(is.na(Y))>0 | sum(is.na(A))>0 | sum(is.na(X))>0 ){
+  if (sum(is.na(Y))>0 | sum(is.na(A))>0 | sum(is.na(X))>0) {
     message("Missing Data (in outcome, treatment, or covariates)")
   }
   ### Defaults: By Family (gaussian, binomial (Risk Difference), survival ) ##
-  if (family=="gaussian" | family=="binomial"){
-    if (is.null(ple) ){ ple = "ple_ranger" }
-    if (is.null(submod) ){ 
+  if (family=="gaussian" | family=="binomial") {
+    if (is.null(ple)) { ple = "ple_ranger" }
+    if (is.null(submod)) { 
       if (family=="gaussian"){ submod = "submod_lmtree"}
       if (family=="binomial"){ submod = "submod_glmtree"}
-      if (is.null(A)){ submod = "submod_ctree" }
+      if (is.null(A)) { submod = "submod_ctree" }
     }
-    if (is.null(param) ){ 
+    if (is.null(param)) { 
       if (is.null(A)){ param = "param_lm" }
       else { param = "param_ple" }
     }
   }
-  if (family=="survival"){
-    if (is.null(ple) ){ ple = "ple_ranger" }
-    if (is.null(submod) ){ 
-      if (is.null(A)){ submod = "submod_ctree" }
-      else { submod = "submod_weibull" }
+  if (family=="survival") {
+    if (is.null(ple)) {ple = "ple_ranger"}
+    if (is.null(submod)){ 
+      if (is.null(A)) {submod = "submod_ctree"}
+      else {submod = "submod_weibull"}
       }
-    if (is.null(param) ){ 
-      if (is.null(A)){ param = "param_rmst" }
-      else { param = "param_cox" }
+    if (is.null(param)) { 
+      if (is.null(A)) {param = "param_rmst"}
+      else {param = "param_cox"}
     }
   }
   
   ## Train PRISM on Observed Data (Y,A,X) ##
-  if (verbose){ message( "Observed Data" )   }
+  if (verbose) {message("Observed Data")}
   set.seed(seed)
   res0 = PRISM_train(Y=Y, A=A, X=X, Xtest=Xtest, family=family, 
                      filter=filter, ple=ple, submod = submod, param=param,
@@ -242,13 +297,13 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
   resamp.calib = NULL # Set to NULL (needed if no resampling)
   bayes.fun = NULL # Set to NULL (needed if no bayes)
   ### Bayesian ###
-  if ( !is.null(bayes)){
+  if (!is.null(bayes)) {
     if (verbose){ 
       message( paste("Bayesian Posterior Estimation:", bayes) )
     }
-    res.bayes = do.call( bayes, list(PRISM.fit = res0,
+    res.bayes = do.call(bayes, list(PRISM.fit = res0,
                                      alpha_ovrl=alpha_ovrl,
-                                     alpha_s=alpha_s)  )
+                                     alpha_s=alpha_s))
     param.dat = res.bayes$param.dat
     bayes.fun = res.bayes$bayes.sim
   }
@@ -283,24 +338,38 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
     resamp.dist = resR$resamp.dist
     resamp.calib = resR$resamp.calib
   }
-  if (is.null(A)){
+  # Calculate empirical normal probabilities if missing from param.dat #
+  if (!("Prob(>0)" %in% names(param.dat))) {
+    param.dat$`Prob(>0)` <- with(param.dat, 1-pnorm(0, mean=est, sd=SE))
+  }
+  # Number of Events (if survival) #
+  if (family=="survival") {
+    event.tot <- sum(Y[,2])
+    event.subs <- aggregate(Y[,2] ~ Subgrps, FUN="sum")
+    colnames(event.subs) <- c("Subgrps", "events")
+    event.dat <- rbind( data.frame(Subgrps=0, events=event.tot),
+                        event.subs)
+    param.dat <- left_join(param.dat, event.dat, by="Subgrps")
+  }
+  
+  if (is.null(A)) {
     out.train = data.frame(Y, X, Subgrps=res0$Subgrps.train)
   }
-  if (!is.null(A)){
+  if (!is.null(A)) {
     out.train = data.frame(Y, A, X, Subgrps=res0$Subgrps.train)
   }
   ### Return Results ##
-  res = list( filter.mod = res0$filter.mod, filter.vars = res0$filter.vars,
-              ple.fit = res0$ple.fit, mu_train=res0$mu_train, mu_test=res0$mu_test,
-              submod.fit = res0$submod.fit,
-              out.train = out.train,
-              out.test = data.frame(Xtest, Subgrps=res0$Subgrps.test),
-              Rules=res0$Rules,
-              param.dat = param.dat, resample=resample, resamp.dist = resamp.dist, 
-              resamp.calib = resamp.calib,
-              bayes.fun = bayes.fun, family = family,
-              filter = filter, ple = ple, submod=submod, param=param,
-              alpha_ovrl = alpha_ovrl, alpha_s = alpha_s )
+  res = list(filter.mod = res0$filter.mod, filter.vars = res0$filter.vars,
+             ple.fit = res0$ple.fit, mu_train=res0$mu_train, mu_test=res0$mu_test,
+             submod.fit = res0$submod.fit,
+             out.train = out.train,
+             out.test = data.frame(Xtest, Subgrps=res0$Subgrps.test),
+             Rules=res0$Rules,
+             param.dat = param.dat, resample=resample, resamp.dist = resamp.dist, 
+             resamp.calib = resamp.calib,
+             bayes.fun = bayes.fun, family = family,
+             filter = filter, ple = ple, submod=submod, param=param,
+             alpha_ovrl = alpha_ovrl, alpha_s = alpha_s)
   class(res) <- c("PRISM")
   return(res)
 }
@@ -377,9 +446,9 @@ predict.PRISM = function(object, newdata=NULL, type="all", ...){
 #' 
 summary.PRISM = function(object,...){
 
-  out = NULL
-  alpha_ovrl = object$alpha_ovrl
-  alpha_s = object$alpha_s
+  out <- NULL
+  alpha_ovrl <- object$alpha_ovrl
+  alpha_s <- object$alpha_s
   # Configuration #
   out$`PRISM Configuration` <- with(object, paste(filter, ple, submod, param, sep=" => "))
   # Filter #
@@ -389,6 +458,10 @@ summary.PRISM = function(object,...){
   # Subgroup summary #
   numb.subs <- with(object, length(unique(out.train$Subgrps)))
   out$`Number of Identified Subgroups` <- numb.subs
+  if (c("party") %in% class(object$submod.fit$mod)) {
+    submod_vars <- getUsefulPredictors(object$submod.fit$mod)
+    out$`Variables that Define the Subgroups` <- paste(submod_vars, collapse=", ")
+  }
   # Parameter Estimation Summary #
   param.dat <- object$param.dat
   param.dat <- param.dat[order(param.dat$estimand, param.dat$Subgrps),]
