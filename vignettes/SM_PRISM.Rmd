@@ -105,7 +105,7 @@ For continuous outcome data (family="gaussian"), the default PRISM configuration
 # PRISM Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
 res0 = PRISM(Y=Y, A=A, X=X)
 summary(res0)
-plot(res0) # same as plot(res0, type="submod")
+plot(res0) # same as plot(res0, type="tree")
 ## This is the same as running ##
 # res1 = PRISM(Y=Y, A=A, X=X, family="gaussian", filter="filter_glmnet", 
 #              ple = "ple_ranger", submod = "submod_lmtree", param="param_ple")
@@ -128,12 +128,9 @@ plot(res0$filter.mod)
 res0$filter.vars
 # All predictive variables (X1,X2) and prognostic variables (X3,X5, X7) remains.
 ```
-Results relating to the PLE model include "ple.mod" (model output), "mu.train" (training predictions), and "mu.test" (test predictions) where, for continuous or binary data, predictions are of E(Y|X,A=a) and E(Y|X,A=1)-E(Y|X,A=0). The PLEs, or individual treatment effects, are informative of the overall treatment heterogeneity and can be visualized through built-in density and waterfall plots. In this case, roughly 73% receive no benefit from treatment A=1 vs A=0. PRISM plots are built using "ggplot2", making it easy to enhance plot visualizations. For example, 
+Results relating to the PLE model include "ple.mod" (model output), "mu.train" (training predictions), and "mu.test" (test predictions) where, for continuous or binary data, predictions are of E(Y|X,A=a) and E(Y|X,A=1)-E(Y|X,A=0). The PLEs, or individual treatment effects, are informative of the overall treatment heterogeneity and can be visualized through built-in waterfall plots. In this case, roughly 73% receive no benefit from treatment A=1 vs A=0. PRISM plots are built using "ggplot2", making it easy to enhance plot visualizations. For example, 
 ```{r default_ctns_ple}
 prob.PLE = mean(I(res0$mu_train$PLE>0))
-# Density Plot #
-plot(res0, type="PLE:density")+geom_vline(xintercept = 0) +
-     geom_text(x=1, y=0.4, label=paste("Prob(PLE>0)=", prob.PLE, sep=""))
 # Waterfall Plot #
 plot(res0, type="PLE:waterfall")+geom_vline(xintercept = 0) + 
   geom_text(x=200, y=1, label=paste("Prob(PLE>0)=", prob.PLE, sep=""))
@@ -155,22 +152,21 @@ Note that $E(Y^{\star}_i)=E(Y|A=1,X)-E(Y|A=0,X)$ and $E(n_k^{-1}\sum_{i \in S_k}
 $$SE(\hat{\theta}_k) = \sqrt{  n_k ^ {-2} \sum_{i \in S_k} \left( Y^{\star}_i-\hat{\theta}(x_i) \right)^2   } $$
 CIs can then be formed using t- or Z-intervals. For example, a two-sided 95\% Z-interval, $CI_{\alpha}(\hat{\theta}_{k}) = \left[\hat{\theta}_{k} \pm  1.96*SE(\hat{\theta}_k) \right]$
 
-Moving back to the PRISM outputs, for any of the provided "param" options, a key output is the object "param.dat". By default, "param.dat" contain point-estimates, standard errors, lower/upper confidence intervals (depends on alpha_s and alpha_ovrl) and p-values. This output feeds directly into previously shown default ("submod") and "forest" plot.
+Moving back to the PRISM outputs, for any of the provided "param" options, a key output is the object "param.dat". By default, "param.dat" contain point-estimates, standard errors, lower/upper confidence intervals (depends on alpha_s and alpha_ovrl) and p-values. This output feeds directly into previously shown default ("tree") and "forest" plot.
 ```{r default_ctns2}
 ## Overall/subgroup specific parameter estimates/inference
 res0$param.dat
 ## Forest plot: Overall/subgroup specific parameter estimates (CIs)
-plot(res0, type="submod")
+plot(res0, type="tree")
 plot(res0, type="forest")
 ```
 
-PLE Heatmaps can also be generated from PRISM outputs. This is currently restricted to estimating $E(Y|A=1,X)-E(Y|A=0,X)$ or $RMST(A=1,X)-RMST(A=0,X)$. To do this, based on a grid of values (with up to three variables), PLEs are estimated for each patient by fixing the grid variables to specific values. We then average the PLEs to obtain a point-estimate for each specific set of grid values, and can likewise calculate probabilities. See below; note that the heatmap is also consistent with the truth (treatment benefit for $X_1>0, X_2>0$ patients).
+PLE depence plots or heatmaps can also be generated from PRISM outputs. By default, if no grid data is supplied, if a variable is categorical/factor then all values are used, otherwise if continuous, we take 20 equally spaced bins. Regardless, based on a grid of values (with up to three variables), PLEs are estimated for each patient by fixing the grid variables to specific values. We then average the PLEs to obtain a point-estimate for each specific set of grid values, and can likewise calculate probabilities. See below; note that the heatmap is also consistent with the truth (treatment benefit for $X_1>0, X_2>0$ patients).
 
 ```{r heat_maps}
-grid.data = expand.grid(X1 = seq(min(X$X1), max(X$X1), by=1),
-                    X2 = seq(min(X$X2), max(X$X2), by=1))
-plot(res0, type="heatmap", grid.data = grid.data)
-
+plot_dependence(res0, vars="X1")
+plot_dependence(res0, vars="X2")
+plot_dependence(res0, vars=c("X1", "X2"))
 ```
 
 
