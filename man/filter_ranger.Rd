@@ -38,8 +38,8 @@ Filter model and variables that remain after filtering.
 \description{
 Filtering through Random Forest Variable Importance with p-values. P-values are obtained
 through subsampling based T-statistics, as described in Ishwaran and Lu 2017. Default is
-to remove variables with p-values >= 0.10. Used for continuous, binary, or survival
-outcomes.
+to remove variables if one-sided (VI>0) p-values >= 0.10. Used for continuous, binary, 
+or survival outcomes.
 }
 \examples{
 library(StratifiedMedicine)
@@ -57,4 +57,9 @@ mod1$mod # summary of variable importance outputs
 }
 
 
+}
+\references{
+Wright, M. N. & Ziegler, A. (2017). ranger: A fast implementation of 
+random forests for high dimensional data in C++ and R. J Stat Softw 77:1-17. 
+\url{https://doi.org/10.18637/jss.v077.i01}.
 }
