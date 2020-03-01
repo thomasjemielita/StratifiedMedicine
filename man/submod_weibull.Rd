@@ -60,3 +60,11 @@ plot(res_weibull$mod)
 
 
 }
+\references{
+\itemize{
+\item Zeileis A, Hothorn T, Hornik K (2008). Model-Based Recursive Partitioning. 
+Journal of Computational and Graphical Statistics, 17(2), 492–514.
+\item Seibold H, Zeileis A, Hothorn T. Model-based recursive partitioning for 
+subgroup analyses. Int J Biostat, 12 (2016), pp. 45-63
+}
+}

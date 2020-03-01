@@ -46,3 +46,9 @@ A = dat_ctns$A
 mod1 = ple_glmnet(Y, A, X, Xtest=X, family="gaussian")
 
 }
+\references{
+Friedman, J., Hastie, T. and Tibshirani, R. (2008) Regularization Paths for
+ Generalized Linear Models via Coordinate Descent,
+ \url{https://web.stanford.edu/~hastie/Papers/glmnet.pdf} Journal of Statistical 
+ Software, Vol. 33(1), 1-22 Feb 2010 Vol. 33(1), 1-22 Feb 2010.
+}

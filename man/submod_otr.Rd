@@ -39,7 +39,8 @@ Trained ctree (optimal treatment regime) model.
 }
 \description{
 For continuous, binary, or survival outcomes, regress I(PLE>thres)~X with
-weights=abs(PLE) in ctree.
+weights=abs(PLE) in ctree. For example, PLE could refer to individual treatment effect,
+E(Y|A=1,X)-E(Y|A=0, X)
 }
 \examples{
 library(StratifiedMedicine)
@@ -59,4 +60,8 @@ res_otr = submod_otr(Y, A, X, Xtest=X, mu_train = res.ple$mu_train)
 plot(res_otr$mod)
 }
 
+}
+\references{
+Zhao et al. (2012) Estimated individualized treatment rules using outcome 
+weighted learning. Journal of the American Statistical Association, 107(409): 1106-1118.
 }

@@ -1,7 +1,8 @@
 #' Subgroup Identification: Optimal Treatment Regime (through ctree)
 #'
 #' For continuous, binary, or survival outcomes, regress I(PLE>thres)~X with
-#' weights=abs(PLE) in ctree.
+#' weights=abs(PLE) in ctree. For example, PLE could refer to individual treatment effect,
+#' E(Y|A=1,X)-E(Y|A=0, X)
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -23,6 +24,8 @@
 #'   \item mod - tree (OTR) model object
 #' }
 #'
+#' @references Zhao et al. (2012) Estimated individualized treatment rules using outcome 
+#' weighted learning. Journal of the American Statistical Association, 107(409): 1106-1118. 
 #' @export
 #' @examples
 #' library(StratifiedMedicine)

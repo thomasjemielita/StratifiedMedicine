@@ -1,8 +1,9 @@
 #' Subgroup Identification: Conditional Inference Trees (ctree)
 #'
-#' Uses the ctree (conditional inference trees) algorithm to identify subgroups
-#' (Hothorn, Hornik, Zeileis 2006). Usable for continuous, binary, or survival outcomes.
-#' Option to use the observed outcome or PLEs for subgroup identification.
+#' Uses the ctree (conditional inference trees through partykit R package) algorithm to 
+#' identify subgroups (Hothorn, Hornik, Zeileis 2006). Usable for continuous, binary, or 
+#' survival outcomes. Option to use the observed outcome or PLEs (i.e. individual 
+#' treatment effect) for subgroup identification.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -24,6 +25,9 @@
 #'   \item mod - ctree model object
 #' }
 #'
+#' @references Hothorn T, Hornik K, Zeileis A (2006). Unbiased Recursive Partitioning: 
+#' A Conditional Inference Framework. Journal of Computational and Graphical Statistics,
+#' 15(3), 651–674.
 #' @export
 #' @examples
 #' 

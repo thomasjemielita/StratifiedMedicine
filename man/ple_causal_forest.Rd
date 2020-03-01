@@ -34,8 +34,8 @@ Trained causal_forest and regression_forest models.
 }
 }
 \description{
-Uses the causal forest algorithm (Athey, Tibshirani, and Wager 2019; grf R package) to
-obtain patient-level estimates. Used for continuous or binary outcomes.
+Uses the causal forest algorithm (grf R package) to obtain patient-level estimates, 
+E(Y|A=1), E(Y|A=0), and E(Y|A=1)-E(Y|A=0). Usable for continuous or binary outcomes.
 }
 \examples{
 library(StratifiedMedicine)
@@ -54,4 +54,8 @@ summary(mod1$mu_train)
 }
 
 
+}
+\references{
+Athey S, Tibshirani J, Wagner S. Generalized Random Forests. 
+\url{https://arxiv.org/abs/1610.01271}
 }

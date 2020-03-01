@@ -37,8 +37,9 @@ Trained lmtree model.
 }
 }
 \description{
-Uses the lmtree (model-based partitioning, OLS) algorithm to identify subgroups
-(Zeileis, Hothorn, Hornik 2008). Usable for continuous and binary outcomes.
+Uses the lmtree (model-based partitioning, OLS; through partykit R package) algorithm 
+to identify subgroups (Zeileis, Hothorn, Hornik 2008). Usable for continuous and 
+binary outcomes.
 }
 \examples{
 
@@ -59,4 +60,8 @@ plot(res_lmtree1$mod)
 plot(res_lmtree2$mod)
 }
 
+}
+\references{
+Zeileis A, Hothorn T, Hornik K (2008). Model-Based Recursive Partitioning. 
+Journal of Computational and Graphical Statistics, 17(2), 492–514.
 }

@@ -1,7 +1,8 @@
 #' Subgroup Identification: Model-based partitioning (lmtree)
 #'
-#' Uses the lmtree (model-based partitioning, OLS) algorithm to identify subgroups
-#' (Zeileis, Hothorn, Hornik 2008). Usable for continuous and binary outcomes.
+#' Uses the lmtree (model-based partitioning, OLS; through partykit R package) algorithm 
+#' to identify subgroups (Zeileis, Hothorn, Hornik 2008). Usable for continuous and 
+#' binary outcomes.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -23,6 +24,8 @@
 #'   \item mod - lmtree model object
 #' }
 #'
+#' @references Zeileis A, Hothorn T, Hornik K (2008). Model-Based Recursive Partitioning. 
+#' Journal of Computational and Graphical Statistics, 17(2), 492–514.
 #' @export
 #' @examples
 #' 

@@ -22,6 +22,8 @@
 #' }
 #'
 #' @export
+#' @references Breiman L, Friedman JH, Olshen RA, and Stone CJ. (1984) Classification 
+#' and Regression Trees. Wadsworth
 #' @examples
 #'
 #' \donttest{

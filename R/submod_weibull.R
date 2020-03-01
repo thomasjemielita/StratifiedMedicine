@@ -17,6 +17,13 @@
 #' (default=NULL, all parameters)
 #' @param ... Any additional parameters, not currently passed through.
 #'
+#' @references
+#' \itemize{
+#' \item Zeileis A, Hothorn T, Hornik K (2008). Model-Based Recursive Partitioning. 
+#' Journal of Computational and Graphical Statistics, 17(2), 492–514.
+#' \item Seibold H, Zeileis A, Hothorn T. Model-based recursive partitioning for 
+#' subgroup analyses. Int J Biostat, 12 (2016), pp. 45-63
+#' } 
 #' @import survival
 #'
 #' @return Trained MOB (Weibull) model.

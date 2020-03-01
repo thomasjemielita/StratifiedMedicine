@@ -63,3 +63,8 @@ summary(predict(mod1, newdata=X))
 
 
 }
+\references{
+Chipman, H., George, E., and McCulloch R. (2010) Bayesian Additive 
+Regression Trees. The Annals of Applied Statistics, 4,1, 266-298 
+<doi: 10.1214/09-AOAS285>.
+}
