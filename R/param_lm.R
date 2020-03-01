@@ -44,11 +44,17 @@
 #'
 ### Linear Regression: Estimate E(Y|A=1) - E(Y|A=0) ###
 param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="adaptive",
-                    ...){
+                    ...) {
   noA = FALSE
-  if (is.null(A)){
+  if (is.null(A)) {
     A = rep(1, length(Y))
     noA = TRUE
+  }
+  if (!is.null(A)) {
+    A_lvls <- unique(A)[order(unique(A))]
+    estimands <- c(paste("E(Y|A=", A=A_lvls[1], ")", sep=""),
+                   paste("E(Y|A=", A=A_lvls[2], ")", sep=""))
+    estimands <- c(estimands, paste(estimands[2], "-", estimands[1], sep=""))
   }
   indata = data.frame(Y=Y,A=A, X)
   ## Subgroup Specific Estimate ##
@@ -77,7 +83,7 @@ param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="adap
         UCL = est + qt(1-alpha/2, df=n.s-1)*SE
         pval = 2*pt(-abs(est/SE), df=n.s-1)
         summ = data.frame( Subgrps = ifelse(n.s==length(Y), 0, s), N = n.s, 
-                           estimand = c("E(Y|A=0)", "E(Y|A=1)", "E(Y|A=1)-E(Y|A=0)"),
+                           estimand = estimands,
                            est, SE, LCL, UCL, pval) 
       }
     }

@@ -27,6 +27,9 @@
 #'   \item mu_test - Patient-level estimates (test set)
 #' }
 #' @export
+#' @references Chipman, H., George, E., and McCulloch R. (2010) Bayesian Additive 
+#' Regression Trees. The Annals of Applied Statistics, 4,1, 266-298 
+#' <doi: 10.1214/09-AOAS285>.
 #' @examples
 #' library(StratifiedMedicine)
 #'
@@ -86,7 +89,8 @@ ple_bart = function(Y, A, X, Xtest, family="gaussian", sparse=FALSE,
   }
   if (!is.null(A)){
     Xmat<- model.matrix(~., data=X)[,-1]
-    X_inter <- Xmat*A
+    A.mat <- model.matrix(~., data=data.frame(A))[,-1]
+    X_inter <- Xmat * A.mat
     colnames(X_inter) <- paste(colnames(Xmat), "_A", sep="")
     W <- cbind(Xmat, X_inter)
     ## Generate the covariate by treatment interactions ##

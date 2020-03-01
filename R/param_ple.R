@@ -19,6 +19,9 @@
 #'   \item param.dat - Parameter estimates and variability metrics (est, SE,
 #'   LCL/UCL = lower/upper confidence limits, pval = p-value).
 #'   }
+#'
+#' @references Jemielita T, Mehrotra D. PRISM: Patient Response Identifiers for 
+#' Stratified Medicine. \url{https://arxiv.org/abs/1912.03337}
 #' @export
 #' @examples
 #' library(StratifiedMedicine)
@@ -44,14 +47,25 @@
 #'
 #'
 ### PLE Param: Plug-in estimator using PLE estimates, Use EIF for SEs
-param_ple = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
+param_ple = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...) {
 
   noA = FALSE
-  if (is.null(A)){
+  if (is.null(A)) {
     A = rep(1, length(Y))
     noA = TRUE
   }
-  indata = data.frame(Y=Y, A=A, X)
+  if (!is.null(A)) {
+    A_lvls <- unique(A)[order(unique(A))]
+    E_A0 <- paste("E(Y|A=", A_lvls[1], ")", sep="")
+    E_A1 <- paste("E(Y|A=", A_lvls[2], ")", sep="")
+    E_diff <- paste(E_A1, "-", E_A0, sep="")
+    estimands <- c(E_A0, E_A1, E_diff)
+    mu_A0 <- paste("mu", A_lvls[1], sep="_")
+    mu_A1 <- paste("mu", A_lvls[2], sep="_")
+    A_num <- model.matrix(~., data=data.frame(A))[,-1] 
+  }
+  
+  indata = data.frame(Y=Y, A=A_num, X)
   ## Estimate overall and within subgroups ##
   looper = function(s, alpha){
     Y.s = indata$Y[Subgrps %in% s]
@@ -70,12 +84,12 @@ param_ple = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
     }
     if (!noA){
       # PLEs for point-estimates #)
-      est = c( mean(mu.s$mu0, na.rm=TRUE), 
-               mean(mu.s$mu1, na.rm=TRUE),
-               mean(mu.s$PLE, na.rm=TRUE) )
+      est = c( mean(mu.s[,mu_A0], na.rm=TRUE), 
+               mean(mu.s[,mu_A1], na.rm=TRUE),
+               mean(mu.s$PLE, na.rm=TRUE))
       # EIF for variance estimate #
-      eif.0 = ( (1-A.s)*Y.s + (A.s-probA)*mu.s$mu0 ) / (1-probA)
-      eif.1 = ( A.s*Y.s - (A.s-probA)*mu.s$mu1 )/ probA
+      eif.0 = ( (1-A.s)*Y.s + (A.s-probA)*mu.s[,mu_A0] ) / (1-probA)
+      eif.1 = ( A.s*Y.s - (A.s-probA)*mu.s[,mu_A1] )/ probA
       eif = eif.1 - eif.0
       SE = sqrt( n.s^(-2) * c( sum( (eif.0-est[1])^2), 
                                sum( (eif.1-est[2])^2),
@@ -85,7 +99,7 @@ param_ple = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
       pval = 2*pt(-abs(est/SE), df=n.s-1)
       summ = data.frame( Subgrps = ifelse(n.s==length(Y), 0, s),
                          N = n.s, 
-                         estimand = c("E(Y|A=0)", "E(Y|A=1)", "E(Y|A=1)-E(Y|A=0)"),
+                         estimand = estimands,
                          est, SE, LCL, UCL, pval)
     }
     return( summ )

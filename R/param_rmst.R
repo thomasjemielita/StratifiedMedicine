@@ -23,6 +23,9 @@
 #'   \item param.dat - Parameter estimates and variability metrics
 #'   }
 #' @export
+#' @references Uno et al. Moving beyond the hazard ratio in quantifying the 
+#' between-group difference in survival analysis. Journal of clinical Oncology 2014, 
+#' 32, 2380-2385.
 #' @examples
 #'
 #' \donttest{
@@ -58,14 +61,19 @@ param_rmst = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="ad
     stop("Package survRM2 needed for param_rmst. Please install.")
   }
   noA = FALSE
-  estimand = "RMST(A=1-A=0)"
   if (is.null(A)){
     noA = TRUE
     estimand = "RMST"
     A = rep(1, dim(X)[1])
   }
+  if (!is.null(A)) {
+    A_lvls <- unique(A)[order(unique(A))]
+    estimands <- paste("RMST(A=", A=A_lvls[2], "-",
+                       "A=", A=A_lvls[1], ")", sep="")
+    A_num <- model.matrix(~., data=data.frame(A))[,-1] 
+  }
 
-  indata = data.frame(Y=Y, A=A, X)
+  indata = data.frame(Y=Y, A=A_num, X)
   ### Loop through subgroups ##
   looper = function(s, alpha){
     time = indata$Y[Subgrps %in% s,1]
@@ -121,7 +129,7 @@ param_rmst = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="ad
                                combine=combine)
     param.dat = rbind(param.dat0, param.dat)
   }
-  param.dat$estimand = estimand
+  param.dat$estimand = estimands
   param.dat = param.dat[,c("Subgrps", "N", "estimand", "est", "SE",
                            "LCL", "UCL", "pval")]
   return( param.dat )

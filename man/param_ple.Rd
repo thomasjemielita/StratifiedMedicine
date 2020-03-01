@@ -60,3 +60,7 @@ params
 
 
 }
+\references{
+Jemielita T, Mehrotra D. PRISM: Patient Response Identifiers for 
+Stratified Medicine. \url{https://arxiv.org/abs/1912.03337}
+}

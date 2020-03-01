@@ -59,6 +59,10 @@ params
 }
 
 }
+\references{
+Andersen, P. and Gill, R. (1982). Cox’s regression model for counting 
+processes, a large sample study. Annals of Statistics 10, 1100-1120.
+}
 \seealso{
 \code{\link{param_combine}}
 }

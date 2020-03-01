@@ -66,6 +66,11 @@ params
 }
 
 }
+\references{
+Uno et al. Moving beyond the hazard ratio in quantifying the 
+between-group difference in survival analysis. Journal of clinical Oncology 2014, 
+32, 2380-2385.
+}
 \seealso{
 \code{\link{param_combine}}
 }

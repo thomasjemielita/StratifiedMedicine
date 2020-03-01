@@ -47,27 +47,27 @@
 #' @export
 #' @seealso \code{\link{PRISM}}
 #'
-ple_train = function(Y, A, X, Xtest, family="gaussian", ple, hyper=NULL, ...){
+ple_train = function(Y, A, X, Xtest, family="gaussian", ple, hyper=NULL, ...) {
   ## Fit ple model ##
-  fit = do.call( ple, append(list(Y=Y, A=A, X=X, Xtest=Xtest,
-                                  family=family), hyper) )
+  fit <- do.call(ple, append(list(Y=Y, A=A, X=X, Xtest=Xtest,
+                                  family=family), hyper))
   ### Train/Test Predictions ###
   ## If prior predictions are made: ##
-  if (!is.null(fit$mu_train)){
-    mu_train = fit$mu_train
+  if (!is.null(fit$mu_train)) {
+    mu_train <- fit$mu_train
   }
-  if (!is.null(fit$mu_test)){
-    mu_test = fit$mu_test
+  if (!is.null(fit$mu_test)) {
+    mu_test <- fit$mu_test
   }
   ## If no prior predictions are mode: ##
-  if (is.null(fit$mu_train)){
-    mu_train = fit$pred.fun(fit$mod, X=X)
+  if (is.null(fit$mu_train)) {
+    mu_train <- fit$pred.fun(fit$mod, X=X)
   }
-  if (is.null(fit$mu_test)){
-    mu_test = fit$pred.fun(fit$mod, X=Xtest)
+  if (is.null(fit$mu_test)) {
+    mu_test <- fit$pred.fun(fit$mod, X=Xtest)
   }
-  res = list(fit = fit, mu_train=mu_train, mu_test=mu_test)
-  class(res) = "ple_train"
+  res <- list(fit = fit, mu_train=mu_train, mu_test=mu_test)
+  class(res) <- "ple_train"
   return(res)
 }
 
@@ -104,9 +104,9 @@ ple_train = function(Y, A, X, Xtest, family="gaussian", ple, hyper=NULL, ...){
 #' @export
 #' @seealso \code{\link{PRISM}}
 #'
-predict.ple_train = function(object, newdata=NULL, ...){
+predict.ple_train = function(object, newdata=NULL, ...) {
 
-  mu_hat = object$fit$pred.fun(object$fit$mod, newdata)
+  mu_hat <- object$fit$pred.fun(object$fit$mod, newdata)
 
   return(mu_hat)
 }

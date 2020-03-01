@@ -21,6 +21,10 @@
 #'   \item X - Covariate Space (in model matrix form)
 #' }
 #' @export
+#' @references Friedman, J., Hastie, T. and Tibshirani, R. (2008) Regularization Paths for
+#'  Generalized Linear Models via Coordinate Descent,
+#'  \url{https://web.stanford.edu/~hastie/Papers/glmnet.pdf} Journal of Statistical 
+#'  Software, Vol. 33(1), 1-22 Feb 2010 Vol. 33(1), 1-22 Feb 2010.
 #' @examples
 #' library(StratifiedMedicine)
 #'
@@ -34,39 +38,46 @@
 #'
 
 ##### Elastic net (glmnet): Y~(A,X,A*X) ==> PLEs ######
-ple_glmnet = function(Y, A, X, Xtest, lambda="lambda.min", family, ...){
+ple_glmnet = function(Y, A, X, Xtest, lambda="lambda.min", family, ...) {
 
   ## Model matrix the covariate space ###
-  X = model.matrix(~. -1, data = X )
-  if (is.null(A)){
+  X = model.matrix(~., data = X)[,-1]
+  if (is.null(A)) {
     W = X
   }
-  if (!is.null(A)){
+  if (!is.null(A)) {
+    A_lvls <- unique(A)[order(unique(A))]
     ## Generate the interaction covariates ###
-    X_inter = X*A
-    colnames(X_inter) = paste(colnames(X), "_A", sep="")
-    W = cbind(X, A, X_inter)
+    A.mat <- model.matrix(~., data=data.frame(A))[,-1]
+    X_inter = X*A.mat
+    colnames(X_inter) = paste(colnames(X), A_lvls[2], sep="_")
+    W = cbind(A=A.mat, X, X_inter)
   }
   ##### Elastic Net #####
   if (family=="survival") { family = "cox"  }
   mod <- cv.glmnet(x = W, y = Y, alpha=0.5, family=family)
-  mod <- list(mod=mod, lambda=lambda, A = length(A) )
-  pred.fun = function(mod, X=NULL){
-    lambda = mod$lambda
-    A = mod$A
-    mod = mod$mod
-    if (!is.null(X)){
-      X = model.matrix(~. -1, data = X )
-    }
+  mod$sel.lambda <- lambda
+  mod$A.length <- length(unique(A))
+  mod$A_lvls <- A_lvls
+  pred.fun = function(mod, X) {
+    lambda <- mod$sel.lambda
+    A.length <- mod$A.length
+    A_lvls <- mod$A_lvls
+    X = model.matrix(~., data = X)[,-1]
     ### Predictions (Counterfactuals) ###
-    if (A==0){
-      mu_hat = data.frame( mu=as.numeric(predict(mod, newx = X, s=lambda)) ) 
+    if (A.length==0) {
+      mu_hat = data.frame(mu=as.numeric(predict(mod, newx = X, s=lambda))) 
     }
-    if (A>0){
-      mu_hat = data.frame( 
-        mu1 = as.numeric(predict(mod,newx = cbind(X, 1, X*1), s=lambda)),
-        mu0 = as.numeric(predict(mod,newx = cbind(X, 0, X*0), s=lambda)) )
-      mu_hat$PLE = with(mu_hat, mu1 - mu0 )
+    if (A.length>0) {
+      X0 = data.frame(0, X, X*0)
+      colnames(X0) = c("A", colnames(X), paste(colnames(X), A_lvls[2], sep="_"))
+      X1 = data.frame(1, X, X*1)
+      colnames(X1) = c( "A", colnames(X), paste(colnames(X), A_lvls[2], sep="_"))
+      X1 <- as.matrix(X1); X0 <- as.matrix(X0)
+      mu_hat = data.frame(mu0 = predict(mod, newx=X0, s=lambda),
+                          mu1 = predict(mod, newx=X1, s=lambda))
+      if (!is.null(A_lvls)) colnames(mu_hat) <- paste("mu", A_lvls, sep="_")
+      mu_hat$PLE = mu_hat[,2] - mu_hat[,1]
     }
     return(mu_hat)
   }

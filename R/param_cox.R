@@ -24,6 +24,8 @@
 #'   SE=SE(logHR), LCL/UCL = lower/upper confidence limit on logHR scale, pval = p-value).
 #'   }
 #' @export
+#' @references Andersen, P. and Gill, R. (1982). Cox’s regression model for counting 
+#' processes, a large sample study. Annals of Statistics 10, 1100-1120.
 #' @examples
 #' \donttest{
 #' library(StratifiedMedicine)
@@ -51,9 +53,14 @@
 
 ### Cox Regression: Hazard Ratios ###
 param_cox = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="adaptive",
-                     ...){
+                     ...) {
   if (is.null(A)){
     stop("param_cox not applicable for no treatment (A=NULL)")
+  }
+  if (!is.null(A)) {
+    A_lvls <- unique(A)[order(unique(A))]
+    A_estimand <- paste("A=", A_lvls[2], " vs ", "A=", A_lvls[1], sep="")
+    A_estimand <- paste("logHR(", A_estimand, ")", sep="")
   }
   indata = data.frame(Y=Y, A=A, X)
   ### Loop through subgroups ##
@@ -63,12 +70,12 @@ param_cox = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="ada
     cox.mod = tryCatch( coxph(Y ~ A , data=indata[Subgrps %in% s,]),
                         error = function(e) "fit error",
                         warning = function(w) "convergence issues")
-    if (is.character(cox.mod)){
+    if (is.character(cox.mod)) {
       summ = data.frame(Subgrps = ifelse(n.s==dim(indata)[1], 0, s), N=n.s,
                         est=NA, SE=NA, LCL=NA, UCL=NA, 
                         pval=NA)
     }
-    if (is.list(cox.mod)){
+    if (is.list(cox.mod)) {
       est = summary(cox.mod)$coefficients[1]
       SE = summary(cox.mod)$coefficients[3]
       LCL = confint(cox.mod, level=1-alpha)[1]
@@ -77,29 +84,29 @@ param_cox = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="ada
       summ = data.frame( Subgrps = ifelse(n.s==dim(indata)[1], 0, s),
                          N = n.s, est, SE, LCL, UCL, pval)
     }
-    return( summ )
+    return(summ)
   }
   # Across Subgroups #
-  S_levels <- as.numeric( names(table(Subgrps)) )
+  S_levels <- as.numeric(names(table(Subgrps)))
   param.dat <- lapply(S_levels, looper, 
                       alpha = ifelse( length(unique(Subgrps))==1, alpha_ovrl, alpha_s))
   param.dat <- do.call(rbind, param.dat)
-  param.dat <- data.frame( param.dat )
+  param.dat <- data.frame(param.dat)
   # Combine results and estimate effect in overall population #
-  if ( sum(is.na(param.dat$est))>0){
-    if (length(unique(Subgrps))>1){
+  if (sum(is.na(param.dat$est))>0) {
+    if (length(unique(Subgrps))>1) {
       param.dat0 <- looper(s=S_levels, alpha=alpha_ovrl)
       param.dat = rbind(param.dat0, param.dat)
     }
   }
-  if ( sum(is.na(param.dat$est))==0){
+  if ( sum(is.na(param.dat$est))==0) {
     if (length(unique(Subgrps))>1){
       param.dat0 <- param_combine(param.dat = param.dat, alpha_ovrl=alpha_ovrl,
                                   combine=combine)
       param.dat <- rbind(param.dat0, param.dat) 
     }
   }
-  param.dat$estimand = "logHR(A=1 vs A=0)"
+  param.dat$estimand = A_estimand
   param.dat = param.dat[,c("Subgrps", "N", "estimand", "est", "SE", "LCL", "UCL", "pval")]
   return( param.dat )
 }

@@ -59,3 +59,7 @@ params = param_dr(Y, A, X, mu_hat = res_ranger$mu_train,
 params
 
 }
+\references{
+Funk et al. Doubly Robust Estimation of Causal Effects. 
+Am J Epidemiol 2011. 173(7): 761-767.
+}
