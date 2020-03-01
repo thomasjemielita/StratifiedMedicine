@@ -47,9 +47,15 @@ filter_ranger = function(Y, A, X, b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thre
                      family="gaussian", ...) {
 
   if (DF2==TRUE) { #Generate the interaction covariates #
-    X_inter = X*A
-    colnames(X_inter) = paste(colnames(X), "_A", sep="")
-    W = cbind(X, A, X_inter)
+    A_lvls <- unique(A)[order(unique(A))]
+    ## Generate the interaction covariates ###
+    A.mat <- model.matrix(~., data=data.frame(A))[,-1]
+    X_inter = X*A.mat
+    colnames(X_inter) = paste(colnames(X), A_lvls[2], sep="_")
+    W = cbind(A=A.mat, X, X_inter)
+    # X_inter = X*A
+    # colnames(X_inter) = paste(colnames(X), "_A", sep="")
+    # W = cbind(X, A, X_inter)
   }
   if (DF2==FALSE) {
     W = cbind(X)
@@ -87,7 +93,7 @@ filter_ranger = function(Y, A, X, b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thre
   if (DF2==TRUE) {
     out.F = data.frame(Variables=colnames(X), est.2DF=NA, SE.2DF=NA)
     for (var in colnames(X)) {
-      inter.name = paste(var, "_A", sep="")
+      inter.name = paste(var, A_lvls[2], sep="_")
       # Extract VI estimates and SEs #
       est0 = out$est[out$Variables==var]; SE0 = out$SE[out$Variable==var]
       estI = out$est[out$Variables==inter.name]; SEI = out$SE[out$Variable==inter.name]
@@ -106,6 +112,8 @@ filter_ranger = function(Y, A, X, b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thre
     out.F$Tstat = with(out.F, est.2DF/SE.2DF)
     out.F$pval = with(out.F, 1-pnorm(Tstat))
     out.F$pval.fdr = p.adjust(out.F$pval, "fdr")
+    out.F$est <- out.F$est.2DF
+    out.F$SE <- out.F$SE.2DF
   }
 
   # FDR Adjustment? #
