@@ -21,6 +21,8 @@
 #'   LCL/UCL = lower/upper confidence limits, pval = p-value).
 #'   }
 #' @export
+#' @references Funk et al. Doubly Robust Estimation of Causal Effects. 
+#' Am J Epidemiol 2011. 173(7): 761-767.
 #' @examples
 #' library(StratifiedMedicine)
 #'
@@ -44,14 +46,21 @@
 #'
 
 ### AIPTW (Double-Robust) Param ###
-param_dr = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
+param_dr = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...) {
   
-  if (is.null(A)){
+  if (is.null(A)) {
     stop("param_dr not applicable for no treatment (A=NULL)") 
   }
-  estimands <- c("E(Y|A=0)", "E(Y|A=1)", "E(Y|A=1)-E(Y|A=0)")
+  A_lvls <- unique(A)[order(unique(A))]
+  E_A0 <- paste("E(Y|A=", A_lvls[1], ")", sep="")
+  E_A1 <- paste("E(Y|A=", A_lvls[2], ")", sep="")
+  E_diff <- paste(E_A1, "-", E_A0, sep="")
+  estimands <- c(E_A0, E_A1, E_diff)
+  mu_A0 <- paste("mu", A_lvls[1], sep="_")
+  mu_A1 <- paste("mu", A_lvls[2], sep="_")
+  A_num <- model.matrix(~., data=data.frame(A))[,-1]
   
-  indata <- data.frame(Y=Y, A=A, X)
+  indata <- data.frame(Y=Y, A=A_num, X)
   # Subgroup and overall estimates #
   looper <- function(s, alpha){
     Y.s <- indata$Y[Subgrps %in% s]
@@ -60,8 +69,8 @@ param_dr = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...){
     probA <- mean(A.s)
     mu.s <- mu_hat[Subgrps %in% s,]
     # EIF ###
-    eif.0 = ( (1-A.s)*Y.s + (A.s-probA)*mu.s$mu0 ) / (1-probA)
-    eif.1 = ( A.s*Y.s - (A.s-probA)*mu.s$mu1 )/ probA
+    eif.0 = ( (1-A.s)*Y.s + (A.s-probA)*mu.s[,mu_A0] ) / (1-probA)
+    eif.1 = ( A.s*Y.s - (A.s-probA)*mu.s[,mu_A1] )/ probA
     eif = eif.1 - eif.0
     # Double robust estimator: Average eifs #
     est = c( mean(eif.0, na.rm=TRUE), 
