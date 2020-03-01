@@ -60,8 +60,6 @@ A = dat_ctns$A # binary treatment, 1:1 randomized
 # PRISM Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
 res0 = PRISM(Y=Y, A=A, X=X)
 plot(res0) # default: tree plot 
-## Plot the distribution of PLEs ###
-plot(res0, type="PLE:density") # Density plot of PLEs #
 plot(res0, type="PLE:waterfall") # waterfall plot of PLEs
 ## Overall/subgroup specific parameter estimates/inference
 res0$param.dat

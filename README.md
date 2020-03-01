@@ -61,79 +61,86 @@ plot(res0) # default: tree plot
 ![](man/figures/README-example-1.png)
 
 ``` r
-## Plot the distribution of PLEs ###
-plot(res0, type="PLE:density") # Density plot of PLEs #
+plot(res0, type="PLE:waterfall") # waterfall plot of PLEs
 ```
 
 ![](man/figures/README-example-2.png)
 
 ``` r
-plot(res0, type="PLE:waterfall") # waterfall plot of PLEs
+## Overall/subgroup specific parameter estimates/inference
+res0$param.dat
+#>    Subgrps   N          estimand        est         SE         LCL
+#> 1        0 800          E(Y|A=0) 1.63979818 0.04567662  1.55013782
+#> 2        0 800          E(Y|A=1) 1.83953825 0.04871379  1.74391613
+#> 3        0 800 E(Y|A=1)-E(Y|A=0) 0.19974008 0.06329221  0.07550143
+#> 4        3 149          E(Y|A=0) 1.28297958 0.11169103  1.06226442
+#> 5        3 149          E(Y|A=1) 1.31807996 0.10932336  1.10204360
+#> 6        3 149 E(Y|A=1)-E(Y|A=0) 0.03510038 0.15343734 -0.26811059
+#> 7        4 277          E(Y|A=0) 1.61280771 0.06705679  1.48079995
+#> 8        4 277          E(Y|A=1) 1.67336273 0.07708837  1.52160684
+#> 9        4 277 E(Y|A=1)-E(Y|A=0) 0.06055502 0.10098218 -0.13823814
+#> 10       7  99          E(Y|A=0) 1.58968017 0.14067817  1.31050892
+#> 11       7  99          E(Y|A=1) 1.92148579 0.13161892  1.66029233
+#> 12       7  99 E(Y|A=1)-E(Y|A=0) 0.33180562 0.19007951 -0.04540098
+#> 13       8 168          E(Y|A=0) 1.76688140 0.08927908  1.59062031
+#> 14       8 168          E(Y|A=1) 2.04137779 0.09774962  1.84839357
+#> 15       8 168 E(Y|A=1)-E(Y|A=0) 0.27449640 0.13104528  0.01577751
+#> 16       9 107          E(Y|A=0) 2.05338724 0.13530977  1.78512246
+#> 17       9 107          E(Y|A=1) 2.60314625 0.11616776  2.37283238
+#> 18       9 107 E(Y|A=1)-E(Y|A=0) 0.54975901 0.17746914  0.19790919
+#>          UCL          pval alpha  Prob(>0)
+#> 1  1.7294585 8.032773e-169  0.05 1.0000000
+#> 2  1.9351604 7.200995e-180  0.05 1.0000000
+#> 3  0.3239787  1.660367e-03  0.05 0.9991998
+#> 4  1.5036947  3.103578e-22  0.05 1.0000000
+#> 5  1.5341163  9.481730e-24  0.05 1.0000000
+#> 6  0.3383114  8.193710e-01  0.05 0.5904724
+#> 7  1.7448155  1.087589e-69  0.05 1.0000000
+#> 8  1.8251186  1.235131e-61  0.05 1.0000000
+#> 9  0.2593482  5.492246e-01  0.05 0.7256337
+#> 10 1.8688514  1.876468e-19  0.05 1.0000000
+#> 11 2.1826792  2.520863e-26  0.05 1.0000000
+#> 12 0.7090122  8.401201e-02  0.05 0.9595611
+#> 13 1.9431425  1.190149e-45  0.05 1.0000000
+#> 14 2.2343620  1.958038e-48  0.05 1.0000000
+#> 15 0.5332153  3.770973e-02  0.05 0.9818998
+#> 16 2.3216520  2.475816e-28  0.05 1.0000000
+#> 17 2.8334601  5.223720e-42  0.05 1.0000000
+#> 18 0.9016088  2.496084e-03  0.05 0.9990251
+## Forest plot: Overall/subgroup specific parameter estimates (CIs)
+plot(res0, type="forest")
 ```
 
 ![](man/figures/README-example-3.png)
 
 ``` r
-## Overall/subgroup specific parameter estimates/inference
-res0$param.dat
-#>    Subgrps   N          estimand          est         SE         LCL
-#> 1        0 800          E(Y|A=0)  1.647206172 0.04818083  1.55263022
-#> 2        0 800          E(Y|A=1)  1.824851581 0.05059272  1.72554124
-#> 3        0 800 E(Y|A=1)-E(Y|A=0)  0.177645409 0.06401659  0.05198484
-#> 4        3 149          E(Y|A=0)  1.307796853 0.11780524  1.07499927
-#> 5        3 149          E(Y|A=1)  1.304127531 0.11253956  1.08173558
-#> 6        3 149 E(Y|A=1)-E(Y|A=0) -0.003669322 0.15361575 -0.30723286
-#> 7        4 277          E(Y|A=0)  1.595278111 0.07083816  1.45582638
-#> 8        4 277          E(Y|A=1)  1.681506030 0.07991550  1.52418467
-#> 9        4 277 E(Y|A=1)-E(Y|A=0)  0.086227920 0.10124699 -0.11308654
-#> 10       7  99          E(Y|A=0)  1.634126348 0.14867139  1.33909281
-#> 11       7  99          E(Y|A=1)  1.906350368 0.13876001  1.63098565
-#> 12       7  99 E(Y|A=1)-E(Y|A=0)  0.272224021 0.19338298 -0.11153820
-#> 13       8 168          E(Y|A=0)  1.777156158 0.09403446  1.59150665
-#> 14       8 168          E(Y|A=1)  2.028613094 0.10191424  1.82740676
-#> 15       8 168 E(Y|A=1)-E(Y|A=0)  0.251456937 0.13271402 -0.01055649
-#> 16       9 107          E(Y|A=0)  2.062340441 0.14392044  1.77700417
-#> 17       9 107          E(Y|A=1)  2.525732768 0.12550856  2.27689985
-#> 18       9 107 E(Y|A=1)-E(Y|A=0)  0.463392328 0.18604036  0.09454922
-#>          UCL          pval alpha
-#> 1  1.7417821 1.526241e-158  0.05
-#> 2  1.9241619 7.844199e-170  0.05
-#> 3  0.3033060  5.649268e-03  0.05
-#> 4  1.5405944  3.274666e-21  0.05
-#> 5  1.5265195  1.669789e-22  0.05
-#> 6  0.2998942  9.809754e-01  0.05
-#> 7  1.7347298  1.859005e-64  0.05
-#> 8  1.8388274  2.661126e-59  0.05
-#> 9  0.2855424  3.951417e-01  0.05
-#> 10 1.9291599  8.652905e-19  0.05
-#> 11 2.1817151  1.401325e-24  0.05
-#> 12 0.6559862  1.623859e-01  0.05
-#> 13 1.9628057  2.470671e-43  0.05
-#> 14 2.2298194  6.037915e-46  0.05
-#> 15 0.5134704  5.985669e-02  0.05
-#> 16 2.3476767  1.500633e-26  0.05
-#> 17 2.7745657  5.416700e-38  0.05
-#> 18 0.8322354  1.429656e-02  0.05
-## Forest plot: Overall/subgroup specific parameter estimates (CIs)
-plot(res0, type="forest")
+
+## Dependence Plots (univariate and heat maps)
+plot_dependence(res0, vars="X1")
+#> $res.est
+#> `geom_smooth()` using method = 'loess' and formula 'y ~ x'
 ```
 
 ![](man/figures/README-example-4.png)
 
 ``` r
-
-## Heatmap of PLEs (Individual treatment effects, E(Y|A=1,X)-E(Y|A=0,X)) #
-grid.data = expand.grid(X1 = seq(min(X$X1), max(X$X1), by=0.5),
-                    X2 = seq(min(X$X2), max(X$X2), by=0.5))
-plot(res0, type="heatmap", grid.data = grid.data)
-#> $heatmap.est
+plot_dependence(res0, vars="X2")
+#> $res.est
+#> `geom_smooth()` using method = 'loess' and formula 'y ~ x'
 ```
 
 ![](man/figures/README-example-5.png)
 
+``` r
+plot_dependence(res0, vars=c("X1", "X2"))
+#> $heatmap.est
+```
+
+![](man/figures/README-example-6.png)
+
     #> 
     #> $heatmap.prob
 
-![](man/figures/README-example-6.png)
+![](man/figures/README-example-7.png)
 
 Overall, PRISM provides information at the patient-level, the subgroup-level (if any), and the overall population. While there are defaults in place, the user can also input their own functions/model wrappers into the PRISM algorithm. For more details and more examples, we refer the reader to the following vignettes, [PRISM\_vignette](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_PRISM.html), [User\_Specific\_Models](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_User_Models.html).
