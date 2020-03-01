@@ -22,6 +22,11 @@
 #'   \item filter.vars - Variables that remain after filtering (could be all)
 #' }
 #' @export
+#' @references Friedman, J., Hastie, T. and Tibshirani, R. (2008) Regularization Paths for
+#'  Generalized Linear Models via Coordinate Descent,
+#'  \url{https://web.stanford.edu/~hastie/Papers/glmnet.pdf} Journal of Statistical 
+#'  Software, Vol. 33(1), 1-22 Feb 2010 Vol. 33(1), 1-22 Feb 2010.
+
 #' @examples
 #'
 #' library(StratifiedMedicine)
@@ -49,28 +54,62 @@ filter_glmnet = function(Y, A, X, lambda="lambda.min", family="gaussian",
                          interaction=FALSE,...){
 
   ## Model Matrix #
+  fact.vars <- sapply(X, is.factor)
   X.mat = X
-  colnames(X.mat) = paste(colnames(X.mat), "_REMOVE_", sep="")
-  X.mat = model.matrix(~., data = X.mat )
+  colnames(X.mat)[fact.vars] = paste(colnames(X.mat)[fact.vars], "_lvl_", sep="")
+  X.mat = model.matrix(~., data = X.mat)
   X.mat = X.mat[, colnames(X.mat) != "(Intercept)"]
   W = X.mat
 
   if (interaction){
-    X_inter = X.mat*A
-    colnames(X_inter) = paste(colnames(X.mat), "_A", sep="")
+    A.mat <- model.matrix(~., data=data.frame(A))[,-1]
+    X_inter = X.mat*A.mat
+    colnames(X_inter) = paste(colnames(X.mat), "_trtA", sep="")
     W = cbind(X.mat, A, X_inter)
   }
+  # Center and Scale #
+  n <- dim(W)[1]
+  W_centered <- apply(W, 2, function(x) x - mean(x))
+  Ws <- apply(W_centered, 2, function(x) x / sqrt(sum(x^2) / n))
 
-  ##### Elastic Net on estimated ITEs #####
+  # Fit Elastic Net #
   if (family=="survival") { family = "cox" }
-  mod <- cv.glmnet(x = W, y = Y, nlambda = 100, alpha=0.5, family=family)
+  mod <- cv.glmnet(x = Ws, y = Y, nlambda = 100, alpha=0.5, family=family)
 
   ### Extract filtered variable based on lambda ###
   VI <- coef(mod, s = lambda)[,1]
   VI = VI[ names(VI) != "(Intercept)" ]
   # Extract variables that pass the filter ##
   filter.vars = names(VI[VI!=0])
-  filter.vars = unique( gsub("_REMOVE_.*","",filter.vars) )
-
-  return( list(mod=mod, filter.vars=filter.vars) )
+  filter.vars = unique( gsub("_lvl_.*","",filter.vars) )
+  if (interaction) {
+    filter.vars <- unique(sub("_trtA","",filter.vars))
+    filter.vars <- filter.vars[filter.vars!="A"]
+  }
+  # Store selected lambda in model #
+  mod$sel.lambda <- lambda
+  mod$sel.family <- family
+  # Return model fit, filter.vars #
+  return(list(mod=mod, filter.vars=filter.vars))
+}
+# VI Plot #
+plot_vimp_glmnet <- function(mod) {
+  # Extract filtered variable based on lambda #
+  VI <- coef(mod, s = mod$sel.lambda)[,1]
+  VI = VI[ names(VI) != "(Intercept)" ]
+  
+  # Importance Plot #
+  plot.title <- paste("Elastic Net (", mod$sel.family, ") Importance Plot", sep="")
+  VI.dat <- data.frame(covariate = names(VI),
+                       est = as.numeric(VI))
+  VI.dat <- VI.dat[VI.dat$est!=0,]
+  VI.dat$rank = 1
+  vimp.plt <- ggplot2::ggplot(VI.dat, aes(x=reorder(.data$covariate, abs(.data$est)), 
+                                 y=.data$est)) + 
+    ggplot2::geom_bar(stat="identity")+
+    ggplot2::ylab("Beta (standardized)")+
+    ggplot2::xlab("Variable")+
+    ggplot2::ggtitle(plot.title)+
+    ggplot2::coord_flip()
+  return(vimp.plt)
 }

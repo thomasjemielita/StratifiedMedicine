@@ -4,8 +4,8 @@
 \alias{ple_ranger}
 \title{Patient-level Estimates: Ranger}
 \usage{
-ple_ranger(Y, A, X, Xtest, family = "gaussian", byTrt = FALSE,
-  min.node.pct = 0.1, ...)
+ple_ranger(Y, A, X, Xtest, family = "gaussian", byTrt = ifelse(family
+  == "survival", FALSE, TRUE), min.node.pct = 0.1, ...)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
@@ -52,6 +52,11 @@ mod1 = ple_ranger(Y, A, X, Xtest=X)
 
 }
 
+}
+\references{
+Wright, M. N. & Ziegler, A. (2017). ranger: A fast implementation of 
+random forests for high dimensional data in C++ and R. J Stat Softw 77:1-17. 
+\url{https://doi.org/10.18637/jss.v077.i01}.
 }
 \seealso{
 \code{\link{PRISM}}, \code{\link{ranger}}

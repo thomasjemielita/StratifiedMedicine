@@ -60,3 +60,9 @@ mod3$filter.vars
 mod4 = filter_glmnet(Y, A, X, interaction=TRUE)
 mod4$filter.vars
 }
+\references{
+Friedman, J., Hastie, T. and Tibshirani, R. (2008) Regularization Paths for
+ Generalized Linear Models via Coordinate Descent,
+ \url{https://web.stanford.edu/~hastie/Papers/glmnet.pdf} Journal of Statistical 
+ Software, Vol. 33(1), 1-22 Feb 2010 Vol. 33(1), 1-22 Feb 2010.
+}

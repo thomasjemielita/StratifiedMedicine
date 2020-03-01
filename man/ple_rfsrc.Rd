@@ -61,3 +61,10 @@ mod1 = ple_rfsrc(Y, A, X, Xtest=X)
 }
 
 }
+\references{
+\itemize{
+\item Breiman L. (2001). Random forests, Machine Learning, 45:5-32.
+\item Ishwaran H., Kogalur U.B., Blackstone E.H. and Lauer M.S. (2008). Random 
+survival forests, Ann. App. Statist., 2:841-860.
+}
+}
