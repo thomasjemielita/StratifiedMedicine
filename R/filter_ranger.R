@@ -1,9 +1,10 @@
 #' Filter: Random Forest (ranger) Variable Importance
 #'
 #' Filtering through Random Forest Variable Importance with p-values. P-values are obtained
-#' through subsampling based T-statistics, as described in Ishwaran and Lu 2017. Default is
-#' to remove variables if one-sided (VI>0) p-values >= 0.10. Used for continuous, binary, 
-#' or survival outcomes.
+#' through subsampling based T-statistics (T=VI_j/SE(VE_j) for feature j through the 
+#' delete-d jackknife), as described in Ishwaran and Lu 2017. Default is to remove 
+#' variables if one-sided (VI>0) p-values >= 0.10. Used for continuous, binary, or 
+#' survival outcomes.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
 #' @param A Treatment variable. (a=1,...A)
@@ -27,15 +28,16 @@
 #' random forests for high dimensional data in C++ and R. J Stat Softw 77:1-17. 
 #' \url{https://doi.org/10.18637/jss.v077.i01}.
 #' @examples
+#' \donttest{
 #' library(StratifiedMedicine)
-#'
+#' library(ranger)
+#' 
 #' ## Continuous ##
 #' dat_ctns = generate_subgrp_data(family="gaussian")
 #' Y = dat_ctns$Y
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
-#' \donttest{
 #' mod1 = filter_ranger(Y, A, X, K=200) # Same as default #
 #' mod1$filter.vars
 #' mod1$mod # summary of variable importance outputs
@@ -60,13 +62,14 @@ filter_ranger = function(Y, A, X, b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thre
   if (DF2==FALSE) {
     W = cbind(X)
   }
+  n <- dim(W)[1]
 
   ## Calculcate observed variable importance ##
   mod0 <- ranger(Y ~ ., data = data.frame(Y,W), importance = "permutation")
   VI0 = as.numeric(mod0$variable.importance)
 
   ### Subsample function ###
-  b1 = ( dim(X)[1] )^(b)
+  b1 = (n)^(b)
   sub_VI = function(s) {
     ## Subsample data ##
     hold = data.frame(Y, W)
@@ -79,10 +82,10 @@ filter_ranger = function(Y, A, X, b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thre
   res = do.call(rbind, res)
   VI.var = NULL
   for (j in 1:dim(res)[2]){
-    VI.var = c(VI.var, b1/((length(Y)-b1)*K) * sum((res[,j] - VI0[j])^2, na.rm = TRUE ))
+    VI.var = c(VI.var, b1/((n-b1)*K) * sum((res[,j] - VI0[j])^2, na.rm = TRUE ))
   }
   #### Initial Output of VI and SE(VI) for each variable ###
-  out = data.frame(Variables = colnames(W), est = VI0, SE = sqrt(VI.var) )
+  out = data.frame(Variables = colnames(W), est = VI0, SE = sqrt(VI.var))
   if (DF2==FALSE) {
     out.F = out
     ### T-Statistics and one-sided p-values ###
@@ -139,6 +142,7 @@ plot_vimp_ranger <- function(mod, top_n=NULL) {
   VI.dat <- mod$VI.dat
   family <- unique(VI.dat$family)
   pval.thres <- unique(VI.dat$pval.thres)
+  family <- ifelse(family=="gaussian", "regression", family)
   plot.title <- paste("Random Forest (", family,
                       ") Importance Plot", sep="")
   y.label <- paste("Variable Importance ", 
