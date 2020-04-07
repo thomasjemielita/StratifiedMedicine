@@ -29,19 +29,19 @@
 #' @examples
 #' \donttest{
 #' library(StratifiedMedicine)
-#' # Survival Data #
-#' require(TH.data); require(coin)
-#` data("GBSG2", package = "TH.data")
-#` surv.dat = GBSG2
-#` # Design Matrices ###
-#` Y = with(surv.dat, Surv(time, cens))
-#` X = surv.dat[,!(colnames(surv.dat) %in% c("time", "cens")) ]
-#` A = rbinom( n = dim(X)[1], size=1, prob=0.5  ) ## simulate null treatment
+#' library(survival)
+#' require(TH.data)
+#' require(coin)
+#' 
+#' surv.dat = GBSG2
+#' Y <- with(surv.dat, Surv(time, cens))
+#' X <- surv.dat[,!(colnames(surv.dat) %in% c("time", "cens"))]
+#' A = rbinom( n = dim(X)[1], size=1, prob=0.5  ) ## simulate null treatment
+#' 
 #'
 #' # MOB-Weibull Subgroup Model ##
 #' res_weibull = submod_train(Y, A, X, Xtest=X, family="survival",
 #'                             submod="submod_weibull")
-#' plot(res_weibull$mod)
 #'
 #' ## Parameter-Estimation ##
 #' params = param_cox(Y, A, X, Subgrps = res_weibull$Subgrps.train, alpha_ovrl=0.05,
