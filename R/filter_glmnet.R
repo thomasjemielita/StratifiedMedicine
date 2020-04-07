@@ -51,15 +51,16 @@
 
 ##### Elastic net (glmnet): Y~X ######
 filter_glmnet = function(Y, A, X, lambda="lambda.min", family="gaussian",
-                         interaction=FALSE,...){
+                         interaction=FALSE, ...){
 
   ## Model Matrix #
   fact.vars <- sapply(X, is.factor)
-  X.mat = X
-  colnames(X.mat)[fact.vars] = paste(colnames(X.mat)[fact.vars], "_lvl_", sep="")
-  X.mat = model.matrix(~., data = X.mat)
-  X.mat = X.mat[, colnames(X.mat) != "(Intercept)"]
-  W = X.mat
+  X.mat <- X
+  colnames(X.mat)[fact.vars] <- paste(colnames(X.mat)[fact.vars], "_lvl_", sep="")
+  X.mat <- model.matrix(~., data = X.mat)
+  X.mat <- X.mat[, colnames(X.mat) != "(Intercept)"]
+  W <- X.mat
+  intercept <- TRUE
 
   if (interaction){
     A.mat <- model.matrix(~., data=data.frame(A))[,-1]
@@ -74,14 +75,16 @@ filter_glmnet = function(Y, A, X, lambda="lambda.min", family="gaussian",
 
   # Fit Elastic Net #
   if (family=="survival") { family = "cox" }
-  mod <- cv.glmnet(x = Ws, y = Y, nlambda = 100, alpha=0.5, family=family)
+  mod <- suppressWarnings( 
+    cv.glmnet(x = Ws, y = Y, nlambda = 100, alpha=0.5, family=family,
+                   intercept=intercept) )
 
   ### Extract filtered variable based on lambda ###
   VI <- coef(mod, s = lambda)[,1]
-  VI = VI[ names(VI) != "(Intercept)" ]
+  VI <- VI[ names(VI) != "(Intercept)" ]
   # Extract variables that pass the filter ##
-  filter.vars = names(VI[VI!=0])
-  filter.vars = unique( gsub("_lvl_.*","",filter.vars) )
+  filter.vars <- names(VI[VI!=0])
+  filter.vars <- unique( gsub("_lvl_.*","",filter.vars) )
   if (interaction) {
     filter.vars <- unique(sub("_trtA","",filter.vars))
     filter.vars <- filter.vars[filter.vars!="A"]
@@ -103,7 +106,7 @@ plot_vimp_glmnet <- function(mod) {
   VI.dat <- data.frame(covariate = names(VI),
                        est = as.numeric(VI))
   VI.dat <- VI.dat[VI.dat$est!=0,]
-  VI.dat$rank = 1
+  VI.dat$rank <- 1
   vimp.plt <- ggplot2::ggplot(VI.dat, aes(x=reorder(.data$covariate, abs(.data$est)), 
                                  y=.data$est)) + 
     ggplot2::geom_bar(stat="identity")+
