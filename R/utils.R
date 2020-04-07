@@ -5,8 +5,6 @@ getUsefulPredictors <- function(x) {
   varid <- unique(unlist(varid))
   names(data_party(x))[varid]
 }
-
-
 ## Extract summary statistics (linear regression: Y~A within subgroup) ##
 lm_stats = function(summ.fit, Subgrps, s, alpha, noA) {
   # Sample size #
@@ -308,26 +306,40 @@ prob_calculator <- function(fit, thres=">0") {
     numb <- substr(thres, 3, nchar(thres))
   }
   numb <- as.numeric(numb)
+  if (fit$param=="param_cox") {
+    numb <- log(numb)
+    thres <- paste(dir,numb,sep=" ")
+  }
   # Check resampling / bayesian #
-  resamp <- ifelse(is.null(fit$resamp.dist), FALSE, TRUE)
+  resamp <- ifelse(is.null(fit$resample), "None", as.character(fit$resample))
   bayes <- ifelse(is.null(fit$bayes.fun), FALSE, TRUE)
   # Normal Approx (if no normal/bayes)
-  if (!resamp & !bayes) {
+  if (resamp=="None" & !bayes) {
     prob.est <- with(param.dat, 1-pnorm(numb, mean=est, sd=SE))
     if (dir=="<") prob.est <- 1-prob.est
     param.dat$prob.est <- prob.est
   }
   # Bayes #
-  if (!resamp & bayes) {
+  if (resamp=="None" & bayes) {
     prob.est <- with(param.dat, 1-pnorm(numb, mean=est.bayes, sd=SE.bayes))
     if (dir=="<") prob.est <- 1-prob.est
     param.dat$prob.est <- prob.est
   }
+  # CV #
+  if (resamp=="CV") {
+    prob.est <- with(param.dat, 1-pnorm(numb, mean=est_resamp, sd=SE_resamp))
+    if (dir=="<") prob.est <- 1-prob.est
+    param.dat$prob.est <- prob.est
+  }
   # Resampling #
-  if (resamp) {
+  if (resamp %in% c("Bootstrap", "Permutation")) {
     rdist <- fit$resamp.dist
     rdist$prob.est = eval(parse(text=paste("ifelse(rdist$est",thres, ", 1, 0)")))
     prob.dat <- aggregate(prob.est ~ Subgrps*estimand, data=rdist, FUN="mean")
+    if (fit$param=="param_cox") {
+      prob.dat$estimand = gsub("logHR", "HR", prob.dat$estimand)
+    }
+    param.dat <- param.dat[,!(colnames(param.dat) %in% c("prob.est"))]
     param.dat <- left_join(param.dat, prob.dat, by=c("Subgrps", "estimand"))
   }
   # Create column name #
