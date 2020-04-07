@@ -56,7 +56,6 @@ A = rbinom( n = dim(X)[1], size=1, prob=0.5  ) ## simulate null treatment
 # MOB-Weibull Subgroup Model ##
 res_weibull = submod_train(Y, A, X, Xtest=X, family="survival",
                            submod = "submod_weibull")
-plot(res_weibull$mod)
 
 # Parameter-Estimation ##
 require(survRM2)

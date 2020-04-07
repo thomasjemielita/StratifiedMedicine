@@ -37,12 +37,15 @@ Filter model and variables that remain after filtering.
 }
 \description{
 Filtering through Random Forest Variable Importance with p-values. P-values are obtained
-through subsampling based T-statistics, as described in Ishwaran and Lu 2017. Default is
-to remove variables if one-sided (VI>0) p-values >= 0.10. Used for continuous, binary, 
-or survival outcomes.
+through subsampling based T-statistics (T=VI_j/SE(VE_j) for feature j through the 
+delete-d jackknife), as described in Ishwaran and Lu 2017. Default is to remove 
+variables if one-sided (VI>0) p-values >= 0.10. Used for continuous, binary, or 
+survival outcomes.
 }
 \examples{
+\donttest{
 library(StratifiedMedicine)
+library(ranger)
 
 ## Continuous ##
 dat_ctns = generate_subgrp_data(family="gaussian")
@@ -50,7 +53,6 @@ Y = dat_ctns$Y
 X = dat_ctns$X
 A = dat_ctns$A
 
-\donttest{
 mod1 = filter_ranger(Y, A, X, K=200) # Same as default #
 mod1$filter.vars
 mod1$mod # summary of variable importance outputs

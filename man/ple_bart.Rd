@@ -44,6 +44,7 @@ estimates. Used for continuous or binary outcomes. Covariate by treatment intera
 are automatically included in BART model (as in Hahn et al 2017).
 }
 \examples{
+\donttest{
 library(StratifiedMedicine)
 
 ## Continuous ##
@@ -54,11 +55,9 @@ A = dat_ctns$A
 train = data.frame(Y, A, X)
 
 # BART #
-\donttest{
 require(BART)
 mod1 = ple_bart(Y, A, X, Xtest=X)
 summary(mod1$mu_train)
-summary(predict(mod1, newdata=X))
 }
 
 

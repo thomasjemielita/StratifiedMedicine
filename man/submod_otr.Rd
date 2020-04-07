@@ -53,7 +53,7 @@ A = dat_ctns$A
 
 \donttest{
 ## Estimate PLEs (through Ranger) ##
-res.ple = ple_model(Y, A, X, Xtest=X, family="gaussian", ple="ple_ranger")
+res.ple = ple_train(Y, A, X, Xtest=X, family="gaussian", ple="ple_ranger")
 
 ## Fit OTR Subgroup Model ##
 res_otr = submod_otr(Y, A, X, Xtest=X, mu_train = res.ple$mu_train)
