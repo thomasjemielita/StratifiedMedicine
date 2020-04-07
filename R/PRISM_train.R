@@ -1,35 +1,16 @@
-#' PRISM (Train): Patient Response Identifier for Stratified Medicine
-#'
-#' Train the PRISM algorithm given a training set (Y, A, X) and test set (Xtest). 
-#' Used directly in \code{PRISM} and \code{PRISM_resamp}.
-#'
-#' @inheritParams PRISM
-#' 
-#' @return Trained PRISM object. Includes filter, ple, submod, and param outputs.
-#'  \itemize{
-#'   \item filter.mod - Filter model
-#'   \item filter.vars - Variables remaining after filtering
-#'   \item ple.fit - Fitted ple model (model fit, other fit outputs)
-#'   \item mu_train - Patient-level estimates (train)
-#'   \item mu_test - Patient-level estimates (test)
-#'   \item submod.fit - Fitted submod model (model fit, other fit outputs)
-#'   \item Subgrps.train - Training data-set with identified subgroups
-#'   \item Subgrps.test - Test data-set with identified subgroups
-#'   \item Rules - Subgroup rules / definitions
-#'   \item param.dat - Parameter estimates and variablity metrics (depends on param)
-#' }
-#'  
-##### PRISM: Patient Responder Identifiers for Stratified Medicine ########
+# PRISM (Train): Patient Response Identifier for Stratified Medicine
 PRISM_train = function(Y, A, X, Xtest=NULL, family="gaussian",
                  filter="filter_glmnet", ple=NULL, submod=NULL, param=NULL,
                  alpha_ovrl=0.05, alpha_s = 0.05,
                  filter.hyper=NULL, ple.hyper=NULL, submod.hyper = NULL,
-                 param.hyper = NULL, verbose=TRUE){
+                 param.hyper = NULL, verbose=TRUE) {
   
   ### Step 1: Variable Filtering ###
-  if ( !(filter=="None") ){
-    if (verbose) message( paste("Filtering:", filter, sep=" ") )
-    step1 <- do.call( filter, append(list(Y=Y, A=A, X=X, family=family), filter.hyper)  )
+  if (!(filter=="None")) {
+    if (verbose) message(paste("Filtering:", filter, sep=" "))
+    step1 <- tryCatch(filter_train(Y=Y, A=A, X=X, family = family, 
+                                   filter=filter, hyper = filter.hyper),
+                       error = function(e) e )
     filter.mod <- step1$mod
     filter.vars <- step1$filter.vars
   }

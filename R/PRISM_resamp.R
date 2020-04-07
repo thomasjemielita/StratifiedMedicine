@@ -1,19 +1,4 @@
-#' PRISM (Resample): Patient Response Identifier for Stratified Medicine
-#'
-#' Based on initial PRISM fit (\code{PRISM_train}), run resampling (Boostrap, Permutation,
-#' or cross-validation). Used directly in \code{PRISM}.
-#'
-#' @param PRISM.fit Fitted PRISM model
-#' @inheritParams PRISM
-#' 
-#' @return Trained PRISM object. Includes filter, ple, submod, and param outputs.
-#'  \itemize{
-#'   \item param.dat - Parameter estimates and variablity metrics (depends on param)
-#'   \item resamp.dist - - Resampling distributions
-#' }
-#' 
-#'   
-##### PRISM: Patient Responder Identifiers for Stratified Medicine ########
+# PRISM (Resample): Patient Response Identifier for Stratified Medicine
 PRISM_resamp <- function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
                        filter="filter_glmnet", ple=NULL, submod=NULL, param=NULL,
                        alpha_ovrl=0.05, alpha_s = 0.05,
