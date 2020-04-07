@@ -51,10 +51,10 @@ param_ple = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, ...) {
 
   noA = FALSE
   if (is.null(A)) {
-    A = rep(1, length(Y))
+    A_num = rep(1, length(Y))
     noA = TRUE
   }
-  if (!is.null(A)) {
+  if (!noA) {
     A_lvls <- unique(A)[order(unique(A))]
     E_A0 <- paste("E(Y|A=", A_lvls[1], ")", sep="")
     E_A1 <- paste("E(Y|A=", A_lvls[2], ")", sep="")

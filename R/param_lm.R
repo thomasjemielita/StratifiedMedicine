@@ -50,7 +50,7 @@ param_lm = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="adap
     A = rep(1, length(Y))
     noA = TRUE
   }
-  if (!is.null(A)) {
+  if (!noA) {
     A_lvls <- unique(A)[order(unique(A))]
     estimands <- c(paste("E(Y|A=", A=A_lvls[1], ")", sep=""),
                    paste("E(Y|A=", A=A_lvls[2], ")", sep=""))

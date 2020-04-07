@@ -42,7 +42,6 @@
 #' # MOB-Weibull Subgroup Model ##
 #' res_weibull = submod_train(Y, A, X, Xtest=X, family="survival",
 #'                            submod = "submod_weibull")
-#' plot(res_weibull$mod)
 #'
 #' # Parameter-Estimation ##
 #' require(survRM2)
@@ -63,10 +62,10 @@ param_rmst = function(Y, A, X, mu_hat, Subgrps, alpha_ovrl, alpha_s, combine="ad
   noA = FALSE
   if (is.null(A)){
     noA = TRUE
-    estimand = "RMST"
-    A = rep(1, dim(X)[1])
+    estimands = "RMST"
+    A_num = rep(1, dim(X)[1])
   }
-  if (!is.null(A)) {
+  if (!noA) {
     A_lvls <- unique(A)[order(unique(A))]
     estimands <- paste("RMST(A=", A=A_lvls[2], "-",
                        "A=", A=A_lvls[1], ")", sep="")
