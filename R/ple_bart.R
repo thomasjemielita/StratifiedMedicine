@@ -31,6 +31,7 @@
 #' Regression Trees. The Annals of Applied Statistics, 4,1, 266-298 
 #' <doi: 10.1214/09-AOAS285>.
 #' @examples
+#' \donttest{
 #' library(StratifiedMedicine)
 #'
 #' ## Continuous ##
@@ -41,11 +42,9 @@
 #' train = data.frame(Y, A, X)
 #'
 #' # BART #
-#' \donttest{
 #' require(BART)
 #' mod1 = ple_bart(Y, A, X, Xtest=X)
 #' summary(mod1$mu_train)
-#' summary(predict(mod1, newdata=X))
 #' }
 #'
 #'
