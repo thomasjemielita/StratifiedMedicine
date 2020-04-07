@@ -1,12 +1,13 @@
 #' PRISM: Patient Response Identifier for Stratified Medicine
 #'
 #' PRISM algorithm. Given a data-set of (Y, A, X) (Outcome, treatment, covariates),
-#' the \code{PRISM} identifies potential subgroup along with point and variability metrics.
-#' This four step procedure (filter, ple, submod, param) is flexible and accepts user-inputs
-#' at each step.
+#' the \code{PRISM} identifies potential subgroups along with point-estimate and variability
+#' metrics; with and without resampling (bootstrap or cross-validation based). This four 
+#' step procedure (filter, ple, submod, param) is flexible and accepts user-inputs at each
+#' step.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
-#' @param A Treatment variable. (Default support binary treatment, either numeric or 
+#' @param A Treatment variable. (Defaults support binary treatment, either numeric or 
 #' factor). 
 #' If A=NULL, searches for prognostic variables (Y~X). 
 #' @param X Covariate space. Variables types (ex: numeric, factor, ordinal) should be set
@@ -136,9 +137,21 @@
 #' Y is right-censored (family="survival"):
 #' Elastic Net Filter ==> Survival Random Forest ==> ctree ==> RMST
 #' 
-#'
+#' 
+#' @references Friedman, J., Hastie, T. and Tibshirani, R. (2008) Regularization Paths for
+#' Generalized Linear Models via Coordinate Descent, 
+#' \url{https://web.stanford.edu/~hastie/Papers/glmnet.pdf} Journal of Statistical 
+#' Software, Vol. 33(1), 1-22 Feb 2010 Vol. 33(1), 1-22 Feb 2010.
 #' @references Jemielita T, Mehrotra D. PRISM: Patient Response Identifiers for 
 #' Stratified Medicine. \url{https://arxiv.org/abs/1912.03337}
+#' @references Hothorn T, Hornik K, Zeileis A (2006). Unbiased Recursive Partitioning: 
+#' A Conditional Inference Framework. Journal of Computational and Graphical Statistics,
+#' 15(3), 651–674.
+#' @references Wright, M. N. & Ziegler, A. (2017). ranger: A fast implementation of 
+#' random forests for high dimensional data in C++ and R. J Stat Softw 77:1-17. 
+#' \url{https://doi.org/10.18637/jss.v077.i01}.
+#' @references Zeileis A, Hothorn T, Hornik K (2008). Model-Based Recursive Partitioning. 
+#' Journal of Computational and Graphical Statistics, 17(2), 492–514.
 #' @examples
 #' ## Load library ##
 #' library(StratifiedMedicine)
@@ -172,6 +185,7 @@
 #'
 #' ## With bootstrap (No filtering) ##
 #' \donttest{
+#' library(ggplot2)
 #'   res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, verbose.resamp = TRUE)
 #'   # Plot of distributions and P(est>0) #
 #'   plot(res_boot, type="resample", estimand = "E(Y|A=1)-E(Y|A=0)")+geom_vline(xintercept = 0)
@@ -194,6 +208,7 @@
 #' # Survival Data ##
 #' \donttest{
 #'   library(survival)
+#'   library(ggplot2)
 #'   require(TH.data); require(coin)
 #'   data("GBSG2", package = "TH.data")
 #'   surv.dat = GBSG2
@@ -203,16 +218,20 @@
 #'   set.seed(513)
 #'   A = rbinom( n = dim(X)[1], size=1, prob=0.5  )
 #'
-#'   # PRISM: glmnet ==> MOB (Weibull) ==> Cox; with bootstrap #
-#'   res_weibull1 = PRISM(Y=Y, A=A, X=X, ple="None", resample="Bootstrap", R=100,
-#'                        verbose.resamp = TRUE)
-#'   plot(res_weibull1)
-#'   plot(res_weibull1, type="resample", estimand = "HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
-#'   aggregate(I(est<1)~Subgrps, data=res_weibull1$resamp.dist, FUN="mean")
+#'   # PRISM: glmnet ==> Random Forest to estimate Treatment-Specific RMST
+#'   # ==> MOB (Weibull) ==> Cox for HRs#
+#'   res_weib = PRISM(Y=Y, A=A, X=X)
+#'   plot(res_weib, type="PLE:waterfall")
+#'   plot(res_weib)
+#'   
+#'   # PRISM: glmnet ==> Random Forest to estimate Treatment-Specific RMST
+#'   # ==> OTR (CTREE, uses RMST estimates as input) ==> Cox for HRs #
+#'   res_otr = PRISM(Y=Y, A=A, X=X)
+#'   plot(res_otr)
 #'
 #'   # PRISM: ENET ==> CTREE ==> Cox; with bootstrap #
-#'   res_ctree1 = PRISM(Y=Y, A=A, X=X, ple=NULL, submod = "submod_ctree",
-#'                      resample="Bootstrap", R=100, verbose.resamp = TRUE)
+#'   res_ctree1 = PRISM(Y=Y, A=A, X=X, ple="None", submod = "submod_ctree",
+#'                      resample="Bootstrap", R=50, verbose.resamp = TRUE)
 #'   plot(res_ctree1)
 #'   plot(res_ctree1, type="resample", estimand="HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
 #'   aggregate(I(est<1)~Subgrps, data=res_ctree1$resamp.dist, FUN="mean")
