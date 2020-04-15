@@ -117,7 +117,7 @@ plot_tree = function(object, plots, prob.thres, width_out, nudge_out,
   dat.dens <- NULL
   for (s in unique(post.prob$Subgrps)){
     hold.s = post.prob %>% filter(Subgrps==s)
-    dat.s = with(density(hold.s$est), data.frame(x, y))
+    dat.s = with(density(hold.s$est, na.rm=T), data.frame(x, y))
     dat.s = data.frame(id = s, dat.s)
     dat.dens = rbind(dat.dens, dat.s)
   }
