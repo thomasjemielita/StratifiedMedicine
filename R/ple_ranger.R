@@ -19,8 +19,7 @@
 #' @return Trained random forest (ranger) model(s).
 #'  \itemize{
 #'   \item mod - trained model(s)
-#'   \item A - treatment variable (training set)
-#'   \item X - covariate space (training set)
+#'   \item pred.fun - Prediction function for trained model(s)
 #' }
 #' @references Wright, M. N. & Ziegler, A. (2017). ranger: A fast implementation of 
 #' random forests for high dimensional data in C++ and R. J Stat Softw 77:1-17. 

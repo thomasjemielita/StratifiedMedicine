@@ -30,8 +30,7 @@ For "survival", default is FALSE.}
 Trained random forest (ranger) model(s).
  \itemize{
   \item mod - trained model(s)
-  \item A - treatment variable (training set)
-  \item X - covariate space (training set)
+  \item pred.fun - Prediction function for trained model(s)
 }
 }
 \description{

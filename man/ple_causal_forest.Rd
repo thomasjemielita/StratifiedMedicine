@@ -31,29 +31,12 @@ If mod.A="RF", estimate P(A|X) using regression_forest (applicable for non-RCTs)
 Trained causal_forest and regression_forest models.
  \itemize{
   \item mod - trained model(s)
+  \item pred.fun - Prediction function for trained model(s)
 }
 }
 \description{
 Uses the causal forest algorithm (grf R package) to obtain patient-level estimates, 
 E(Y|A=1), E(Y|A=0), and E(Y|A=1)-E(Y|A=0). Usable for continuous or binary outcomes.
-}
-\examples{
-library(StratifiedMedicine)
-
-## Continuous ##
-dat_ctns = generate_subgrp_data(family="gaussian")
-Y = dat_ctns$Y
-X = dat_ctns$X
-A = dat_ctns$A
-
-\donttest{
-require(grf)
-mod1 = ple_causal_forest(Y, A, X, Xtest=X)
-summary(mod1$mu_train)
-
-}
-
-
 }
 \references{
 Athey S, Tibshirani J, Wagner S. Generalized Random Forests. 

@@ -18,24 +18,10 @@
 #' @return Trained causal_forest and regression_forest models.
 #'  \itemize{
 #'   \item mod - trained model(s)
+#'   \item pred.fun - Prediction function for trained model(s)
 #' }
 #' @references Athey S, Tibshirani J, Wagner S. Generalized Random Forests. 
 #' \url{https://arxiv.org/abs/1610.01271}
-#' @examples
-#' library(StratifiedMedicine)
-#'
-#' ## Continuous ##
-#' dat_ctns = generate_subgrp_data(family="gaussian")
-#' Y = dat_ctns$Y
-#' X = dat_ctns$X
-#' A = dat_ctns$A
-#'
-#'\donttest{
-#' require(grf)
-#' mod1 = ple_causal_forest(Y, A, X, Xtest=X)
-#' summary(mod1$mu_train)
-#'
-#' }
 #'
 #'
 #' @export
