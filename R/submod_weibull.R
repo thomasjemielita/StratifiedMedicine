@@ -37,6 +37,7 @@
 #'
 #' \donttest{
 #' library(StratifiedMedicine)
+#' library(survival)
 #' 
 #' ## Load TH.data (no treatment; generate treatment randomly to simulate null effect) ##
 #' data("GBSG2", package = "TH.data", envir = e <- new.env() )
