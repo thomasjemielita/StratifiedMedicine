@@ -48,7 +48,7 @@ globalVariables(c("Rules", "est", "LCL", "UCL", "PLE", "label", "N", "estimand",
 #' @importFrom ggplot2 geom_pointrange geom_text xlab theme theme_bw coord_flip
 #' @importFrom ggplot2 position_nudge ylab element_text element_blank
 #' @importFrom ggplot2 geom_density geom_point geom_line
-#' @importFrom ggparty ggparty geom_edge geom_edge_label geom_node_label geom_node_plot
+#' @import ggparty
 #' @importFrom partykit nodeapply nodeids split_node data_party as.partynode
 #' @seealso \code{\link{PRISM}}
 
