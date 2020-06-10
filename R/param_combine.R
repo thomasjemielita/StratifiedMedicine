@@ -2,7 +2,7 @@
 #'
 #' Function that combines subgroup-specific estimates to obtain an overall population
 #' estimate. Options including sample size weighting and adaptive weighting (default; as
-#' described in Marceau-West and Mehrotra 2019 in progress).
+#' described in Marceau-West and Mehrotra (to appear)).
 #'
 #' @param param.dat Parameter data-set with subgroup-specific point estimates, SEs, and
 #' sample sizes.
@@ -14,9 +14,8 @@
 #' @importFrom stats cor
 #' @return Data-frame with overall population point estimate, SE, and CI
 #' @export
-#' @seealso \code{\link{param_cox}}, \code{\link{param_lm}}, \code{\link{param_rmst}}
 
-param_combine = function(param.dat, combine="adaptive", alpha_ovrl=0.05, ...){
+param_combine = function(param.dat, combine="SS", alpha_ovrl=0.05, ...){
 
   # Set weights #
   if (combine=="adaptive"){
@@ -34,7 +33,8 @@ param_combine = function(param.dat, combine="adaptive", alpha_ovrl=0.05, ...){
   beta0.LCL = beta0 - qt(1-alpha_ovrl/2, df=sum(param.dat$N)-1) * SE.beta0
   beta0.UCL = beta0 + qt(1-alpha_ovrl/2, df=sum(param.dat$N)-1) * SE.beta0
   # Return results #
-  param.dat0 = data.frame(Subgrps=0, N = sum(param.dat$N), est = beta0, SE = SE.beta0,
+  param.dat0 = data.frame(Subgrps="ovrl", N = sum(param.dat$N), 
+                          est = beta0, SE = SE.beta0,
                           LCL = beta0.LCL, UCL = beta0.UCL)
   param.dat0$pval = with(param.dat0, 2*pt(-abs(est/SE), df=N-1) )
   return( param.dat0 )

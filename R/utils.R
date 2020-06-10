@@ -291,6 +291,76 @@ rmst_calc <- function(time, surv, tau) {
   rmst = sum(areas)
   return(rmst)
 }
+## Function to Pool Subgroups via outcome weighted learning ##
+subgrps_otr <- function(Y, A, X, mu_hat, Subgrps, method="otr:logistic", 
+                        delta=">0", delta_opt=NULL, ...) {
+  
+  # delta <- ">0"
+  # delta_opt <- NULL
+  # method <- "logistic"
+  ple_name <- colnames(mu_hat)[grepl("diff", colnames(mu_hat))]
+  ind_ple <- eval(parse(text=paste(paste("ifelse(mu_hat$",ple_name,sep=""),
+                                   delta, ", 1, 0)")))
+  w_ple <- abs(mu_hat[[ple_name]])
+  Subgrps.mat <- data.frame(Subgrps=as.factor(Subgrps))
+  Subgrps.mat <- data.frame(model.matrix(~.-1, data=Subgrps.mat))
+  otr_dat <- data.frame(ind_ple, Subgrps.mat)
+  # OTR: Logistic #
+  if (method=="otr:logistic") {
+    mod <- suppressWarnings(glm(ind_ple ~ . -1, 
+                                data = otr_dat,
+                                family = "binomial", weights = w_ple))
+    prob_opt <- as.numeric(predict(mod, type="response"))
+  }
+  # OTR: Random forest # 
+  if (method=="otr:rf") {
+    mod <- ranger::ranger(ind_ple ~ ., 
+                  data=data.frame(otr_dat, X),
+                  case.weights = w_ple)
+    prob_opt <- mod$predictions
+  }
+  # Classify Patients #
+  class_dat <- gen_class_metrics(outcome=ind_ple, pred=prob_opt)
+  if (is.null(delta_opt)) {
+    delta_opt <- class_dat$delta[which(class_dat$yindex==max(class_dat$yindex))]
+    delta_opt <- mean(delta_opt)
+  }
+  out_dat <- data.frame(Subgrps, prob_opt = prob_opt, delta_opt=delta_opt)
+  out_dat <- unique(out_dat)
+  A_lvls <- unique(A)[order(unique(A))]
+  out_dat$pred_opt <- with(out_dat, ifelse(prob_opt<=delta_opt, 
+                                           A_lvls[1], A_lvls[2]))
+  out_dat$Subgrps <- as.character(out_dat$Subgrps)
+  out_dat$pred_opt <- as.character(out_dat$pred_opt)
+  out_dat <- out_dat[,c("Subgrps", "prob_opt", "pred_opt", "delta_opt")]
+  return(out_dat)
+}
+
+## Generate PPV, NPV, Sens, Spec, etc (across cut-points) ##
+gen_class_metrics <- function(outcome, pred) {
+  
+  delta_vec <- seq(0, 1, by=0.01)
+  summ <- NULL
+  for (delta in delta_vec) {
+    pred_01 <- ifelse(pred>delta, 1, 0)
+    pred_01 <- factor(pred_01, levels = c("0", "1"))
+    tab <- table(pred_01, outcome, exclude = "no")
+    acc <- tab[1,1] + tab[2,2] / length(outcome)
+    spec <- tab[1,1] / sum(tab[,1])
+    sens <- tab[2,2] / sum(tab[,2])
+    npv <- tab[1,1] / sum(tab[1,])
+    ppv <- tab[2,2] / sum(tab[2,])
+    # confusionMatrix(as.factor(pred_01), as.factor(outcome), positive = "1")
+    yindex <- sens + spec - 1
+    f1 <- 2*(ppv*sens)/(ppv+sens)
+    hold <- data.frame(delta=delta, acc=acc, 
+                       sens=sens, spec=spec, 
+                       ppv=ppv, npv=npv,
+                       yindex=yindex, f1=f1)
+    summ <- rbind(summ, hold)
+  }
+  return(summ)
+}
 ## Probability Calculator (input desired threshold and PRISM.fit) ##
 prob_calculator <- function(fit, thres=">0") {
   

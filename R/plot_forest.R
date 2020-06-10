@@ -17,7 +17,8 @@ plot_forest <- function(x) {
                                          sprintf("%.2f", round(LCL0,2)), ",",
                                          sprintf("%.2f", round(UCL0,2)), "]", sep=""))
   # Plot #
-  res = ggplot2::ggplot(data=plot.dat, aes(x=estimand, y=est0, ymin=LCL0, ymax=UCL0)) +
+  res = ggplot2::ggplot(data=plot.dat, 
+                        ggplot2::aes(x=estimand, y=est0, ymin=LCL0, ymax=UCL0)) +
     ggplot2::geom_pointrange(aes(col=estimand)) + 
     ggplot2::geom_text(aes(label = label, col=estimand), size=3, 
                        position = position_nudge(x = 0.3)) +

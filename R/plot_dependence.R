@@ -1,16 +1,15 @@
 #' Partial dependence plots: Single Variable (marginal effect) or heat map (2 to 
 #' 3 variables). 
 #'
-#' @param object Fitted PRISM object
+#' @param object Fitted \code{ple_train} or \code{PRISM} object
+#' @param X input covariate space. Default=NULL. 
+#' @param target Which patient-level estimate to target for PDP based plots. Default=NULL, 
+#' which uses the estimated treatment difference. 
 #' @param vars Variables to visualize (ex: c("var1", "var2", "var3)). If no grid.data 
 #' provided, defaults to using seq(min(var), max(var)) for each continuous variables. 
 #' For categorical, uses all categories. 
 #' @param grid.data Input grid of values for 2-3 covariates (if 3, last variable cannot
 #' be continuous). This is required for type="heatmap". Default=NULL.
-#' @param grid.thres Threshold for PLE, ex: I(PLE>thres). Used to estimate P(PLE>thres) for
-#' type="heatmap". Default is ">0". Direction can be reversed and can include equality
-#' sign (ex: "<=").
-#' @param estimand Estimand for which to generate dependendence or heat map plots.
 #' @param ... Additional arguments (currently ignored).
 #' @return Plot (ggplot2) object
 #' @references 
@@ -21,36 +20,69 @@
 #'  Journal of Business & Economic Statistics, to appear. (2017).
 #' }
 #' @export
-
-plot_dependence <- function(object, vars, grid.data=NULL, grid.thres=">0", 
-                            estimand=NULL, ...) {
+#' @importFrom ggplot2 ggplot aes_string aes geom_tile ggtitle geom_rug 
+#' @importFrom ggplot2 scale_fill_gradient2 facet_wrap
+#' 
+#' @examples
+#' \donttest{
+#' library(StratifiedMedicine)
+#' ## Continuous ##
+#' dat_ctns = generate_subgrp_data(family="gaussian")
+#' Y = dat_ctns$Y
+#' X = dat_ctns$X
+#' A = dat_ctns$A
+#'
+#'
+#' # Fit through ple_train wrapper #
+#' mod = ple_train(Y=Y, A=A, X=X, Xtest=X, ple="ranger", meta="X-learner")
+#' plot_dependence(mod, X=X, vars="X1")
+#' }
+#' 
+plot_dependence <- function(object, X=NULL, target=NULL, vars, 
+                            grid.data=NULL, ...) {
+  
+  if (class(object)=="PRISM") {
+    out.train <- object$out.train
+  }
+  if (class(object)=="ple_train") {
+    if (is.null(X)) {
+      stop("Must supply covariate data (X)")
+    }
+    out.train <- data.frame(X)
+  }
+  ## Target? ##
+  if (is.null(target)) {
+    ple_name <- colnames(object$mu_train)[grepl("diff", colnames(object$mu_train))]
+    ple_name <- ple_name[1]
+  }
+  if (!is.null(target)) { ple_name <- target }
   
   if (is.null(grid.data)) {
     numb_vars <- length(vars)
-    var1_type <- ifelse(is.numeric(object$out.train[,vars[1]]), "ctns", "fact")
+    var1_type <- ifelse(is.numeric(out.train[,vars[1]]), "ctns", "fact")
     if (var1_type=="ctns") {
-      min.v <- min(object$out.train[vars[1]])
-      max.v <- max(object$out.train[vars[1]])
+      min.v <- min(out.train[vars[1]])
+      max.v <- max(out.train[vars[1]])
       by.v <- (max.v-min.v)/20
       vals.1 <- seq(min.v, max.v, by=by.v)
     }
     if (var1_type=="fact") {
-      vals.1 <- unique(object$out.train[vars[1]])
+      vals.1 <- unique(out.train[vars[1]])
     }
     if (numb_vars>1) {
-      var2_type <- ifelse(is.numeric(object$out.train[,vars[2]]), "ctns", "fact")
+      var2_type <- ifelse(is.numeric(out.train[,vars[2]]), "ctns", "fact")
       if (var2_type=="ctns") {
-        min.v <- min(object$out.train[vars[2]])
-        max.v <- max(object$out.train[vars[2]])
+        min.v <- min(out.train[vars[2]])
+        max.v <- max(out.train[vars[2]])
         by.v <- (max.v-min.v)/20
         vals.2 <- seq(min.v, max.v, by=by.v)
       }
       if (var2_type=="fact") {
-        vals.2 <- unique(object$out.train[vars[2]])
+        vals.2 <- unique(out.train[vars[2]])
       }
       if (numb_vars==3) {
-        var3_type <- ifelse(is.numeric(object$out.train[,vars[3]]), "ctns", "fact")
-        vals.3 <- unique(object$out.train[vars[3]])
+        var3_type <- ifelse(is.numeric(out.train[,vars[3]]), "ctns", "fact")
+        vals.3 <- unique(out.train[vars[3]])
       }
     }
     if (numb_vars==1) {
@@ -70,9 +102,6 @@ plot_dependence <- function(object, vars, grid.data=NULL, grid.thres=">0",
   if (!is.null(grid.data)) {
     numb_vars <- dim(grid.data)[2] 
   }
-  if (is.null(object$ple.fit)) {
-    stop("Heatmap requires ple model fit: Check ple argument")
-  }
   if (numb_vars>3) {
     stop("Heatmap only applicable for grid.data up to 3 variables")
   }
@@ -82,36 +111,13 @@ plot_dependence <- function(object, vars, grid.data=NULL, grid.thres=">0",
     }
   }
   # Extract training set covariate space #
-  X.train = object$out.train[,!(colnames(object$out.train) %in% c("Y", "A", "Subgrps"))]
+  X.train = out.train[,!(colnames(out.train) %in% c("Y", "A", "Subgrps"))]
   name.var1 = colnames(grid.data)[1]
   name.var2 = colnames(grid.data)[2]
   name.var3 = colnames(grid.data)[3]
   
-  if (is.null(estimand)) {
-    A_lvls <- as.character(with(object$out.train, unique(A)[order(unique(A))]))
-    if (object$family %in% c("gaussian", "binomial")) {
-      E_A0 <- paste("E(Y|A=", A_lvls[1], ")", sep="")
-      E_A1 <- paste("E(Y|A=", A_lvls[2], ")", sep="")
-      E_diff <- paste(E_A1, "-", E_A0, sep="")
-      e.name <- E_diff
-    }
-    if (object$family %in% "survival") {
-      if (object$ple %in% c("ple_ranger", "ple_rfsrc")) {
-        if (is.null(object$out.train$A)) {
-          e.name <- "rmst"
-        }
-        if (!is.null(object$out.train$A)) {
-          e.name <- paste("rmst(A=", A_lvls[2], " vs ", "A=", A_lvls[1], ")", sep="")
-        }
-      }
-      if (object$ple=="ple_glmnet") {
-        e.name <- paste("logHR(A=", A_lvls[2], " vs ", "A=", A_lvls[1], ")", sep="")
-      }
-    }
-  }
-  
   # Create stacked covariate space #
-  stack_grid = function(i) {
+  stack_grid = function(i, X.train) {
     var1 = grid.data[i,1]
     var2 = grid.data[i,2]
     var3 = grid.data[i,3]
@@ -126,52 +132,51 @@ plot_dependence <- function(object, vars, grid.data=NULL, grid.thres=">0",
     newdata$counter = i
     return(newdata)
   }
-  X.grid = lapply(1:dim(grid.data)[1], stack_grid)
+  X.grid = lapply(1:dim(grid.data)[1], stack_grid, X.train=X.train)
   X.grid = do.call(rbind, X.grid)
   counter.vec = X.grid$counter
   X.grid = X.grid[,!(colnames(X.grid) %in% "counter")]
   
   # Univariate (Marginal Effect) #
   if (numb_vars==1) {
-    grid.ple = predict(object, newdata = X.grid, type="ple")
-    grid.ple$ind.ple = eval(parse(text=paste("ifelse(grid.ple$PLE",
-                                             grid.thres, ", 1, 0)")))
+    if (class(object)=="PRISM") {
+      grid.ple = predict(object, newdata = X.grid, type="ple")
+    }
+    if (class(object)=="ple_train") {
+      grid.ple = predict(object, newdata = X.grid) 
+    }
+    grid.ple$PLE <- grid.ple[[ple_name]]
     avg.ple = aggregate(grid.ple$PLE ~ counter.vec, FUN="mean")
-    prob.ple = aggregate(grid.ple$ind.ple ~ counter.vec, FUN="mean")
-    est.dat = data.frame(grid.data, est = avg.ple$`grid.ple$PLE`,
-                         prob = prob.ple$`grid.ple$ind.ple`)
-    res.est = ggplot(data = est.dat, aes_string(x=name.var1, y="est")) + 
-      geom_point() + geom_smooth(se=FALSE) + xlab(name.var1) + ylab(e.name) +
-      geom_rug(data=object$out.train, aes_string(name.var1), sides="b", inherit.aes = F)
-    res <- list(res.est=res.est)
+    est.dat = data.frame(grid.data, est = avg.ple$`grid.ple$PLE`)
+    res.est = ggplot2::ggplot(data = est.dat, 
+                              ggplot2::aes_string(x=name.var1, y="est")) + 
+      ggplot2::geom_point() + ggplot2::geom_smooth(se=FALSE) + 
+      ggplot2::xlab(name.var1) +
+      ggplot2::ylab(ple_name)
+      ggplot2::geom_rug(data=out.train, 
+                        ggplot2::aes_string(name.var1), sides="b", inherit.aes = F)
+    res <- res.est
   }
   # Heat Map (2 or 3 variables) #
   if (numb_vars>1) {
     ## predict across grid ##
     grid.ple = predict(object, newdata = X.grid, type="ple")
-    grid.ple$ind.ple = eval(parse(text=paste("ifelse(grid.ple$PLE",
-                                             grid.thres, ", 1, 0)")))
+    grid.ple$PLE <- grid.ple[[ple_name]]
     avg.ple = aggregate(grid.ple$PLE ~ counter.vec, FUN="mean")
-    prob.ple = aggregate(grid.ple$ind.ple ~ counter.vec, FUN="mean")
     ### Plot Heat-map ###
-    est.dat = data.frame(grid.data, est = avg.ple$`grid.ple$PLE`,
-                         prob = prob.ple$`grid.ple$ind.ple`)
-    res.est = ggplot(data = est.dat, aes_string(x=name.var1, y=name.var2, fill="est")) +
-      geom_tile() + labs(fill = "est") + ggtitle(paste("Heat Map:", e.name))+
-      geom_rug(data=object$out.train, aes_string(name.var1, name.var2), inherit.aes = F) + 
-      scale_fill_gradient2(low="navy", mid="white", high="red")
-    res.prob = ggplot(data = est.dat, aes_string(x=name.var1, y=name.var2, fill="prob")) +
-      geom_tile() + labs(fill = paste("Prob(", grid.thres, ")",sep="")) +
-      geom_rug(data=object$out.train, aes_string(name.var1, name.var2), inherit.aes = F) + 
-      ggtitle(paste("Heat Map:", e.name))+
-      scale_fill_gradient2(low="navy", mid="white", high="red",
-                           midpoint=0.5)
+    est.dat = data.frame(grid.data, est = avg.ple$`grid.ple$PLE`)
+    res.est = ggplot2::ggplot(data = est.dat, 
+                              ggplot2::aes_string(x=name.var1, y=name.var2, fill="est")) +
+      ggplot2::geom_tile() + ggplot2::labs(fill = "est") + 
+      ggplot2::ggtitle(paste("Heat Map:", ple_name))+
+      ggplot2::geom_rug(data=out.train, 
+                        ggplot2::aes_string(name.var1, name.var2), inherit.aes = F) + 
+      ggplot2::scale_fill_gradient2(low="navy", mid="white", high="red")
     # Lastly, if there were 3 input variables, facet_wrap by third variable #
-    if ( dim(grid.data)[2]==3  ){
-      res.est = res.est + facet_wrap(as.formula(paste("~", name.var3)))
-      res.prob = res.prob + facet_wrap(as.formula(paste("~", name.var3)))
+    if (dim(grid.data)[2]==3){
+      res.est = res.est + ggplot2::facet_wrap(as.formula(paste("~", name.var3)))
     }
-    res = list(heatmap.est=res.est, heatmap.prob=res.prob)
+    res = res.est
   }
   return(res)
 }

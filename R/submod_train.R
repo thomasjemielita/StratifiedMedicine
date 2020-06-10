@@ -1,16 +1,11 @@
 #' Subgroup Identification: Train Model
 #'
-#' Wrapper function to train a subgroup model (submod). Used directly in PRISM and can
-#' be used to directly fit a submod model by name.
+#' Wrapper function to train a subgroup model (submod). Outputs subgroup assignments and 
+#' fitted model.
 #'
-#' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
-#' @param A Treatment variable. (a=1,...A)
-#' @param X Covariate space.
-#' @param Xtest Test set
-#' @param mu_train Patient-level estimates (See PLE_models). Default=NULL
-#' @param family Outcome type ("gaussian", "binomial", "survival"). Default="gaussian".
-#' @param submod Subgroup identification (submod) function. Maps the observed data and/or
-#' PLEs to subgroups.
+#' @inheritParams PRISM
+#' @param mu_train Patient-level estimates in training set (see \code{ple_train}). 
+#' Default=NULL
 #' @param hyper Hyper-parameters for submod (must be list). Default is NULL.
 #' @param ... Any additional parameters, not currently passed through.
 #'
@@ -25,6 +20,67 @@
 #'   \item pred.test - Predictions (test set)
 #'   \item Rules - Definitions for subgroups, if provided in fitted submod output.
 #' }
+#' @details submod_train currently fits a number of tree-based subgroup models, most of
+#' which aim to find subgroups with varying treatment effects (i.e. predictive variables).
+#' Current options include:
+#' 
+#' 1. lmtree: Wrapper function for the function "lmtree" from the partykit package. Here, 
+#' model-based partitioning (MOB) with an OLS loss function, Y~MOB_LM(A,X), is used to 
+#' identify prognostic and/or predictive variables. 
+#' 
+#' Default hyper-parameters are: 
+#' hyper = list(alpha=0.05, maxdepth=4, parm=NULL, minsize=floor(dim(X)[1]*0.10)).
+#' 
+#' 2. glmtree: Wrapper function for the function "glmtree" from the partykit package. Here, 
+#' model-based partitioning (MOB) with GLM binomial + identity link loss function, 
+#' (Y~MOB_GLM(A,X)), is used to identify prognostic and/or predictive variables.
+#' 
+#' Default hyper-parameters are:
+#'  hyper = list(link="identity", alpha=0.05, maxdepth=4, parm=NULL, 
+#'  minsize=floor(dim(X)[1]*0.10)).
+#' 
+#' 3. ctree: Wrapper function for the function "ctree" from the partykit package. Here, 
+#' conditional inference trees are used to identify either prognostic, Y~CTREE(X), 
+#' or predictive variables, PLE~CTREE(X) (outcome_PLE=TRUE; requires mu_train data).
+#' 
+#' Default hyper-parameters are:
+#' hyper=list(alpha=0.10, minbucket = floor(dim(X)[1]*0.10), 
+#' maxdepth = 4, outcome_PLE=FALSE). 
+#' 
+#' 4. otr: Optimal treatment regime approach using "ctree". Based on patient-level 
+#' treatment effect estimates, fit PLE~CTREE(X) with weights=abs(PLE). 
+#' 
+#' Default hyper-parameters are:
+#' hyper=list(alpha=0.10, minbucket = floor(dim(X)[1]*0.10), 
+#' maxdepth = 4, thres=">0"). 
+#' 
+#' 4. mob_weib: Wrapper function for the function "mob" with weibull loss function using
+#' the partykit package. Here, model-based partitioning (MOB) with weibull loss (survival),
+#' (Y~MOB_WEIB(A,X)), is used to identify prognostic and/or predictive variables.
+#'  
+#' Default hyper-parameters are:
+#' hyper = list(alpha=0.10, maxdepth=4, parm=NULL, minsize=floor(dim(X)[1]*0.10)).
+#' 
+#' 5. rpart: Recursive partitioning through the "rpart" R package. Here, 
+#' recursive partitioning and regression trees are used to identify either prognostic,
+#' Y~rpart(X), or predictive variables, PLE~rpart(X) (outcome_PLE=TRUE; 
+#' requires mu_train data).
+#' 
+#' 
+#' @references
+#' \itemize{
+#' \item Zeileis A, Hothorn T, Hornik K (2008). Model-Based Recursive Partitioning. 
+#' Journal of Computational and Graphical Statistics, 17(2), 492–514.
+#' \item Seibold H, Zeileis A, Hothorn T. Model-based recursive partitioning for 
+#' subgroup analyses. Int J Biostat, 12 (2016), pp. 45-63
+#' \item Hothorn T, Hornik K, Zeileis A (2006). Unbiased Recursive Partitioning: 
+#' A Conditional Inference Framework. Journal of Computational and Graphical Statistics,
+#' 15(3), 651–674.
+#' \item Zhao et al. (2012) Estimated individualized treatment rules using outcome 
+#' weighted learning. Journal of the American Statistical Association, 107(409): 1106-1118.
+#' \item Breiman L, Friedman JH, Olshen RA, and Stone CJ. (1984) Classification 
+#' and Regression Trees. Wadsworth
+#' } 
 #' @examples
 #' 
 #' \donttest{
@@ -35,24 +91,30 @@
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
-#' # Fit submod_lmtree directly #
-#' mod1 = submod_lmtree(Y, A, X, Xtest=X)
-#' plot(mod1$mod)
-#'
 #' # Fit through submod_train wrapper #
-#' mod2 = submod_train(Y=Y, A=A, X=X, Xtest=X, submod="submod_lmtree")
-#' plot(mod2$fit$mod)
+#' mod1 = submod_train(Y=Y, A=A, X=X, Xtest=X, submod="submod_lmtree")
+#' table(mod1$Subgrps.train)
+#' plot(mod1$fit$mod)
 #'
 #'}
 #'
 #' @export
+#' @importFrom partykit lmtree ctree glmtree as.party
+#' @importFrom stats binomial
 #' @seealso \code{\link{PRISM}}
 #'
-submod_train = function(Y, A, X, Xtest, mu_train=NULL, family="gaussian", submod,
-                        hyper=NULL, ...){
+submod_train = function(Y, A, X, Xtest=NULL, mu_train=NULL, 
+                        family="gaussian", submod, hyper=NULL, ...){
+  if (is.null(Xtest)) {
+    Xtest <- X
+  }
+  # Convert Names #
+  if (submod %in% c("lmtree", "ctree", "glmtree", "otr", "rpart", "mob_weib")) {
+    submod <- paste("submod", submod, sep="_") 
+  }
   ## Fit submod ##
-  fit = do.call( submod, append(list(Y=Y, A=A, X=X, Xtest=Xtest, mu_train=mu_train,
-                                  family=family), hyper) )
+  fit = do.call(submod, append(list(Y=Y, A=A, X=X, Xtest=Xtest, mu_train=mu_train,
+                                  family=family), hyper))
   ### Train/Test Predictions ###
   ## If prior predictions are made: ##
   if (!is.null(fit$Subgrps.train)){
@@ -105,14 +167,11 @@ submod_train = function(Y, A, X, Xtest, mu_train=NULL, family="gaussian", submod
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
-#' # Fit submod_lmtree directly #
-#' mod1 = submod_lmtree(Y, A, X, Xtest=X)
-#' plot(mod1$mod)
-#'
 #' # Fit through submod_train wrapper #
-#' mod2 = submod_train(Y=Y, A=A, X=X, Xtest=X, submod="submod_lmtree")
-#' out2 = predict(mod2)
-#' plot(mod2$fit$mod)
+#' mod1 = submod_train(Y=Y, A=A, X=X, Xtest=X, submod="submod_lmtree")
+#' out1 = predict(mod1)
+#' table(mod1$Subgrps.train)
+#' table(out1$Subgrps)
 #'
 #' @method predict submod_train
 #' @export

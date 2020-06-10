@@ -7,37 +7,51 @@
 #' step.
 #'
 #' @param Y The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )
-#' @param A Treatment variable. (Defaults support binary treatment, either numeric or 
-#' factor). 
-#' If A=NULL, searches for prognostic variables (Y~X). 
-#' @param X Covariate space. Variables types (ex: numeric, factor, ordinal) should be set
-#' to align with subgroup model (submod argument). For example, for lmtree, binary variables
-#' coded as numeric (ex: 0, 1) are treated differently than the corresponding factor version
-#' (ex: "A", "B"). Filter and PLE models provided in the StratifiedMedicine package can
-#' accomodate all variable types.
+#' @param A Treatment variable. (Default supports binary treatment, either numeric or 
+#' factor). "ple_train" accomodates >2 along with binary treatments.
+#' @param X Covariate space. 
 #' @param Xtest Test set. Default is NULL which uses X (training set). Variable types should
 #' match X.
 #' @param family Outcome type. Options include "gaussion" (default), "binomial", and "survival".
-#' @param filter Maps (Y,A,X) => (Y,A,X.star) where X.star has potentially less
-#' covariates than X. Default is "filter_glmnet", "None" uses no filter.
-#' @param ple PLE (Patient-Level Estimate) function. Maps the observed data to PLEs.
-#' (Y,A,X) ==> PLE(X). Default for is "ple_ranger". For continuous/binomial outcome data,
-#' this fits treatment specific random forest models. For survival outcome data, this 
-#' fits a single forest, with expanded covariate space (A, X, X*A). 
-#' (treatment-specific random forest models).  "None" uses no ple.
+#' @param filter Filter model to determine variables that are likely associated with the 
+#' outcome and/or treatment. Outputs a potential reduce list of varia where X.star 
+#' has potentially less variables than X. Default is "glmnet" (elastic net). Other 
+#' options include "ranger" (random forest based variable importance with p-values).
+#' See \code{filter_train} for more details. "None" uses no filter. 
+#' @param ple Base-learner used to estimate patient-level equantities, such as the 
+#' individual treatment effect. Default is random based based through 
+#' "ranger". "None" uses no ple. See below for details on estimating the treatment
+#' contrasts.
+#' @param meta Using the ple model as a base learner, meta-learners can be used for 
+#' estimating patient-level treatment differences. Options include "T-learner" (treatment
+#' specific models), "S-learner" (single model), and "X-learner". For family="gaussian" &
+#' "binomial", the default is "X-learner", which uses a two-stage regression 
+#' approach (See Kunzel et al 2019). For "survival", the default is "T-learner". 
 #' @param submod Subgroup identification model function. Maps the observed data and/or PLEs
-#' to subgroups. Default of "gaussian"/"binomial" is "submod_lmtree" (MOB with OLS loss).
-#' Default for "survival" is "submod_weibull" (MOB with weibull loss). "None" uses no 
-#' submod. 
-#' @param param Parameter estimation and inference function. Based on the discovered subgroups,
-#' perform inference through the input function (by name). Default for "gaussian"/"binomial" is
-#' "param_PLE", default for "survival" is "param_cox".
+#' to subgroups. Default for family="gaussian" is "lmtree" (MOB with OLS loss). For 
+#' "binomial" the default is "glmtree" (MOB with binomial loss). Default for "survival" is
+#' "mob_weib" (MOB with weibull loss). "None" uses no submod. Currently only available for 
+#' binary treatments or A=NULL.
+#' @param param Parameter estimation and inference function. Based on the discovered 
+#' subgroups, estimate parameter estimates and correspond variability metrics. Options
+#' include "lm" (unadjusted linear regression), "dr" (doubly-robust estimators),
+#' "ple" (G-computation, average the patient-level estimates), "cox" (cox regression),
+#' and "rmst" (RMST based estimates as in survRMST package). Default for "gaussian",
+#' "binomial" is "dr", while default for "survival" is "cox". Currently only available 
+#' for binary treatments or A=NULL. 
+#' @param pool Whether to pool discovered subgroups. Default is "no" (no pooling).
+#' Other options include "otr:logistic", which uses an optimal treatment regime approach, 
+#' where a weighted logistic regression is fit with I(mu_1-mu_0>delta) as the outcome,  
+#' the candidate subgroups as covariates, and weights=abs(PLE). Lastly, the youden index is 
+#' used to assign optimal treatments across the discovered subgroups.
+#' @param delta Threshold for defining benefit vs non-benefitting patients. Only applicable 
+#' for pool="otr:logistic" or "otr:rf"; Default=">0".
 #' @param alpha_ovrl Two-sided alpha level for overall population. Default=0.05
 #' @param alpha_s Two-sided alpha level at subgroup level. Default=0.05
-#' @param filter.hyper Hyper-parameters for the Filter function (must be list). Default is NULL.
+#' @param filter.hyper Hyper-parameters for the filter function (must be list). Default is NULL.
 #' @param ple.hyper Hyper-parameters for the PLE function (must be list). Default is NULL.
-#' @param submod.hyper Hyper-parameters for the SubMod function (must be list). Default is NULL.
-#' @param param.hyper Hyper-parameters for the Param function (must be list). Default is NULL.
+#' @param submod.hyper Hyper-parameters for the submod function (must be list). Default is NULL.
+#' @param param.hyper Hyper-parameters for the param function (must be list). Default is NULL.
 #' @param bayes Based on input point estimates/SEs, this uses a bayesian based approach 
 #' to obtain ests, SEs, CIs, and posterior probabilities. Currently includes "norm_norm" 
 #' (normal prior at overall estimate with large uninformative variance; normal posterior).
@@ -78,52 +92,50 @@
 #'   \item bayes.fun - Function to simulate posterior distribution (NULL if no bayes)
 #' }
 #' @export
-#' @importFrom stats aggregate coef lm model.matrix p.adjust pnorm confint
+#' @importFrom stats aggregate coef lm glm model.matrix p.adjust pnorm confint
 #' @importFrom stats predict pt qnorm qt quantile sd weighted.mean vcov na.omit
+#' @importFrom survival is.Surv survfit survreg Surv
 #' @import dplyr
-#' @import ggplot2
-#' @import ggparty
-#' @import survival
 #' 
 #' @details PRISM is a general framework with five key steps:
 #' 
 #' 0. Estimand: Determine the question of interest (ex: mean treatment difference)
 #' 
-#' 1. Filter: Reduce covariate space by removing noise covariates. Options include 
-#' elastic net (filter_glmnet) and random forest variable importance (filter_ranger).
+#' 1. Filter (filter): Reduce covariate space by removing noise covariates. Options include 
+#' elastic net ("glmnet") and random forest variable importance ("ranger").
 #' 
 #' 2. Patient-Level Estimates (ple): Estimate counterfactual patient-level quantities, 
-#' for example, the individual treatment effect, E(Y|A=1)-E(Y|A=0). Options include: 
-#' treatment-specific or virtual twins (Y~A+X+A*X) through random forest (ple_ranger, 
-#' ple_rfsrc), elastic net (ple_glmnet), BART (ple_bart) and causal forest 
-#' (ple_causal_forest).
+#' for example, the individual treatment effect, E(Y|A=1)-E(Y|A=0). This calls the 
+#' "ple_train" function, and follows the framework of Kunzel et al 2019. Base-learners 
+#' include random forest ("ranger"), BART ("bart"), elastic net ("glmnet"), and linear
+#' models (LM, GLM, or Cox regression). Meta-learners include the "S-Learner" (single
+#' model), "T-learner" (treatment specific models), and "X-learner" (2-stage approach).
 #' 
-#' 3. Subgroup Model (submod): Partition the data into subsets or subgroups of patients.
-#' Options include: conditional inference trees (observed outcome or individual treatment 
-#' effect/PLE; submod_ctree), MOB GLM (submod_glmtree), MOB OLS (submod_lmtree), 
-#' optimal treatment regimes (submod_otr), rpart (submod_rpart), and MOB Weibull 
-#' (submod_weibull).
+#' 3. Subgroup Model (submod): Currently uses tree-based methods to identify predictive 
+#' and/or prognostic subgroups. Options include MOB OLS ("lmtree"), MOB GLM ("glmtree"), 
+#' optimal treatment regimes ("otr") conditional inference trees ("ctree"), and 
+#' recursive partitioning and regression trees ("rpart").
 #' 
 #' 4. Parameter Estimation (param): For the overall population and the discovered 
 #' subgroups (if any), obtain point-estimates and variability metrics. Options include:
-#' cox regression (param_cox), double robust estimator (param_dr), linear regression 
-#' (param_lm), average of patient-level estimates (param_ple), and restricted mean survival 
-#' time (param_rmst).
+#' cox regression ("cox"), double robust estimator ("dr"), linear regression 
+#' ("lm"), average of patient-level estimates ("ple"), and restricted mean survival 
+#' time ("rmst").
 #' 
 #' Steps 1-4 also support user-specific models. If treatment is provided (A!=NULL), 
 #' the default settings are as follows:
 #' 
 #' Y is continuous (family="gaussian"): 
-#' Elastic Net Filter ==> Treatment-Specific random forest models ==> MOB (OLS) ==> 
-#' Average of patient-level estimates (param_ple)
+#' Elastic Net Filter ==> X-learner with random forest ==> MOB (OLS) ==> 
+#' Double Robust estimator
 #' 
 #' Y is binary (family="binomial"): 
-#' Elastic Net Filter ==> Treatment-Specific random forest models ==> MOB (GLM) ==> 
-#' Average of patient-level estimates (param_ple)
+#' Elastic Net Filter ==> X-learner with random forest ==> MOB (GLM) ==> 
+#' Double Robust estimator
 #' 
 #' Y is right-censored (family="survival"):
-#' Elastic Net Filter ==> Virtual twin survival random forest models ==> MOB (Weibull) ==> 
-#' Cox regression (param_cox)
+#' Elastic Net Filter ==> T-learner with random forest ==> MOB (Weibull) ==> 
+#' Cox regression
 #' 
 #' 
 #' If treatment is not provided (A=NULL), the default settings are as follows:
@@ -163,7 +175,7 @@
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
-#' # Run Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
+#' # Run Default: filter_glmnet, ple_ranger, lmtree, param_ple #
 #' res0 = PRISM(Y=Y, A=A, X=X)
 #' \donttest{
 #' summary(res0)
@@ -171,7 +183,7 @@
 #' }
 #' # Without filtering #
 #' \donttest{
-#' res1 = PRISM(Y=Y, A=A, X=X, filter="None" )
+#' res1 = PRISM(Y=Y, A=A, X=X, filter="None")
 #' summary(res1)
 #' plot(res1)
 #' }
@@ -188,7 +200,8 @@
 #' library(ggplot2)
 #'   res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, verbose.resamp = TRUE)
 #'   # Plot of distributions and P(est>0) #
-#'   plot(res_boot, type="resample", estimand = "E(Y|A=1)-E(Y|A=0)")+geom_vline(xintercept = 0)
+#'   plot(res_boot, type="resample", estimand = "E(Y|A=1)-E(Y|A=0)")+
+#'   geom_vline(xintercept = 0)
 #'   aggregate(I(est>0)~Subgrps, data=res_boot$resamp.dist, FUN="mean")
 #' }
 #' 
@@ -199,7 +212,7 @@
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
-#' # Run Default: filter_glmnet, ple_ranger, submod_glmtree, param_ple #
+#' # Run Default: filter_glmnet, ple_ranger, glmtree, param_ple #
 #' res0 = PRISM(Y=Y, A=A, X=X)
 #' 
 #' plot(res0)
@@ -230,7 +243,7 @@
 #'   plot(res_otr)
 #'
 #'   # PRISM: ENET ==> CTREE ==> Cox; with bootstrap #
-#'   res_ctree1 = PRISM(Y=Y, A=A, X=X, ple="None", submod = "submod_ctree",
+#'   res_ctree1 = PRISM(Y=Y, A=A, X=X, ple="None", submod = "ctree",
 #'                      resample="Bootstrap", R=50, verbose.resamp = TRUE)
 #'   plot(res_ctree1)
 #'   plot(res_ctree1, type="resample", estimand="HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
@@ -240,7 +253,9 @@
 
 ##### PRISM: Patient Responder Identifiers for Stratified Medicine ########
 PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
-                 filter="filter_glmnet", ple=NULL, submod=NULL, param=NULL,
+                 filter="glmnet", ple="ranger", submod=NULL, param=NULL,
+                 meta = "X-learner",
+                 pool="no", delta = ">0", 
                  alpha_ovrl=0.05, alpha_s = 0.05,
                  filter.hyper=NULL, ple.hyper=NULL, submod.hyper = NULL,
                  param.hyper = NULL, bayes = NULL, prefilter_resamp=FALSE,
@@ -253,9 +268,9 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
   if (is.null(A)){
     message("No Treatment Variable (A) Provided: Searching for Prognostic Effects")
     if (!is.null(submod)){
-      if (submod %in% c("submod_lmtree", "submod_weibull")){
+      if (submod %in% c("lmtree", "glmtree", "otr", "mob_weib")){
       message( paste(submod, 
-              "not usable without (A): Using submod_ctree") )
+              "not usable without (A): Using ctree") )
       }
     }
   }
@@ -276,26 +291,26 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
   }
   ### Defaults: By Family (gaussian, binomial (Risk Difference), survival ) ##
   if (family=="gaussian" | family=="binomial") {
-    if (is.null(ple)) { ple = "ple_ranger" }
+    if (is.null(ple)) { ple = "ranger" }
     if (is.null(submod)) { 
-      if (family=="gaussian"){ submod = "submod_lmtree"}
-      if (family=="binomial"){ submod = "submod_glmtree"}
-      if (is.null(A)) { submod = "submod_ctree" }
+      if (family=="gaussian"){ submod = "lmtree"}
+      if (family=="binomial"){ submod = "glmtree"}
+      if (is.null(A)) { submod = "ctree" }
     }
     if (is.null(param)) { 
-      if (is.null(A)){ param = "param_lm" }
-      else { param = "param_ple" }
+      if (is.null(A)){ param = "lm" }
+      else { param = "dr" }
     }
   }
   if (family=="survival") {
-    if (is.null(ple)) {ple = "ple_ranger"}
+    if (is.null(ple)) {ple = "ranger"}
     if (is.null(submod)){ 
-      if (is.null(A)) {submod = "submod_ctree"}
-      else {submod = "submod_weibull"}
+      if (is.null(A)) {submod = "ctree"}
+      else {submod = "mob_weib"}
       }
     if (is.null(param)) { 
-      if (is.null(A)) {param = "param_rmst"}
-      else {param = "param_cox"}
+      if (is.null(A)) {param = "rmst"}
+      else {param = "cox"}
     }
   }
   
@@ -304,7 +319,9 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
   set.seed(seed)
   res0 = PRISM_train(Y=Y, A=A, X=X, Xtest=Xtest, family=family, 
                      filter=filter, ple=ple, submod = submod, param=param,
+                     meta=meta, 
                      alpha_ovrl = alpha_ovrl, alpha_s = alpha_s,
+                     pool = pool, delta = delta, 
                      filter.hyper = filter.hyper, ple.hyper = ple.hyper,
                      submod.hyper = submod.hyper, param.hyper = param.hyper,
                      verbose = verbose)
@@ -315,6 +332,7 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
   resamp.dist = NULL # Set to NULL (needed if no resampling)
   resamp.calib = NULL # Set to NULL (needed if no resampling)
   bayes.fun = NULL # Set to NULL (needed if no bayes)
+  pool.dat <- res0$pool.dat
   ### Bayesian ###
   if (!is.null(bayes)) {
     if (verbose){ 
@@ -347,7 +365,7 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
     ## Run PRISM (Resampling) ##
     resR = PRISM_resamp(PRISM.fit=res0, Y=Y, A=A, X=X, Xtest=Xtest, family=family,
                  filter=filter.resamp, ple=ple.resamp, submod=submod.resamp,
-                 param=param, alpha_ovrl=alpha_ovrl, alpha_s = alpha_s,
+                 param=param, pool=pool, alpha_ovrl=alpha_ovrl, alpha_s = alpha_s,
                  filter.hyper=filter.hyper, ple.hyper=ple.hyper, 
                  submod.hyper = submod.hyper, param.hyper = param.hyper, 
                  verbose=verbose.resamp, prefilter_resamp=prefilter_resamp,
@@ -366,7 +384,7 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
     event.tot <- sum(Y[,2])
     event.subs <- aggregate(Y[,2] ~ Subgrps, FUN="sum")
     colnames(event.subs) <- c("Subgrps", "events")
-    event.dat <- rbind( data.frame(Subgrps=0, events=event.tot),
+    event.dat <- rbind( data.frame(Subgrps="ovrl", events=event.tot),
                         event.subs)
     param.dat <- left_join(param.dat, event.dat, by="Subgrps")
   }
@@ -384,7 +402,8 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
              out.train = out.train,
              out.test = data.frame(Xtest, Subgrps=res0$Subgrps.test),
              Rules=res0$Rules,
-             param.dat = param.dat, resample=resample, resamp.dist = resamp.dist, 
+             param.dat = param.dat, pool=pool, pool.dat=pool.dat, 
+             resample=resample, resamp.dist = resamp.dist, 
              resamp.calib = resamp.calib,
              bayes.fun = bayes.fun, family = family,
              filter = filter, ple = ple, submod=submod, param=param,
@@ -420,7 +439,7 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
 #' X = dat_ctns$X
 #' A = dat_ctns$A
 #'
-#' # Run Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
+#' # Run Default: filter_glmnet, ple_ranger, lmtree, param_ple #
 #' res0 = PRISM(Y=Y, A=A, X=X)
 #' summary( predict(res0, X) ) # all #
 #' summary( predict(res0, X, type="ple") )
@@ -475,7 +494,12 @@ summary.PRISM = function(object,...){
     out$`Variables that Pass Filter` <- object$filter.vars
   }
   # Subgroup summary #
-  numb.subs <- with(object, length(unique(out.train$Subgrps)))
+  if (is.null(object$pool.dat)) {
+    numb.subs <- with(object, length(unique(out.train$Subgrps)))
+  }
+  if (!is.null(object$pool.dat)) {
+    numb.subs <- paste("Before Pooling, ", length(unique(object$pool.dat$Subgrps)))
+  }
   out$`Number of Identified Subgroups` <- numb.subs
   if (c("party") %in% class(object$submod.fit$mod)) {
     submod_vars <- getUsefulPredictors(object$submod.fit$mod)

@@ -7,16 +7,16 @@ globalVariables(c("Rules", "est", "LCL", "UCL", "PLE", "label", "N", "estimand",
 #' Plots PRISM results. Options include "tree", "forest", "resample", and "PLE:waterfall".
 #'
 #' @param x PRISM object
-#' @param type Type of plot (default="tree", tree plot + parameter estimates/outcome and 
-#' or probability density plots). Other options include  "forest" 
-#' (forest plot for overall and subgroups),"PLE:waterfall" 
+#' @param type Type of plot (default="tree", \code{ggparty} based plot with parameter 
+#' estimates, along with options for including outcome or probability based plots). 
+#' Other options include  "forest" (forest plot for overall and subgroups),"PLE:waterfall" 
 #' (waterfall plot of PLEs), "PLE:density" (density plot of PLEs), "resample" (resampling 
 #' distribution of parameter estimates for overall and subgroups), and "heatmap" 
 #' (heatmap of ple estimates/probabilities). For "tree" and "forest", CIs are based on 
 #' the observed data unless resampling is used. For bootstrap resampling, if 
 #' calibrate=TRUE, then calibrated CIs along are shown, otherse CIs based on the 
 #' percentile method are shown.
-#' @param estimand For "resample" plot only, must be specify which estimand to visualize.
+#' @param target For "resample" plot only, must be specify which estimand to visualize.
 #' Default=NULL.
 #' @param grid.data Input grid of values for 2-3 covariates (if 3, last variable cannot
 #' be continuous). This is required for type="heatmap". Default=NULL.
@@ -45,15 +45,33 @@ globalVariables(c("Rules", "est", "LCL", "UCL", "PLE", "label", "N", "estimand",
 #' @method plot PRISM
 #' @export
 #' @importFrom stats reorder as.formula density
+#' @importFrom ggplot2 geom_pointrange geom_text xlab theme theme_bw coord_flip
+#' @importFrom ggplot2 position_nudge ylab element_text element_blank
+#' @importFrom ggplot2 geom_density geom_point geom_line
+#' @importFrom ggparty ggparty geom_edge geom_edge_label geom_node_label geom_node_plot
+#' @importFrom partykit nodeapply nodeids split_node data_party as.partynode
 #' @seealso \code{\link{PRISM}}
 
 
-plot.PRISM = function(x, type="tree", estimand=NULL, grid.data=NULL, grid.thres=">0",
+plot.PRISM = function(x, type="tree", target=NULL, grid.data=NULL, grid.thres=">0",
                       tree.thres=NULL,
                       est.resamp=TRUE, tree.plots="outcome",
                       nudge_out=0.1, width_out=0.5,
                       nudge_dens=ifelse(tree.plots=="both", 0.3, 0.1),
                       width_dens=0.5, ...) {
+  
+  if (type=="PLE:waterfall") {
+    ple.fit <- list(ple = x$ple, mu_train = x$mu_train)
+    ple.fit$mu_train$Subgrps <- factor(x$out.train$Subgrps)
+    res <- plot_ple(object=ple.fit, type="waterfall")
+    return(res)
+  }
+  if (type=="PLE:density") {
+    ple.fit <- list(ple = x$ple, mu_train = x$mu_train)
+    ple.fit$mu_train$Subgrps <- factor(x$out.train$Subgrps)
+    res <- plot_ple(object=ple.fit, type="density")
+    return(res)
+  }
   # Default Setup #
   param.dat <- x$param.dat
   param.dat$est0 <- param.dat$est
@@ -92,7 +110,7 @@ plot.PRISM = function(x, type="tree", estimand=NULL, grid.data=NULL, grid.thres=
     param.dat$UCL0 <- param.dat$UCL.bayes
   }
   if (x$family=="survival") {
-    if (x$param=="param_cox") {
+    if (x$param=="cox") {
       param.dat$est0 = exp(param.dat$est0)
       param.dat$LCL0 = exp(param.dat$LCL0)
       param.dat$UCL0 = exp(param.dat$UCL0)
@@ -102,8 +120,7 @@ plot.PRISM = function(x, type="tree", estimand=NULL, grid.data=NULL, grid.thres=
   }
   x$param.dat <- param.dat
   
-  if (type=="submod" & length(unique(x$out.train$Subgrps))==1) {
-    message("No Subgroups found: Forest Plot is for Overall Population Only")
+  if (type=="tree" & length(unique(x$out.train$Subgrps))==1) {
     type = "forest"
   }
   if (type=="tree"){
@@ -114,46 +131,24 @@ plot.PRISM = function(x, type="tree", estimand=NULL, grid.data=NULL, grid.thres=
     }
     if (is.null(tree.thres)) {
       x2 <- x
-      tree.thres <- ifelse(x2$param=="param_cox", "<1", ">0")
+      tree.thres <- ifelse(x2$param=="cox", "<1", ">0")
     }
     cls <- class(x2$submod.fit$mod)
     if ("party" %in% cls) {
-      res <- do.call("plot_tree", list(object=x2, plots=tree.plots,
+      res <- do.call("plot_ggparty", list(object=x2, plots=tree.plots,
                                        prob.thres = tree.thres,
                                        nudge_out=nudge_out, width_out=width_out,
                                        nudge_dens=nudge_dens, width_dens=width_dens))
     }
     if (!("party" %in% cls)) {
-      stop( paste("Plots for non partykit models not currently supported.") )
+      stop(paste("Tree Plots for non partykit models not currently supported."))
     }
   }
   if (type=="forest"){
     res <- plot_forest(x)
   }
-  # PLE Label #
-  ple.label <- ""
-  if (x$family %in% c("gaussian", "binomial")) {
-    ple.label <- "E(Y|A=1,X)-E(Y|A=0,X)"
-  }
-  if (x$family %in% "survival") {
-    if (x$ple %in% c("ple_ranger", "ple_rfsrc")){
-      ple.label <- "RMST(A=1 vs A=0)"
-    }
-    if (x$ple %in% c("ple_bart")) {
-      ple.label <- "ETR(A=1 vs A=0)"
-    }
-    if (x$ple %in% c("ple_glmnet")) {
-      ple.label <- "logHR(A=1 vs A=0)"
-    }
-  }
-  if (type=="PLE:waterfall") {
-    res <- plot_ple_waterfall(x=x, ple.label=ple.label)
-  }
-  if (type=="PLE:density") {
-    res <- plot_ple_density(x=x, ple.label=ple.label)
-  }
   if (type=="resample") {
-    res <- plot_resample(x=x, estimand=estimand)
+    res <- plot_resample(x=x, target=target)
   }
   if (type=="heatmap"){
     res <- plot_heatmap(x=x, grid.data=grid.data, grid.thres=grid.thres)

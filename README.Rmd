@@ -17,19 +17,22 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of StratifiedMedicine is to develop analytic and visualization tools to aid in stratified and personalized medicine. Stratified medicine aims to find subsets or subgroups of patients with similar treatment effects, for example responders vs non-responders, while personalized medicine aims to understand treatment effects at the individual level (does a specific individual respond to the study treatment?). Development of this package is ongoing.
+The goal of StratifiedMedicine is to develop analytic and visualization tools to aid in stratified and personalized medicine. Stratified medicine aims to find subsets or subgroups of patients with similar treatment effects, for example responders vs non-responders, while personalized medicine aims to understand treatment effects at the individual level (does a specific individual respond to treatment A?). Development of this package is ongoing.
 
-Currently, the main algorithm in this package is “PRISM” (Patient Response Identifiers for Stratified Medicine; Jemielita and Mehrotra 2019 in progress). Given a data-structure of (Y,A,X) (outcome, treatments, covariates), PRISM is a five step procedure:
+Currently, the main tools in this package area: (1) Filter Models (identify important variables and reduce input covariate space), (2) Patient-Level Estimate Models (using regression models, estimate counterfactual quantities, such as the individual treatment effect), (3) Subgroup Models (identify groups of patients using tree-based approaches),
+and (4) Parameter Estimation (across the identified subgroups), and (5) PRISM (Patient Response Identifiers for Stratified Medicine; combines tools 1-4). Development of this package is ongoing. 
 
-0. **Estimand**: Determine the question or estimand of interest. For example, $\theta_0 = E(Y|A=1)-E(Y|A=0)$, where A is a binary treatment variable. While this isn't an explicit step in the PRISM function, the question of interest guides how to set up PRISM. 
+Given a data-structure of (Y,A,X) (outcome, treatments, covariates), PRISM is a five step feature, which comprise of individual tools mentioned above:
 
-1. **Filter (filter)**: Reduce covariate space by removing variables unrelated to outcome/treatment.
+1. **Filter (filter_train)**: Reduce covariate space by removing variables unrelated to outcome/treatment.
 
-2. **Patient-level estimate (ple)**: Estimate counterfactual patient-level quantities, for example the individual treatment effect, $\theta(x) = E(Y|X=x,A=1)-E(Y|X=x,A=0)$.
+2. **Patient-level estimate (ple_train)**: Estimate counterfactual patient-level quantities, for example the individual treatment effect, $\theta(x) = E(Y|X=x,A=1)-E(Y|X=x,A=0)$.
 
-3. **Subgroup model (submod)**: Partition the data into subsets of patients (likely with similar treatment effects). 
+3. **Subgroup model (submod_train)**: Tree-based models to identify groups with hetergenous treatment effects (ex: responder vs non-responder)
 
-4. **Parameter estimation and inference (param)**: For the overall population and discovered subgroups, output point estimates and variability metrics. These outputs are crucial for Go-No-Go decision making.
+4. **Parameter estimation and inference (param_est)**: For the overall population and discovered subgroups, output point estimates and variability metrics. These outputs are crucial for Go-No-Go decision making.
+
+5. **Resampling**: Steps 1-4 are repeated through bootstrap resampling for improved parameter estimation and inference.
 
 ## Installation
 
@@ -57,14 +60,18 @@ Y = dat_ctns$Y
 X = dat_ctns$X # 50 covariates, 46 are noise variables, X1 and X2 are truly predictive
 A = dat_ctns$A # binary treatment, 1:1 randomized 
 
+# Filter #
+res_f <- filter_train(Y, A, X, filter="glmnet")
+plot_importance(res_f)
+
+# counterfactual estimates (ple) #
+res_p <- ple_train(Y, A, X, ple="ranger")
+plot_dependence(res_p, X=X, vars="X1")
+
 # PRISM Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
 res0 = PRISM(Y=Y, A=A, X=X)
 plot(res0) # default: tree plot 
 plot(res0, type="PLE:waterfall") # waterfall plot of PLEs
-## Overall/subgroup specific parameter estimates/inference
-res0$param.dat
-## Forest plot: Overall/subgroup specific parameter estimates (CIs)
-plot(res0, type="forest")
 
 ## Dependence Plots (univariate and heat maps)
 plot_dependence(res0, vars="X1")
@@ -73,4 +80,4 @@ plot_dependence(res0, vars=c("X1", "X2"))
 
 ```
 
-Overall, PRISM provides information at the patient-level, the subgroup-level (if any), and the overall population. While there are defaults in place, the user can also input their own functions/model wrappers into the PRISM algorithm. For more details and more examples, we refer the reader to the following vignettes, [PRISM_vignette](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_PRISM.html), [User_Specific_Models](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_User_Models.html). 
+Overall, StratifiedMedicine provides information at the patient-level, the subgroup-level (if any), and the overall population. While there are defaults in place, the user can also input their own functions/model wrappers into each of the individual tools. For more details and more examples, we refer the reader to the following vignettes, [SM_overview](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_PRISM.html), [User_Specific_Models](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_User_Models.html). 
