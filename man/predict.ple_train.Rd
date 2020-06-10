@@ -21,6 +21,7 @@ Data-frame with predictions (depends on trained ple model).
 Prediction function for the trained patient-level estimate (ple) model.
 }
 \examples{
+\donttest{
 library(StratifiedMedicine)
 ## Continuous ##
 dat_ctns = generate_subgrp_data(family="gaussian")
@@ -34,6 +35,7 @@ summary(mod1$mu_train)
 
 res1 = predict(mod1, newdata=X)
 summary(res1)
+}
 
 }
 \seealso{

@@ -26,6 +26,7 @@ Predictions for PRISM algorithm. Given the training set (Y,A,X) or new test set 
 output ple predictions and identified subgroups with correspond parameter estimates.
 }
 \examples{
+\donttest{
 ## Load library ##
 library(StratifiedMedicine)
 
@@ -38,9 +39,10 @@ A = dat_ctns$A
 
 # Run Default: filter_glmnet, ple_ranger, lmtree, param_ple #
 res0 = PRISM(Y=Y, A=A, X=X)
-summary( predict(res0, X) ) # all #
-summary( predict(res0, X, type="ple") )
-summary( predict(res0, X, type="submod") )
+summary(predict(res0, X)) # all #
+summary(predict(res0, X, type="ple"))
+summary(predict(res0, X, type="submod"))
+}
 
 
 }

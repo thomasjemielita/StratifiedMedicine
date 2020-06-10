@@ -25,6 +25,7 @@ include "waterfall" and "density". Target controls which column of "mu_train"
 (from ple_train object) is shown on the plot.
 }
 \examples{
+\donttest{
 library(StratifiedMedicine)
 ## Continuous ##
 dat_ctns = generate_subgrp_data(family="gaussian")
@@ -35,5 +36,6 @@ A = dat_ctns$A
 
 mod1 = ple_train(Y=Y, A=A, X=X, Xtest=X, ple="ranger", meta="X-learner")
 plot_ple(mod1)
+}
 
 }
