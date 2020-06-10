@@ -33,6 +33,7 @@ Partial dependence plots: Single Variable (marginal effect) or heat map (2 to
 3 variables).
 }
 \examples{
+\donttest{
 library(StratifiedMedicine)
 ## Continuous ##
 dat_ctns = generate_subgrp_data(family="gaussian")
@@ -44,6 +45,7 @@ A = dat_ctns$A
 # Fit through ple_train wrapper #
 mod = ple_train(Y=Y, A=A, X=X, Xtest=X, ple="ranger", meta="X-learner")
 plot_dependence(mod, X=X, vars="X1")
+}
 
 }
 \references{
