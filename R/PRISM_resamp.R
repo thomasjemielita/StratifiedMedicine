@@ -1,6 +1,8 @@
 # PRISM (Resample): Patient Response Identifier for Stratified Medicine
 PRISM_resamp <- function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
                        filter="filter_glmnet", ple=NULL, submod=NULL, param=NULL,
+                       meta = "X-learner",
+                       pool = "no", delta = ">0", 
                        alpha_ovrl=0.05, alpha_s = 0.05,
                        filter.hyper=NULL, ple.hyper=NULL, submod.hyper = NULL,
                        param.hyper = NULL, verbose=TRUE,
@@ -46,8 +48,8 @@ PRISM_resamp <- function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
   }
   
   ### Resampling Wrapper ###
-  fetty_wop <- function(r, stratify, obs.data, Xtest.R, ple, filter, submod,
-                       calibrate, alpha.mat, verbose) {
+  fetty_wop <- function(r, stratify, obs.data, Xtest.R, ple, filter, submod, 
+                        param, calibrate, alpha.mat, verbose) {
     
     if (verbose) message( paste(resample, "Sample", r) )
     ### Permutation resampling (shuffle treatment assignment) ###
@@ -72,35 +74,42 @@ PRISM_resamp <- function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
     A.R <- resamp.data$A
     X.R <- resamp.data[!(colnames(resamp.data) %in% c("Subgrps", "id", "Y", "A"))]
     if (family=="survival") { Y.R = Surv(Y.R[,1], Y.R[,2])  }
-    res.R <- PRISM_train(Y=Y.R, A=A.R, X=X.R, Xtest=Xtest.R, family=family, 
+    res.R <- tryCatch(PRISM_train(Y=Y.R, A=A.R, X=X.R, Xtest=Xtest.R, family=family, 
                         filter=filter, ple=ple, submod = submod, param=param,
+                        meta=meta, 
+                        pool = pool, delta = delta, 
                         alpha_ovrl = alpha_ovrl, alpha_s = alpha_s,
                         filter.hyper = filter.hyper, ple.hyper = ple.hyper,
-                        submod.hyper = submod.hyper, param.hyper = param.hyper,
-                        verbose = FALSE)
+                        submod.hyper = submod.hyper,
+                        verbose = FALSE), error = function(e) "PRISM error")
+    # Return NULL if param error #
+    if (is.character(res.R)) {
+      if (verbose) { message("PRISM_train error; ignoring resample")   }
+      return(NULL)
+    }
     Subgrps.R <- res.R$Subgrps.train
     param.R <- res.R$param.dat
     if (resample!="CV") {
-      param.obs.R <- tryCatch( do.call( param, list(Y=obs.data$Y, A=obs.data$A, 
-                                               X=Xtest.R, 
-                                               mu_hat = PRISM.fit$mu_train,
-                                               Subgrps=res.R$Subgrps.test,
-                                               alpha_ovrl=alpha_ovrl,
-                                               alpha_s=alpha_s)  ),
-                          error = function(e) "param error" )
+      param.obs.R <- tryCatch(param_est(Y=obs.data$Y, A=obs.data$A, 
+                                        X=Xtest.R, param=param,
+                                      mu_hat=PRISM.fit$mu_train, 
+                                      Subgrps=res.R$Subgrps.test,
+                                      alpha_ovrl=alpha_ovrl, alpha_s=alpha_s),
+                            error = function(e) "param error")
       bias.R <- param.obs.R %>% rename(est.obs=est)
       bias.R <- bias.R[,colnames(bias.R) %in% c("Subgrps", "estimand", "est.obs")]
-      param.R <- left_join(param.R, bias.R, by=c("Subgrps", "estimand"))
+      param.R <- suppressWarnings(
+        left_join(param.R, bias.R, by=c("Subgrps", "estimand")))
       param.R$bias <- with(param.R, est-est.obs)
     }
     if (resample=="CV") {
       Subgrps.R = res.R$Subgrps.test
-      param.R = tryCatch( do.call( param, list(Y=test$Y, A=test$A, X=Xtest.R, 
-                                               mu_hat = res.R$mu_test,
-                                               Subgrps=Subgrps.R,
-                                               alpha_ovrl=alpha_ovrl,
-                                               alpha_s=alpha_s)  ),
-                          error = function(e) "param error" )
+      param.R <- tryCatch(param_est(Y=test$Y, A=test$A, 
+                                        X=Xtest.R, param=param,
+                                        mu_hat=res.R$mu_test, 
+                                        Subgrps=Subgrps.R,
+                                        alpha_ovrl=alpha_ovrl, alpha_s=alpha_s),
+                              error = function(e) "param error")
       param.R$bias = NA
     }
     # Return NULL if param error #
@@ -127,14 +136,14 @@ PRISM_resamp <- function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
     }
     # >1 Subgroups #
     if (numb_subs>1) {
-      hold = param.R %>% filter(param.R$Subgrps>0)
-      hold = hold[, colnames(hold) %in% c("Subgrps", "estimand", "est", "SE", "bias") ]
+      hold = param.R %>% filter(param.R$Subgrps!="ovrl")
+      hold = hold[, colnames(hold) %in% c("Subgrps", "estimand", "est", "SE", "bias")]
       # Loop through estimands #
       param.resamp <- NULL
       for (e in unique(hold$estimand)) {
         hold.e <- hold[hold$estimand==e,]
-        est.resamp <- left_join( data.frame(Subgrps=Subgrps.R),
-                                hold.e, by="Subgrps")
+        est.resamp <- suppressWarnings(left_join( data.frame(Subgrps=Subgrps.R),
+                                hold.e, by="Subgrps"))
         est.resamp <- data.frame(Subgrps = Subgrps0, est.resamp)
         colnames(est.resamp) <- c("Subgrps", "Subgrps.R", "estimand", "est", "SE",
                                  "bias")
@@ -146,20 +155,20 @@ PRISM_resamp <- function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
         ## Obtain point-estimate / standard errors ##
         S_levels <- as.numeric( names(table(est.resamp$Subgrps)) )
         param.hold <- NULL
-        for (s in S_levels) {
+        for (s in unique(est.resamp$Subgrps)) {
           hold.s <- param_combine(est.resamp[est.resamp$Subgrps==s,], combine="SS")
           hold.s <- data.frame(Subgrps=s,hold.s[,colnames(hold.s) %in% c("N", "est", "SE")])
           param.hold <- rbind(param.hold, hold.s)
         }
         param.hold <- data.frame(R=r, param.hold, estimand=e)
-        param.hold <- left_join(param.hold, bias, by="Subgrps")
+        param.hold <- suppressWarnings(left_join(param.hold, bias, by="Subgrps"))
         param.resamp <- rbind(param.resamp, param.hold)
       }
       # Add in estimates from overall population #
-      hold.ovrl = param.R[param.R$Subgrps==0, 
+      hold.ovrl = param.R[param.R$Subgrps=="ovrl", 
                           colnames(param.R) %in% colnames(param.resamp)]
       param.resamp.ovrl = data.frame(R=r, hold.ovrl)
-      param.resamp = rbind( param.resamp.ovrl, param.resamp )
+      param.resamp = rbind(param.resamp.ovrl, param.resamp)
     }
     param.resamp$numb_subs = numb_subs
    
@@ -170,12 +179,13 @@ PRISM_resamp <- function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
   ### Run Resampling ##
   resamp.obj = lapply(1:R, fetty_wop, stratify=stratify, obs.data=obs.data,
                       Xtest.R = Xtest.R,
-                      ple=ple, filter=filter, submod=submod, calibrate=calibrate,
+                      ple=ple, filter=filter, submod=submod, param=param,
+                      calibrate=calibrate,
                       alpha.mat = alpha.mat,
                       verbose = verbose)
   ## Extract Resampling parameter estimates, subject-counters, and calib.dat ##
   hold = do.call(rbind, resamp.obj)
-  resamp_param = do.call(bind_rows, hold[,1])
+  resamp_param = suppressWarnings(do.call(bind_rows, hold[,1]))
   resamp_param = resamp_param[order(resamp_param$Subgrps, resamp_param$estimand),]
   resamp_calib = do.call(rbind,hold[,2])
   

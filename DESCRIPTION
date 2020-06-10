@@ -1,7 +1,7 @@
 Package: StratifiedMedicine
 Type: Package
 Title: Stratified Medicine
-Version: 0.2.3
+Version: 1.0.0
 Author: Thomas Jemielita [aut, cre]
 Maintainer: Thomas Jemielita <thomasjemielita@gmail.com>
 Description: A toolkit for stratified medicine, subgroup identification, and precision medicine.
@@ -10,7 +10,7 @@ Description: A toolkit for stratified medicine, subgroup identification, and pre
     (3) subgroup identification models (find subsets of patients with similar treatment effects), 
     and (4) parameter estimation and inference (for the overall population and discovered subgroups).
     These tools can directly feed into stratified medicine algorithms including PRISM 
-    (patient response identifiers for stratified medicine; Jemielita and Mehrotra (2019) 
+    (patient response identifiers for stratified medicine; Jemielita and Mehrotra 2019
     <arXiv:1912.03337>. PRISM is a flexible and general framework which accepts 
     user-created models/functions. This package is in beta and will be continually updated.
 License: GPL-3
@@ -28,8 +28,6 @@ Suggests:
     rmarkdown,
     MASS,
     BART,
-    randomForestSRC,
-    grf,
     survRM2,
     TH.data,
     coin,
