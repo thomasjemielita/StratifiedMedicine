@@ -177,6 +177,7 @@ ple_train = function(Y, A, X, Xtest=NULL, family="gaussian", propensity=NULL,
 #' @return Data-frame with predictions (depends on trained ple model).
 #'
 #' @examples
+#' \donttest{
 #' library(StratifiedMedicine)
 #' ## Continuous ##
 #' dat_ctns = generate_subgrp_data(family="gaussian")
@@ -190,6 +191,7 @@ ple_train = function(Y, A, X, Xtest=NULL, family="gaussian", propensity=NULL,
 #'
 #' res1 = predict(mod1, newdata=X)
 #' summary(res1)
+#' }
 #'
 #' @method predict ple_train
 #' @export

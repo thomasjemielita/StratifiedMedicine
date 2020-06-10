@@ -13,6 +13,7 @@
 #' @return Plot (ggplot2) object
 #' @export
 #' @examples
+#' \donttest{
 #' library(StratifiedMedicine)
 #' ## Continuous ##
 #' dat_ctns = generate_subgrp_data(family="gaussian")
@@ -23,6 +24,7 @@
 #'
 #' mod1 = ple_train(Y=Y, A=A, X=X, Xtest=X, ple="ranger", meta="X-learner")
 #' plot_ple(mod1)
+#' }
 #' 
 ### PLE Plots (waterfall, density) ###
 plot_ple <- function(object, target=NULL, type="waterfall", ...) {

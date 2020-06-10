@@ -429,6 +429,7 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
 #' @export
 #'
 #' @examples
+#' \donttest{
 #' ## Load library ##
 #' library(StratifiedMedicine)
 #'
@@ -441,9 +442,10 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
 #'
 #' # Run Default: filter_glmnet, ple_ranger, lmtree, param_ple #
 #' res0 = PRISM(Y=Y, A=A, X=X)
-#' summary( predict(res0, X) ) # all #
-#' summary( predict(res0, X, type="ple") )
-#' summary( predict(res0, X, type="submod") )
+#' summary(predict(res0, X)) # all #
+#' summary(predict(res0, X, type="ple"))
+#' summary(predict(res0, X, type="submod"))
+#' }
 #'
 #'
 #' @method predict PRISM
