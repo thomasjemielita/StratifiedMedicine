@@ -2,23 +2,29 @@
 % Please edit documentation in R/filter_train.R
 \name{filter_train}
 \alias{filter_train}
-\title{Filter: Train Filter Model}
+\title{filter_train: Identify variables of interest}
 \usage{
-filter_train(Y, A, X, family = "gaussian", filter, hyper = NULL, ...)
+filter_train(Y, A, X, family = "gaussian", filter = "glmnet",
+  hyper = NULL, ...)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
 
-\item{A}{Treatment variable. (a=1,...A)}
+\item{A}{Treatment variable. (Default supports binary treatment, either numeric or 
+factor). "ple_train" accomodates >2 along with binary treatments.}
 
 \item{X}{Covariate space.}
 
-\item{family}{Outcome type ("gaussian", "binomial", "survival"). Default is "gaussian".}
+\item{family}{Outcome type. Options include "gaussion" (default), "binomial", and "survival".}
 
-\item{filter}{Filter function. Potentially reduces covariate space, 
-(Y, A, X) ==> (Y, A, Xstar).}
+\item{filter}{Filter model to determine variables that are likely associated with the 
+outcome and/or treatment. Outputs a potential reduce list of varia where X.star 
+has potentially less variables than X. Default is "glmnet" (elastic net). Other 
+options include "ranger" (random forest based variable importance with p-values).
+See \code{filter_train} for more details. "None" uses no filter.}
 
-\item{hyper}{Hyper-parameters for the filter model (must be list). Default is NULL.}
+\item{hyper}{Hyper-parameters for the filter model (must be list). Default is NULL.
+See details below.}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
@@ -31,8 +37,42 @@ Trained filter model and vector of variable names that pass the filter.
 }
 }
 \description{
-Wrapper function to train a filter model. Options include elastic net (glmnet) and random forest based 
-variable importance (ranger). Used directly in PRISM.
+Wrapper function to train a filter model to determine variables associated with 
+the outcome and/or treatment.. Options include elastic net (glmnet) and random 
+forest based variable importance (ranger). Used directly in PRISM.
+}
+\details{
+filter_train currently fits elastic net or random forest to
+find a reduced set of variables which are likely associated with the outcome (Y) 
+and/or treatment (A). Current options include:
+
+1. \strong{glmnet}: Wrapper function for the function "glmnet" from the glmnet package. Here, 
+variables with estimated elastic net coefficients of 0 are filtered. Uses LM/GLM/cox 
+elastic net for family="gaussian","binomial", "survival" respectively. Default is to 
+regress Y~ENET(X) with hyper-parameters:
+
+hyper = list(lambda="lambda.min", family="gaussian",interaction=FALSE))
+
+If interaction=TRUE, then Y~ENET(X,A,X*A), and variables with estimated coefficients of 
+zero in both the main effects (X) and treatment-interactions (X*A) are filtered. This 
+aims to find variables that are prognostic and/or predictive. 
+
+
+2. \strong{ranger}: Wrapper function for the function "ranger" (ranger R package) to calculate
+random forest based variable importance (VI) p-values. Here, for the test of VI>0,
+variables are filtered if their one-sided p-value>=0.10. P-values are obtained
+through subsampling based T-statistics (T=VI_j/SE(VE_j)) for feature j through the 
+delete-d jackknife), as described in Ishwaran and Lu 2017. Used for continuous, binary, 
+or survival outcomes. Default hyper-parameters are:
+
+hyper=list(b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thres=0.10)
+
+where b=(\% of total data to sample; default=66\%), K=# of subsamples, FDR (FDR based
+multiplicity correction for p-values), pval.thres=0.10 (adjust to change 
+filtering threshold). DF2 fits Y~ranger(X, A, XA) and calculates the 
+VI_2DF = VI_X+VI_XA, which is the variable importance of the main effect + the 
+interaction effect (joint test). Var(VI_2DF) = Var(VI_X)+Var(VI_AX)+2cov(VI_X, VI_AX) 
+where each component is calculated using the subsampling approach described above.
 }
 \examples{
 \donttest{
@@ -47,12 +87,29 @@ A = dat_ctns$A
 mod1 = filter_train(Y, A, X, filter="filter_glmnet")
 mod1$filter.vars
 
-mod2 = filter_train(Y, A, X, filter="filter_ranger")
+mod2 = filter_train(Y, A, X, filter="filter_glmnet", hyper=list(interaction=TRUE))
 mod2$filter.vars
+
+mod3 = filter_train(Y, A, X, filter="filter_ranger")
+mod3$filter.vars
 
 }
 
 
+}
+\references{
+Friedman, J., Hastie, T. and Tibshirani, R. (2008) Regularization Paths for
+ Generalized Linear Models via Coordinate Descent,
+ \url{https://web.stanford.edu/~hastie/Papers/glmnet.pdf} Journal of Statistical 
+ Software, Vol. 33(1), 1-22 Feb 2010 Vol. 33(1), 1-22 Feb 2010.
+
+Wright, M. N. & Ziegler, A. (2017). ranger: A fast implementation of 
+random forests for high dimensional data in C++ and R. J Stat Softw 77:1-17. 
+\url{https://doi.org/10.18637/jss.v077.i01}.
+
+Ishwaran, H. Lu, M. (2017). Standard errors and confidence intervals 
+for variable importance in random forest regression, classification, and survival.
+Statistics in Medicine 2017.
 }
 \seealso{
 \code{\link{PRISM}}

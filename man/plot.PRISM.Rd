@@ -4,7 +4,7 @@
 \alias{plot.PRISM}
 \title{plot.PRISM}
 \usage{
-\method{plot}{PRISM}(x, type = "tree", estimand = NULL,
+\method{plot}{PRISM}(x, type = "tree", target = NULL,
   grid.data = NULL, grid.thres = ">0", tree.thres = NULL,
   est.resamp = TRUE, tree.plots = "outcome", nudge_out = 0.1,
   width_out = 0.5, nudge_dens = ifelse(tree.plots == "both", 0.3, 0.1),
@@ -13,9 +13,9 @@
 \arguments{
 \item{x}{PRISM object}
 
-\item{type}{Type of plot (default="tree", tree plot + parameter estimates/outcome and 
-or probability density plots). Other options include  "forest" 
-(forest plot for overall and subgroups),"PLE:waterfall" 
+\item{type}{Type of plot (default="tree", \code{ggparty} based plot with parameter 
+estimates, along with options for including outcome or probability based plots). 
+Other options include  "forest" (forest plot for overall and subgroups),"PLE:waterfall" 
 (waterfall plot of PLEs), "PLE:density" (density plot of PLEs), "resample" (resampling 
 distribution of parameter estimates for overall and subgroups), and "heatmap" 
 (heatmap of ple estimates/probabilities). For "tree" and "forest", CIs are based on 
@@ -23,7 +23,7 @@ the observed data unless resampling is used. For bootstrap resampling, if
 calibrate=TRUE, then calibrated CIs along are shown, otherse CIs based on the 
 percentile method are shown.}
 
-\item{estimand}{For "resample" plot only, must be specify which estimand to visualize.
+\item{target}{For "resample" plot only, must be specify which estimand to visualize.
 Default=NULL.}
 
 \item{grid.data}{Input grid of values for 2-3 covariates (if 3, last variable cannot

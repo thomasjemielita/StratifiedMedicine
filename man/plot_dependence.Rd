@@ -5,11 +5,16 @@
 \title{Partial dependence plots: Single Variable (marginal effect) or heat map (2 to 
 3 variables).}
 \usage{
-plot_dependence(object, vars, grid.data = NULL, grid.thres = ">0",
-  estimand = NULL, ...)
+plot_dependence(object, X = NULL, target = NULL, vars,
+  grid.data = NULL, ...)
 }
 \arguments{
-\item{object}{Fitted PRISM object}
+\item{object}{Fitted \code{ple_train} or \code{PRISM} object}
+
+\item{X}{input covariate space. Default=NULL.}
+
+\item{target}{Which patient-level estimate to target for PDP based plots. Default=NULL, 
+which uses the estimated treatment difference.}
 
 \item{vars}{Variables to visualize (ex: c("var1", "var2", "var3)). If no grid.data 
 provided, defaults to using seq(min(var), max(var)) for each continuous variables. 
@@ -17,12 +22,6 @@ For categorical, uses all categories.}
 
 \item{grid.data}{Input grid of values for 2-3 covariates (if 3, last variable cannot
 be continuous). This is required for type="heatmap". Default=NULL.}
-
-\item{grid.thres}{Threshold for PLE, ex: I(PLE>thres). Used to estimate P(PLE>thres) for
-type="heatmap". Default is ">0". Direction can be reversed and can include equality
-sign (ex: "<=").}
-
-\item{estimand}{Estimand for which to generate dependendence or heat map plots.}
 
 \item{...}{Additional arguments (currently ignored).}
 }
@@ -32,6 +31,20 @@ Plot (ggplot2) object
 \description{
 Partial dependence plots: Single Variable (marginal effect) or heat map (2 to 
 3 variables).
+}
+\examples{
+library(StratifiedMedicine)
+## Continuous ##
+dat_ctns = generate_subgrp_data(family="gaussian")
+Y = dat_ctns$Y
+X = dat_ctns$X
+A = dat_ctns$A
+
+
+# Fit through ple_train wrapper #
+mod = ple_train(Y=Y, A=A, X=X, Xtest=X, ple="ranger", meta="X-learner")
+plot_dependence(mod, X=X, vars="X1")
+
 }
 \references{
 \itemize{

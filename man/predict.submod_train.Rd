@@ -33,13 +33,10 @@ Y = dat_ctns$Y
 X = dat_ctns$X
 A = dat_ctns$A
 
-# Fit submod_lmtree directly #
-mod1 = submod_lmtree(Y, A, X, Xtest=X)
-plot(mod1$mod)
-
 # Fit through submod_train wrapper #
-mod2 = submod_train(Y=Y, A=A, X=X, Xtest=X, submod="submod_lmtree")
-out2 = predict(mod2)
-plot(mod2$fit$mod)
+mod1 = submod_train(Y=Y, A=A, X=X, Xtest=X, submod="submod_lmtree")
+out1 = predict(mod1)
+table(mod1$Subgrps.train)
+table(out1$Subgrps)
 
 }

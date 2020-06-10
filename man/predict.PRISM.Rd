@@ -36,7 +36,7 @@ Y = dat_ctns$Y
 X = dat_ctns$X
 A = dat_ctns$A
 
-# Run Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
+# Run Default: filter_glmnet, ple_ranger, lmtree, param_ple #
 res0 = PRISM(Y=Y, A=A, X=X)
 summary( predict(res0, X) ) # all #
 summary( predict(res0, X, type="ple") )

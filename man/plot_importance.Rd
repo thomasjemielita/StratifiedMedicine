@@ -22,3 +22,14 @@ variables with non-zero coefficients are shown. For random forest variable impor
 (filter_ranger), variables are sorted by their p-values, and "top_n" will show only the
 "top_n" most importance variables (based on p-values).
 }
+\examples{
+library(StratifiedMedicine)
+## Continuous ##
+dat_ctns = generate_subgrp_data(family="gaussian")
+Y = dat_ctns$Y
+X = dat_ctns$X
+A = dat_ctns$A
+
+mod1 = filter_train(Y=Y, A=A, X=X)
+plot_importance(mod1)
+}

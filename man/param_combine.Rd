@@ -4,7 +4,7 @@
 \alias{param_combine}
 \title{Overall Population Estimate: Aggregating Subgroup-Specific Parameter Estimates}
 \usage{
-param_combine(param.dat, combine = "adaptive", alpha_ovrl = 0.05, ...)
+param_combine(param.dat, combine = "SS", alpha_ovrl = 0.05, ...)
 }
 \arguments{
 \item{param.dat}{Parameter data-set with subgroup-specific point estimates, SEs, and
@@ -23,8 +23,5 @@ Data-frame with overall population point estimate, SE, and CI
 \description{
 Function that combines subgroup-specific estimates to obtain an overall population
 estimate. Options including sample size weighting and adaptive weighting (default; as
-described in Marceau-West and Mehrotra 2019 in progress).
-}
-\seealso{
-\code{\link{param_cox}}, \code{\link{param_lm}}, \code{\link{param_rmst}}
+described in Marceau-West and Mehrotra (to appear)).
 }
