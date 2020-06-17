@@ -13,7 +13,7 @@ medicine aims to find subsets or subgroups of patients with similar
 treatment effects, for example responders vs non-responders, while
 personalized medicine aims to understand treatment effects at the
 individual level (does a specific individual respond to treatment A?).
-Development of this package is ongoing.
+Development of the package is ongoing.
 
 Currently, the main tools in this package area: (1) Filter Models
 (identify important variables and reduce input covariate space), (2)
@@ -33,7 +33,7 @@ mentioned above:
 
 2.  **Patient-level estimate (ple\_train)**: Estimate counterfactual
     patient-level quantities, for example the individual treatment
-    effect, $(x) = E(Y|X=x,A=1)-E(Y|X=x,A=0)$.
+    effect, \(\theta(x) = E(Y|X=x,A=1)-E(Y|X=x,A=0)\).
 
 3.  **Subgroup model (submod\_train)**: Tree-based models to identify
     groups with hetergenous treatment effects (ex: responder vs
