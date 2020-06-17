@@ -17,7 +17,7 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
   # param.dat$SE0 <- param.dat$SE
   # param.dat$LCL0 <- param.dat$LCL
   # param.dat$UCL0 <- param.dat$UCL
-  param.dat$prob.est <- param.dat$`Prob(>0)`
+  # param.dat$prob.est <- param.dat$`Prob(>0)`
   Subgrps <- as.numeric(unique(param.dat$Subgrps[param.dat$Subgrps!="ovrl"]))
   
   param.dat$label <- with(param.dat, paste( sprintf("%.2f", round(est0,2)),
@@ -45,10 +45,25 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
       estimand <- E_diff
       if (object$ple!="None") {
         mu_hat <- object$mu_train
-        plot.dat <- rbind( data.frame(estimand=mu_A0, est=mu_hat[,mu_A0], 
-                                      Subgrps = object$out.train$Subgrps),
-                           data.frame(estimand=mu_A1, est=mu_hat[,mu_A1],
-                                      Subgrps = object$out.train$Subgrps))
+        if (object$param=="ple") {
+          plot.dat <- rbind( data.frame(estimand=mu_A0, est=mu_hat[,mu_A0], 
+                                        Subgrps = object$out.train$Subgrps),
+                             data.frame(estimand=mu_A1, est=mu_hat[,mu_A1],
+                                        Subgrps = object$out.train$Subgrps)) 
+        }
+        if (object$param=="dr") {
+          pi0 <- paste("pi", A_lvls[1], sep="_")
+          pi1 <- paste("pi", A_lvls[2], sep="_")
+          A_ind <- ifelse(A==A_lvls[2], 1, 0)
+          eif_0 <-  ((1-A_ind)*object$out.train$Y + 
+                       (A_ind-mu_hat[[pi1]])*mu_hat[,mu_A0]) / (mu_hat[[pi0]])
+          eif_1 <-  (A_ind*object$out.train$Y -
+                       (A_ind-mu_hat[[pi1]])*mu_hat[,mu_A1]) / (mu_hat[[pi1]])
+          plot.dat <- rbind( data.frame(estimand=mu_A0, est=eif_0,
+                                        Subgrps = object$out.train$Subgrps),
+                             data.frame(estimand=mu_A1, est=eif_1,
+                                        Subgrps = object$out.train$Subgrps)) 
+        }
         plot.dat$id <- as.character(plot.dat$Subgrps)
       }
       if (object$ple=="None") {
@@ -57,6 +72,7 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
         colnames(plot.dat)[1] <- c("est")
         plot.dat$estimand <- with(plot.dat, paste("mu",A,sep="_"))
         plot.dat$estimand <- factor(plot.dat$estimand, levels=c(mu_A0, mu_A1))
+        plot.dat$id <- plot.dat$Subgrps
         plot.dat$id <- as.character(plot.dat$Subgrps)
       }
     }
@@ -67,7 +83,7 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
       colnames(plot.dat)[1] <- c("est")
       plot.dat$estimand <- "E(Y)"
       plot.dat$id <- plot.dat$Subgrps
-      plot.dat$id <- as.character(plot.dat$Subgrps)
+      # plot.dat$id <- as.character(plot.dat$Subgrps)
     } 
   }
   if (family=="survival") {
@@ -95,6 +111,7 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
       pred.surv <- suppressWarnings( bind_rows(pred.surv, pred.s) )
     } 
     plot.dat <- pred.surv
+    n.events <- sum(param.subs$events)
   }
   
   ## Create density data ##
@@ -158,6 +175,8 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
     param.subs$trt_assign <- param.subs$id
     param.subs$Subgrps <- param.subs$Subgrps0
   }
+  # Make sure id is numeric #
+  plot.dat$id <- as.numeric(plot.dat$id)
   # Add estimates into tree #
   ct_node <- as.list(ct$node)
   for (s in Subgrps) {
@@ -176,7 +195,7 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
       ct_node[[ii]]$split$breaks <- ifelse(is.numeric(brk), round(brk,2), brk)
     }
   }
-  ct$node <- as.partynode(ct_node)
+  ct$node <- partykit::as.partynode(ct_node)
   
   
   ## Plot setup ##
@@ -230,7 +249,7 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
                                       ggplot2::xlab(""),
                                       ggplot2::ylab("Estimate"),
                                       ggplot2::theme_bw(), 
-                                      ggplot2::theme(axis.text.y = element_blank()),
+                                      ggplot2::theme(axis.text.y = ggplot2::element_blank()),
                                       ggplot2::coord_flip()),
                                nudge_x = nudge_out, width = width_out,
                                shared_axis_labels = TRUE,
@@ -239,13 +258,15 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
     dens_plot <- ggparty::geom_node_plot(
       gglist = list( ggplot2::geom_area(data=dat.dens, 
                      ggplot2::aes(x = ifelse(x < thres , x, thres),y=y), fill = fill_L),
-                     ggplot2::geom_area(data=dat.dens, aes(x = ifelse(x > thres , x, thres),
+                     ggplot2::geom_area(data=dat.dens, 
+                                        ggplot2::aes(x = ifelse(x > thres , x, thres),
                                                   y=y), fill = fill_R),
                      ggplot2::geom_line(data=dat.dens, aes(x=x,y=y)),
                      ggplot2::ylim(0,max.dens),
                      ggplot2::theme_bw(),
                      ggplot2::ggtitle(estimand),
-                     ggplot2::theme(plot.title = element_text(size = 8, face = "bold")),
+                     ggplot2::theme(plot.title = 
+                                      ggplot2::element_text(size = 8, face = "bold")),
                      ggplot2::xlab("Density"), ylab("") ), shared_axis_labels = TRUE,
       width=width_dens, nudge_x = nudge_dens)
     # Outcome Only #

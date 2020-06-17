@@ -4,11 +4,21 @@
 \alias{plot.PRISM}
 \title{plot.PRISM}
 \usage{
-\method{plot}{PRISM}(x, type = "tree", target = NULL,
-  grid.data = NULL, grid.thres = ">0", tree.thres = NULL,
-  est.resamp = TRUE, tree.plots = "outcome", nudge_out = 0.1,
-  width_out = 0.5, nudge_dens = ifelse(tree.plots == "both", 0.3, 0.1),
-  width_dens = 0.5, ...)
+\method{plot}{PRISM}(
+  x,
+  type = "tree",
+  target = NULL,
+  grid.data = NULL,
+  grid.thres = ">0",
+  tree.thres = NULL,
+  est.resamp = TRUE,
+  tree.plots = "outcome",
+  nudge_out = 0.1,
+  width_out = 0.5,
+  nudge_dens = ifelse(tree.plots == "both", 0.3, 0.1),
+  width_dens = 0.5,
+  ...
+)
 }
 \arguments{
 \item{x}{PRISM object}
