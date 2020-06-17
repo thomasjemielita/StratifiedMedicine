@@ -189,12 +189,21 @@ plot_vimp_ranger <- function(mod, top_n=NULL) {
 ### PLE (regression + prediction) ###
 
 ## Random Forest (Ranger) ##
-ple_ranger <- function(Y, X, family="gaussian", mtry = NULL, min.node.pct=0.10, ...) {
+ple_ranger <- function(Y, X, family="gaussian", min.node.pct=0.10,
+                       mtry = NULL, ...) {
   
+  if (is.null(mtry)) {
+    mtry <- floor(sqrt(dim(X)[2]))
+  }
+  probability = FALSE
+  if (family=="binomial") {
+    probability = TRUE
+  }
   mod <- ranger::ranger(Y ~ ., data = data.frame(Y, X), 
-                        min.node.size = min.node.pct*dim(X)[1])
+                        probability = probability, 
+                        min.node.size = min.node.pct*dim(X)[1], mtry = mtry)
   mod = list(mod=mod)
-  pred.fun = function(mod, X, tau=NULL) {
+  pred.fun = function(mod, X, tau=NULL, ...) {
     treetype = mod[[1]]$treetype
     if (treetype!="Survival") {
       mu_hat = data.frame(mu_hat = predict(mod$mod, X)$predictions)
