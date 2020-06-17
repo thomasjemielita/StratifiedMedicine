@@ -1,30 +1,56 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-StratifiedMedicine
-==================
+
+# StratifiedMedicine
 
 <!-- badges: start -->
+
 <!-- badges: end -->
-The goal of StratifiedMedicine is to develop analytic and visualization tools to aid in stratified and personalized medicine. Stratified medicine aims to find subsets or subgroups of patients with similar treatment effects, for example responders vs non-responders, while personalized medicine aims to understand treatment effects at the individual level (does a specific individual respond to treatment A?). Development of this package is ongoing.
 
-Currently, the main tools in this package area: (1) Filter Models (identify important variables and reduce input covariate space), (2) Patient-Level Estimate Models (using regression models, estimate counterfactual quantities, such as the individual treatment effect), (3) Subgroup Models (identify groups of patients using tree-based approaches), and (4) Parameter Estimation (across the identified subgroups), and (5) PRISM (Patient Response Identifiers for Stratified Medicine; combines tools 1-4). Development of this package is ongoing.
+The goal of StratifiedMedicine is to develop analytic and visualization
+tools to aid in stratified and personalized medicine. Stratified
+medicine aims to find subsets or subgroups of patients with similar
+treatment effects, for example responders vs non-responders, while
+personalized medicine aims to understand treatment effects at the
+individual level (does a specific individual respond to treatment A?).
+Development of this package is ongoing.
 
-Given a data-structure of (Y,A,X) (outcome, treatments, covariates), PRISM is a five step feature, which comprise of individual tools mentioned above:
+Currently, the main tools in this package area: (1) Filter Models
+(identify important variables and reduce input covariate space), (2)
+Patient-Level Estimate Models (using regression models, estimate
+counterfactual quantities, such as the individual treatment effect), (3)
+Subgroup Models (identify groups of patients using tree-based
+approaches), and (4) Parameter Estimation (across the identified
+subgroups), and (5) PRISM (Patient Response Identifiers for Stratified
+Medicine; combines tools 1-4). Development of this package is ongoing.
 
-1.  **Filter (filter\_train)**: Reduce covariate space by removing variables unrelated to outcome/treatment.
+Given a data-structure of (Y,A,X) (outcome, treatments, covariates),
+PRISM is a five step feature, which comprise of individual tools
+mentioned above:
 
-2.  **Patient-level estimate (ple\_train)**: Estimate counterfactual patient-level quantities, for example the individual treatment effect, *θ*(*x*)=*E*(*Y*|*X* = *x*, *A* = 1)−*E*(*Y*|*X* = *x*, *A* = 0).
+1.  **Filter (filter\_train)**: Reduce covariate space by removing
+    variables unrelated to outcome/treatment.
 
-3.  **Subgroup model (submod\_train)**: Tree-based models to identify groups with hetergenous treatment effects (ex: responder vs non-responder)
+2.  **Patient-level estimate (ple\_train)**: Estimate counterfactual
+    patient-level quantities, for example the individual treatment
+    effect, \(\theta(x) = E(Y|X=x,A=1)-E(Y|X=x,A=0)\).
 
-4.  **Parameter estimation and inference (param\_est)**: For the overall population and discovered subgroups, output point estimates and variability metrics. These outputs are crucial for Go-No-Go decision making.
+3.  **Subgroup model (submod\_train)**: Tree-based models to identify
+    groups with hetergenous treatment effects (ex: responder vs
+    non-responder)
 
-5.  **Resampling**: Steps 1-4 are repeated through bootstrap resampling for improved parameter estimation and inference.
+4.  **Parameter estimation and inference (param\_est)**: For the overall
+    population and discovered subgroups, output point estimates and
+    variability metrics. These outputs are crucial for Go-No-Go decision
+    making.
 
-Installation
-------------
+5.  **Resampling**: Steps 1-4 are repeated through bootstrap resampling
+    for improved parameter estimation and inference.
 
-You can install the released version of StratifiedMedicine from [CRAN](https://CRAN.R-project.org) with:
+## Installation
+
+You can install the released version of StratifiedMedicine from
+[CRAN](https://CRAN.R-project.org) with:
 
 ``` r
 install.packages("StratifiedMedicine")
@@ -37,10 +63,20 @@ And the development version from [GitHub](https://github.com/) with:
 devtools::install_github("thomasjemielita/StratifiedMedicine")
 ```
 
-Example: Continuous Outcome with Binary Treatment
--------------------------------------------------
+## Example: Continuous Outcome with Binary Treatment
 
-Suppose the estimand or question of interest is the average treatment effect, *θ*<sub>0</sub> = *E*(*Y*|*A* = 1)−*E*(*Y*|*A* = 0). The goal is to understand whether there is any treatment heterogeneity across patients and if there are any distinct subgroups with similar responses. In this example, we simulate continuous data where roughly 30% of the patients receive no treatment-benefit for using *A* = 1 vs *A* = 0. Responders vs non-responders are defined by the continuous predictive covariates *X*<sub>1</sub> and *X*<sub>2</sub> for a total of four subgroups. Subgroup treatment effects are: *θ*<sub>1</sub> = 0 (*X*<sub>1</sub> ≤ 0, *X*<sub>2</sub> ≤ 0), *θ*<sub>2</sub> = 0.25(*X*<sub>1</sub> &gt; 0, *X*<sub>2</sub> ≤ 0), *θ*<sub>3</sub> = 0.45(*X*<sub>1</sub> ≤ 0, *X*2 &gt; 0), *θ*<sub>4</sub> = 0.65(*X*<sub>1</sub> &gt; 0, *X*<sub>2</sub> &gt; 0).
+Suppose the estimand or question of interest is the average treatment
+effect, \(\theta_0 = E(Y|A=1)-E(Y|A=0)\). The goal is to understand
+whether there is any treatment heterogeneity across patients and if
+there are any distinct subgroups with similar responses. In this
+example, we simulate continuous data where roughly 30% of the patients
+receive no treatment-benefit for using \(A=1\) vs \(A=0\). Responders vs
+non-responders are defined by the continuous predictive covariates
+\(X_1\) and \(X_2\) for a total of four subgroups. Subgroup treatment
+effects are: \(\theta_{1} = 0\) (\(X_1 \leq 0, X_2 \leq 0\)),
+\(\theta_{2} = 0.25 (X_1 > 0, X_2 \leq 0)\),
+\(\theta_{3} = 0.45 (X_1 \leq 0, X2 > 0\)),
+\(\theta_{4} = 0.65 (X_1>0, X_2>0)\).
 
 ``` r
 library(StratifiedMedicine)
@@ -55,7 +91,7 @@ res_f <- filter_train(Y, A, X, filter="glmnet")
 plot_importance(res_f)
 ```
 
-![](man/figures/README-example-1.png)
+![](man/figures/README-example-1.png)<!-- -->
 
 ``` r
 
@@ -65,7 +101,7 @@ plot_dependence(res_p, X=X, vars="X1")
 #> `geom_smooth()` using method = 'loess' and formula 'y ~ x'
 ```
 
-![](man/figures/README-example-2.png)
+![](man/figures/README-example-2.png)<!-- -->
 
 ``` r
 
@@ -79,13 +115,13 @@ res0 = PRISM(Y=Y, A=A, X=X)
 plot(res0) # default: tree plot 
 ```
 
-![](man/figures/README-example-3.png)
+![](man/figures/README-example-3.png)<!-- -->
 
 ``` r
 plot(res0, type="PLE:waterfall") # waterfall plot of PLEs
 ```
 
-![](man/figures/README-example-4.png)
+![](man/figures/README-example-4.png)<!-- -->
 
 ``` r
 
@@ -94,19 +130,25 @@ plot_dependence(res0, vars="X1")
 #> `geom_smooth()` using method = 'loess' and formula 'y ~ x'
 ```
 
-![](man/figures/README-example-5.png)
+![](man/figures/README-example-5.png)<!-- -->
 
 ``` r
 plot_dependence(res0, vars="X2")
 #> `geom_smooth()` using method = 'loess' and formula 'y ~ x'
 ```
 
-![](man/figures/README-example-6.png)
+![](man/figures/README-example-6.png)<!-- -->
 
 ``` r
 plot_dependence(res0, vars=c("X1", "X2"))
 ```
 
-![](man/figures/README-example-7.png)
+![](man/figures/README-example-7.png)<!-- -->
 
-Overall, StratifiedMedicine provides information at the patient-level, the subgroup-level (if any), and the overall population. While there are defaults in place, the user can also input their own functions/model wrappers into each of the individual tools. For more details and more examples, we refer the reader to the following vignettes, [SM\_overview](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_PRISM.html), [User\_Specific\_Models](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_User_Models.html).
+Overall, StratifiedMedicine provides information at the patient-level,
+the subgroup-level (if any), and the overall population. While there are
+defaults in place, the user can also input their own functions/model
+wrappers into each of the individual tools. For more details and more
+examples, we refer the reader to the following vignettes,
+[SM\_overview](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_PRISM.html),
+[User\_Specific\_Models](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_User_Models.html).
