@@ -5,8 +5,7 @@
 \title{Partial dependence plots: Single Variable (marginal effect) or heat map (2 to 
 3 variables).}
 \usage{
-plot_dependence(object, X = NULL, target = NULL, vars,
-  grid.data = NULL, ...)
+plot_dependence(object, X = NULL, target = NULL, vars, grid.data = NULL, ...)
 }
 \arguments{
 \item{object}{Fitted \code{ple_train} or \code{PRISM} object}

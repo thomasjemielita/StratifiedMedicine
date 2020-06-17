@@ -4,8 +4,7 @@
 \alias{generate_subgrp_data}
 \title{Generate Subgroup Data-sets}
 \usage{
-generate_subgrp_data(n = 800, seed = 513413, family, null = FALSE,
-  ...)
+generate_subgrp_data(n = 800, seed = 513413, family, null = FALSE, ...)
 }
 \arguments{
 \item{n}{sample size (default=800)}

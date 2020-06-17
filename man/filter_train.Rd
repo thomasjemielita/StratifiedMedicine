@@ -4,8 +4,15 @@
 \alias{filter_train}
 \title{filter_train: Identify variables of interest}
 \usage{
-filter_train(Y, A, X, family = "gaussian", filter = "glmnet",
-  hyper = NULL, ...)
+filter_train(
+  Y,
+  A,
+  X,
+  family = "gaussian",
+  filter = "glmnet",
+  hyper = NULL,
+  ...
+)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}

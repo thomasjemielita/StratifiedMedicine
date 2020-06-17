@@ -4,8 +4,17 @@
 \alias{submod_train}
 \title{Subgroup Identification: Train Model}
 \usage{
-submod_train(Y, A, X, Xtest = NULL, mu_train = NULL,
-  family = "gaussian", submod, hyper = NULL, ...)
+submod_train(
+  Y,
+  A,
+  X,
+  Xtest = NULL,
+  mu_train = NULL,
+  family = "gaussian",
+  submod,
+  hyper = NULL,
+  ...
+)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}

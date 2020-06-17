@@ -4,8 +4,18 @@
 \alias{param_est}
 \title{Parameter Estimation: Across Subgroups}
 \usage{
-param_est(Y, A, X, param, mu_hat = NULL, Subgrps, alpha_ovrl = 0.05,
-  alpha_s = 0.05, combine = "SS", ...)
+param_est(
+  Y,
+  A,
+  X,
+  param,
+  mu_hat = NULL,
+  Subgrps,
+  alpha_ovrl = 0.05,
+  alpha_s = 0.05,
+  combine = "SS",
+  ...
+)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
