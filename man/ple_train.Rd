@@ -4,9 +4,19 @@
 \alias{ple_train}
 \title{Patient-level Estimates: Train Model}
 \usage{
-ple_train(Y, A, X, Xtest = NULL, family = "gaussian",
-  propensity = NULL, ple = "ranger", meta = "X-learner",
-  hyper = NULL, tau = NULL, ...)
+ple_train(
+  Y,
+  A,
+  X,
+  Xtest = NULL,
+  family = "gaussian",
+  propensity = FALSE,
+  ple = "ranger",
+  meta = "X-learner",
+  hyper = NULL,
+  tau = NULL,
+  ...
+)
 }
 \arguments{
 \item{Y}{The outcome variable. Must be numeric or survival (ex; Surv(time,cens) )}
@@ -21,8 +31,8 @@ match X.}
 
 \item{family}{Outcome type. Options include "gaussion" (default), "binomial", and "survival".}
 
-\item{propensity}{Propensity score estimation, P(A=a|X). Default=NULL which use the 
-marginal estimates, P(A=a) (applicable for RCT data).}
+\item{propensity}{Propensity score estimation, P(A=a|X). Default=FALSE which use the 
+marginal estimates, P(A=a) (applicable for RCT data). If TRUE, will use "ple" base learner.}
 
 \item{ple}{Base-learner used to estimate patient-level equantities, such as the 
 individual treatment effect. Default is random based based through 

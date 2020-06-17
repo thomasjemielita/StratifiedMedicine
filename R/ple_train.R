@@ -4,8 +4,6 @@
 #' and can be used to directly fit a ple model by name.
 #'
 #' @inheritParams PRISM
-#' @param propensity Propensity score estimation, P(A=a|X). Default=NULL which use the 
-#' marginal estimates, P(A=a) (applicable for RCT data). 
 #' @param hyper Hyper-parameters for the ple model (must be list). Default is NULL.
 #' @param tau Maximum follow-up time for RMST based estimates (family="survival"). 
 #' Default=NULL, which takes min(max(time[a])), for a=1,..,A.
@@ -90,7 +88,7 @@
 #' @seealso \code{\link{PRISM}}
 #'
 ## To DO: T-Learner, S-Learner, S-Learner (VT) ##
-ple_train = function(Y, A, X, Xtest=NULL, family="gaussian", propensity=NULL,
+ple_train = function(Y, A, X, Xtest=NULL, family="gaussian", propensity=FALSE,
                       ple="ranger", meta="X-learner", hyper=NULL,
                       tau=NULL, ...) {
   
@@ -109,17 +107,22 @@ ple_train = function(Y, A, X, Xtest=NULL, family="gaussian", propensity=NULL,
   if (!is.null(A)) {
     A_lvls <- unique(A)[order(unique(A))]
     # Propensity Estimation: RCT (sample average; or model-based) #
-    if (is.null(propensity)) {
+    if (!propensity | length(unique(A))>2) {
       pi_fit <- NULL
       for (aa in A_lvls) {
         pi.a <- mean(A==aa)
         pi_fit <- cbind(pi_fit, pi.a)
       }
       colnames(pi_fit) <- paste("pi", A_lvls, sep="_")
-      pi_fit <- data.frame(pi_fit)
+      mod <- data.frame(pi_fit)
+      pred.fun <- function(mod, ...) {
+        pi_hat <- mod
+        return(pi_hat)
+      }
+      pfit <- list(mod=mod, pred.fun=pred.fun)
     }
-    if (!is.null(propensity)) {
-      ## TO DO ##
+    if (propensity & length(unique(A))==2) {
+      pfit <- prop_learner(A=A, X=X, learner=ple, hyper=hyper)
     }
     if (is.Surv(Y)) {
       tau <- NULL
@@ -134,15 +137,15 @@ ple_train = function(Y, A, X, Xtest=NULL, family="gaussian", propensity=NULL,
     }
     if (meta=="T-learner") {
       fit <- T_learner(Y=Y, A=A, X=X, family=family, ple=ple, hyper=hyper,
-                       tau=tau, pi_fit=pi_fit) 
+                       tau=tau, pfit = pfit) 
     }
     if (meta=="S-learner") {
       fit <- S_learner(Y=Y, A=A, X=X, family=family, ple=ple, hyper=hyper,
-                       tau=tau, pi_fit=pi_fit) 
+                       tau=tau, pfit = pfit) 
     }
     if (meta=="X-learner") {
       fit <- X_learner(Y=Y, A=A, X=X, family=family, ple=ple, hyper=hyper, 
-                       tau=tau, pi_fit=pi_fit) 
+                       tau=tau, pfit = pfit) 
     }
   }
   ### Train/Test Predictions ###
