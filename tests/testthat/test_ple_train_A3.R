@@ -86,7 +86,7 @@ test_that("Test whether ple_train works (binomial; A=3)", {
   eql_bin <- (mean(res_bin$class_ind) + mean(res_bin$mu_ind))/2
   expect_equal(eql_bin, 1L)
 })
-test_that("Test whether ple_train works (binomial; A=3)", {
+test_that("Test whether ple_train works (survival; A=3)", {
   
   skip_on_cran()
   ### Survival Tests ###
@@ -95,7 +95,7 @@ test_that("Test whether ple_train works (binomial; A=3)", {
   data("GBSG2", package = "TH.data")
   surv.dat = GBSG2
   # Design Matrices ###
-  Y = with(surv.dat, Surv(time, cens))
+  Y = with(surv.dat, Surv(time, ))
   X = surv.dat[,!(colnames(surv.dat) %in% c("time", "cens")) ]
   set.seed(513)
   A = rbinom(n = dim(X)[1], size=1, prob=0.5)
@@ -107,6 +107,9 @@ test_that("Test whether ple_train works (binomial; A=3)", {
   dat_2 <- dat_2[A_2==1,]
   dat_2$A <- 2
   dat <- rbind(dat_1, dat_2)
+  dat$time <- dat$Y[,1]
+  dat$cens <- dat$Y[,2]
+  dat <- dat[, !(colnames(dat) %in% c("Y"))]
   Y <- with(dat, Surv(time, cens))
   X <- dat[,!(colnames(dat) %in% c("time", "cens")) ]
   A <- dat$A

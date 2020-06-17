@@ -1,5 +1,5 @@
 ---
-output: github_document
+output: rmarkdown::github_document
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -12,6 +12,7 @@ knitr::opts_chunk$set(
   fig.width=11.5, fig.height=8.5 
 )
 ```
+
 # StratifiedMedicine
 
 <!-- badges: start -->
@@ -23,7 +24,7 @@ Currently, the main tools in this package area: (1) Filter Models (identify impo
 and (4) Parameter Estimation (across the identified subgroups), and (5) PRISM (Patient Response Identifiers for Stratified Medicine; combines tools 1-4). Development of this package is ongoing. 
 
 Given a data-structure of (Y,A,X) (outcome, treatments, covariates), PRISM is a five step feature, which comprise of individual tools mentioned above:
-
+  
 1. **Filter (filter_train)**: Reduce covariate space by removing variables unrelated to outcome/treatment.
 
 2. **Patient-level estimate (ple_train)**: Estimate counterfactual patient-level quantities, for example the individual treatment effect, $\theta(x) = E(Y|X=x,A=1)-E(Y|X=x,A=0)$.
@@ -33,6 +34,7 @@ Given a data-structure of (Y,A,X) (outcome, treatments, covariates), PRISM is a 
 4. **Parameter estimation and inference (param_est)**: For the overall population and discovered subgroups, output point estimates and variability metrics. These outputs are crucial for Go-No-Go decision making.
 
 5. **Resampling**: Steps 1-4 are repeated through bootstrap resampling for improved parameter estimation and inference.
+
 
 ## Installation
 
@@ -68,10 +70,10 @@ plot_importance(res_f)
 res_p <- ple_train(Y, A, X, ple="ranger")
 plot_dependence(res_p, X=X, vars="X1")
 
-# PRISM Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
+# PRISM Default: filter=glmnet, ple=ranger, submod=lmtree, param=dr #
 res0 = PRISM(Y=Y, A=A, X=X)
 plot(res0) # default: tree plot 
-plot(res0, type="PLE:waterfall") # waterfall plot of PLEs
+plot(res0, type="PLE:waterfall")
 
 ## Dependence Plots (univariate and heat maps)
 plot_dependence(res0, vars="X1")

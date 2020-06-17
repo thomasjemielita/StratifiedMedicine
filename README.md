@@ -33,7 +33,7 @@ mentioned above:
 
 2.  **Patient-level estimate (ple\_train)**: Estimate counterfactual
     patient-level quantities, for example the individual treatment
-    effect, \(\theta(x) = E(Y|X=x,A=1)-E(Y|X=x,A=0)\).
+    effect, $(x) = E(Y|X=x,A=1)-E(Y|X=x,A=0)$.
 
 3.  **Subgroup model (submod\_train)**: Tree-based models to identify
     groups with hetergenous treatment effects (ex: responder vs
@@ -105,7 +105,7 @@ plot_dependence(res_p, X=X, vars="X1")
 
 ``` r
 
-# PRISM Default: filter_glmnet, ple_ranger, submod_lmtree, param_ple #
+# PRISM Default: filter=glmnet, ple=ranger, submod=lmtree, param=dr #
 res0 = PRISM(Y=Y, A=A, X=X)
 #> Observed Data
 #> Filtering: glmnet
@@ -118,7 +118,7 @@ plot(res0) # default: tree plot
 ![](man/figures/README-example-3.png)<!-- -->
 
 ``` r
-plot(res0, type="PLE:waterfall") # waterfall plot of PLEs
+plot(res0, type="PLE:waterfall")
 ```
 
 ![](man/figures/README-example-4.png)<!-- -->

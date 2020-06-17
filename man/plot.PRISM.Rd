@@ -44,7 +44,7 @@ type="heatmap". Default is ">0". Direction can be reversed and can include equal
 sign (ex: "<=").}
 
 \item{tree.thres}{Probability threshold, ex: P(Mean(A=1 vs A=0)>c. Default=NULL, 
-which defaults to using ">0", unless param="param_cox", which  "P(HR(A=1 vs A=0))<1". 
+which defaults to using ">0", unless param="cox", which  "P(HR(A=1 vs A=0))<1". 
 If a density plot is included, setting tree.thres=">c" will use green colors 
 for values above c, and red colors for values below c. If tree.thres="<c", the 
 reverse color scheme is used.}
@@ -54,9 +54,11 @@ bootstrap or CV  based resampling is used. Only applicable for type="submod".
 If bootstrap calibration is used, calibrated CIs are presented. If no calibration,
 then percentile Cis are presented with the smoothed bootstrap point-estimates.}
 
-\item{tree.plots}{Type of plots to include in the "tree" plot. Default="outcome"
-(boxplots of treatment-specific outcomes, or counterfactual estimates if PLE!=NULL).
-For "density", the estimated probability density of the treatment effects is shown 
+\item{tree.plots}{Type of plots to include in the "tree" plot. Default="outcome". For non-survival
+data, this includes boxplots of treatment-specific outcomes (param="lm"), 
+model-based estimates (param="ple"), or double-robust pseudo outcomes (param="lm"). For survival
+data, kaplan-meier plots are shown. For "density", the estimated probability density of the 
+treatment effects is shown 
 (normal approximation, unless resampling is used). "both" combines both plots.}
 
 \item{nudge_out}{Nudge tree outcome plot (see ggparty for details)}

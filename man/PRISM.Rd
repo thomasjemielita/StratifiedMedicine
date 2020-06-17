@@ -71,7 +71,7 @@ binary treatments or A=NULL.}
 
 \item{param}{Parameter estimation and inference function. Based on the discovered 
 subgroups, estimate parameter estimates and correspond variability metrics. Options
-include "lm" (unadjusted linear regression), "dr" (doubly-robust estimators),
+include "lm" (unadjusted linear regression), "dr" (doubly-robust estimator),
 "ple" (G-computation, average the patient-level estimates), "cox" (cox regression),
 and "rmst" (RMST based estimates as in survRMST package). Default for "gaussian",
 "binomial" is "dr", while default for "survival" is "cox". Currently only available 
