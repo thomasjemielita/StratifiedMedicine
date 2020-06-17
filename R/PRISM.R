@@ -34,7 +34,7 @@
 #' binary treatments or A=NULL.
 #' @param param Parameter estimation and inference function. Based on the discovered 
 #' subgroups, estimate parameter estimates and correspond variability metrics. Options
-#' include "lm" (unadjusted linear regression), "dr" (doubly-robust estimators),
+#' include "lm" (unadjusted linear regression), "dr" (doubly-robust estimator),
 #' "ple" (G-computation, average the patient-level estimates), "cox" (cox regression),
 #' and "rmst" (RMST based estimates as in survRMST package). Default for "gaussian",
 #' "binomial" is "dr", while default for "survival" is "cox". Currently only available 
@@ -46,6 +46,8 @@
 #' used to assign optimal treatments across the discovered subgroups.
 #' @param delta Threshold for defining benefit vs non-benefitting patients. Only applicable 
 #' for pool="otr:logistic" or "otr:rf"; Default=">0".
+#' @param propensity Propensity score estimation, P(A=a|X). Default=FALSE which use the 
+#' marginal estimates, P(A=a) (applicable for RCT data). If TRUE, will use "ple" base learner. 
 #' @param alpha_ovrl Two-sided alpha level for overall population. Default=0.05
 #' @param alpha_s Two-sided alpha level at subgroup level. Default=0.05
 #' @param filter.hyper Hyper-parameters for the filter function (must be list). Default is NULL.
@@ -256,6 +258,7 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
                  filter="glmnet", ple="ranger", submod=NULL, param=NULL,
                  meta = "X-learner",
                  pool="no", delta = ">0", 
+                 propensity = FALSE,
                  alpha_ovrl=0.05, alpha_s = 0.05,
                  filter.hyper=NULL, ple.hyper=NULL, submod.hyper = NULL,
                  param.hyper = NULL, bayes = NULL, prefilter_resamp=FALSE,
@@ -321,7 +324,7 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
                      filter=filter, ple=ple, submod = submod, param=param,
                      meta=meta, 
                      alpha_ovrl = alpha_ovrl, alpha_s = alpha_s,
-                     pool = pool, delta = delta, 
+                     pool = pool, delta = delta, propensity = propensity,
                      filter.hyper = filter.hyper, ple.hyper = ple.hyper,
                      submod.hyper = submod.hyper, param.hyper = param.hyper,
                      verbose = verbose)
@@ -365,7 +368,8 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
     ## Run PRISM (Resampling) ##
     resR = PRISM_resamp(PRISM.fit=res0, Y=Y, A=A, X=X, Xtest=Xtest, family=family,
                  filter=filter.resamp, ple=ple.resamp, submod=submod.resamp,
-                 param=param, pool=pool, alpha_ovrl=alpha_ovrl, alpha_s = alpha_s,
+                 param=param, pool=pool, propensity=propensity,
+                 alpha_ovrl=alpha_ovrl, alpha_s = alpha_s,
                  filter.hyper=filter.hyper, ple.hyper=ple.hyper, 
                  submod.hyper = submod.hyper, param.hyper = param.hyper, 
                  verbose=verbose.resamp, prefilter_resamp=prefilter_resamp,

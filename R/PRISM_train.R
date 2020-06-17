@@ -2,7 +2,7 @@
 PRISM_train = function(Y, A, X, Xtest=NULL, family="gaussian",
                  filter="glmnet", ple="ranger", submod="lmtree", param="dr",
                  meta = "X-learner",
-                 pool="no", delta=">0", 
+                 pool="no", delta=">0", propensity = FALSE,
                  alpha_ovrl=0.05, alpha_s = 0.05,
                  filter.hyper=NULL, ple.hyper=NULL, submod.hyper = NULL,
                  param.hyper = NULL, verbose=TRUE) {
@@ -34,7 +34,7 @@ PRISM_train = function(Y, A, X, Xtest=NULL, family="gaussian",
   if (!(ple=="None")) {
     if (verbose) message( paste("PLE:", ple, sep=" " ) )
     step2 <- ple_train(Y=Y,A=A,X=X.star,Xtest=Xtest.star,family=family, 
-                       ple=ple, meta=meta, hyper = ple.hyper)
+                       ple=ple, meta=meta, propensity=propensity, hyper = ple.hyper)
     ple.fit <- step2$fit
     mu_train <- step2$mu_train
     mu_test <- step2$mu_test
