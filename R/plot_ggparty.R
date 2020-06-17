@@ -45,6 +45,13 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
       estimand <- E_diff
       if (object$ple!="None") {
         mu_hat <- object$mu_train
+        if (object$param=="lm") {
+          plot.dat <- object$out.train
+          plot.dat <- plot.dat[,colnames(plot.dat) %in% c("Y", "A", "Subgrps")]
+          plot.dat$estimand <- with(plot.dat, ifelse(A==A_lvls[1], mu_A0, mu_A1))
+          plot.dat$est <- plot.dat$Y
+          plot.dat <- plot.dat[,c("estimand", "est", "Subgrps")]
+        }
         if (object$param=="ple") {
           plot.dat <- rbind( data.frame(estimand=mu_A0, est=mu_hat[,mu_A0], 
                                         Subgrps = object$out.train$Subgrps),
