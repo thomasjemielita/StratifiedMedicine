@@ -209,12 +209,12 @@
 #' 
 #' ## Examples: Binary Outcome ##
 #' \donttest{
-#' dat_ctns = generate_subgrp_data(family="binomial")
-#' Y = dat_ctns$Y
-#' X = dat_ctns$X
-#' A = dat_ctns$A
+#' dat_bin = generate_subgrp_data(family="binomial")
+#' Y = dat_bin$Y
+#' X = dat_bin$X
+#' A = dat_bin$A
 #'
-#' # Run Default: filter_glmnet, ple_ranger, glmtree, param_ple #
+#' # Run Default: glmnet, ranger, glmtree, dr #
 #' res0 = PRISM(Y=Y, A=A, X=X)
 #' 
 #' plot(res0)
@@ -249,7 +249,7 @@
 #'                      resample="Bootstrap", R=50, verbose.resamp = TRUE)
 #'   plot(res_ctree1)
 #'   plot(res_ctree1, type="resample", estimand="HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
-#'   aggregate(I(est<1)~Subgrps, data=res_ctree1$resamp.dist, FUN="mean")
+#'   aggregate(I(est<0)~Subgrps, data=res_ctree1$resamp.dist, FUN="mean")
 #' }
 #'
 
@@ -367,9 +367,10 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
     if (is.null(submod.resamp)) {  submod.resamp = submod  }
     ## Run PRISM (Resampling) ##
     resR = PRISM_resamp(PRISM.fit=res0, Y=Y, A=A, X=X, Xtest=Xtest, family=family,
-                 filter=filter.resamp, ple=ple.resamp, submod=submod.resamp,
-                 param=param, pool=pool, propensity=propensity,
+                 filter=filter.resamp, ple=ple.resamp, submod=submod.resamp, param=param, 
+                 meta=meta, 
                  alpha_ovrl=alpha_ovrl, alpha_s = alpha_s,
+                 pool=pool, delta=delta, propensity=propensity,
                  filter.hyper=filter.hyper, ple.hyper=ple.hyper, 
                  submod.hyper = submod.hyper, param.hyper = param.hyper, 
                  verbose=verbose.resamp, prefilter_resamp=prefilter_resamp,
@@ -495,6 +496,9 @@ summary.PRISM = function(object,...){
   alpha_s <- object$alpha_s
   # Configuration #
   out$`PRISM Configuration` <- with(object, paste(filter, ple, submod, param, sep=" => "))
+  if (!is.null(object$resample)) {
+    out$`PRISM Configuration` <- paste(out$`PRISM Configuration`, object$resample, sep="=> ")
+  }
   # Filter #
   if (object$filter!="None"){
     out$`Variables that Pass Filter` <- object$filter.vars
@@ -518,9 +522,28 @@ summary.PRISM = function(object,...){
   param.dat$SE = with( param.dat,  round(SE,4) )
   param.dat$CI = with(param.dat, paste("[",round(LCL,4), ",", 
                                        round(UCL,4), "]", sep=""))
-  param.dat$alpha = with(param.dat, ifelse(Subgrps==0, alpha_ovrl, alpha_s))
+  if (!is.null(object$resample)) {
+    if (object$resample=="Bootstrap") {
+      param.dat$`bias (boot)` = with(param.dat, round(bias.boot,4))
+      param.dat$`est (boot)` = with(param.dat, round(est_resamp,4))
+      param.dat$`CI (boot pct)` = with(param.dat, paste("[",round(LCL.pct,4), ",", 
+                                                  round(UCL.pct,4), "]", sep=""))
+    }
+    if (object$resample=="Permutation") {
+      param.dat$`pval (perm)` = param.dat$pval_perm
+    }
+    if (object$resample=="CV") {
+      param.dat$`est (cv)` = with(param.dat, round(est_resamp,4))
+      param.dat$`CI (cv)` = with(param.dat, paste("[",round(LCL.CV,4), ",", 
+                                           round(UCL.CV,4), "]", sep=""))
+    }
+  }
+  param.dat$alpha = with(param.dat, ifelse(Subgrps=="ovrl", alpha_ovrl, alpha_s))
   param.dat = param.dat[, colnames(param.dat) %in% 
-                          c("Subgrps", "N", "estimand", "est", "SE", "CI", "alpha")]
+                          c("Subgrps", "N", "estimand", "est", "SE", "CI", "alpha",
+                            "bias (boot)",
+                            "est (boot)", "est (cv)", "CI (boot pct)", "CI (cv)",
+                            "pval (perm)")]
   out$`Parameter Estimates` = param.dat
   class(out) <- "summary.PRISM"
   out

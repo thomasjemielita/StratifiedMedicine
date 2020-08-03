@@ -263,12 +263,12 @@ library(ggplot2)
 
 ## Examples: Binary Outcome ##
 \donttest{
-dat_ctns = generate_subgrp_data(family="binomial")
-Y = dat_ctns$Y
-X = dat_ctns$X
-A = dat_ctns$A
+dat_bin = generate_subgrp_data(family="binomial")
+Y = dat_bin$Y
+X = dat_bin$X
+A = dat_bin$A
 
-# Run Default: filter_glmnet, ple_ranger, glmtree, param_ple #
+# Run Default: glmnet, ranger, glmtree, dr #
 res0 = PRISM(Y=Y, A=A, X=X)
 
 plot(res0)
@@ -303,7 +303,7 @@ plot(res0)
                      resample="Bootstrap", R=50, verbose.resamp = TRUE)
   plot(res_ctree1)
   plot(res_ctree1, type="resample", estimand="HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
-  aggregate(I(est<1)~Subgrps, data=res_ctree1$resamp.dist, FUN="mean")
+  aggregate(I(est<0)~Subgrps, data=res_ctree1$resamp.dist, FUN="mean")
 }
 
 }
