@@ -1,7 +1,7 @@
 Package: StratifiedMedicine
 Type: Package
 Title: Stratified Medicine
-Version: 1.0.1
+Version: 1.0.2
 Author: Thomas Jemielita [aut, cre]
 Maintainer: Thomas Jemielita <thomasjemielita@gmail.com>
 Description: A toolkit for stratified medicine, subgroup identification, and precision medicine.
@@ -28,8 +28,10 @@ Suggests:
     rmarkdown,
     MASS,
     BART,
+    pROC,
     survRM2,
     TH.data,
+    sandwich,
     coin,
     rpart,
     testthat (>= 2.1.0)
