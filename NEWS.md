@@ -1,3 +1,9 @@
+# StratifiedMedicine 1.0.2
+
+* Fixed bugs relating to binary outcome data (family="binomial")
+* Fixed bugs relating to resampling estimates with OTR pooling for non-default delta vlues.
+(ex: PRISM(Y, A, X, resample="Bootstrap", pool="otr:logistic", delta=">0.10"))
+
 # StratifiedMedicine 1.0.1
 
 * Fixed mapping issue for boxplots for function plot(PRISM.fit,type="tree", tree.plots="outcome")
