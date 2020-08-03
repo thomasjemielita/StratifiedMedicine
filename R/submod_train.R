@@ -104,7 +104,8 @@
 #' @seealso \code{\link{PRISM}}
 #'
 submod_train = function(Y, A, X, Xtest=NULL, mu_train=NULL, 
-                        family="gaussian", submod, hyper=NULL, ...){
+                        family="gaussian", submod, hyper=NULL, 
+                        pool="no", delta=">0", ...){
   if (is.null(Xtest)) {
     Xtest <- X
   }
@@ -138,8 +139,26 @@ submod_train = function(Y, A, X, Xtest=NULL, mu_train=NULL,
   }
  
   Rules = fit$Rules
-  res = list(fit = fit, Subgrps.train=Subgrps.train, Subgrps.test=Subgrps.test,
-             Rules=Rules)
+  
+  ## Pooling? ##
+  pool.dat <- NULL
+  if (pool %in% c("otr:logistic", "otr:rf")){
+    pool.dat <- pooler_run(Y, A, X, mu_hat=mu_train, Subgrps=Subgrps.train, 
+                            delta = delta, method = pool)
+    # Merge with training #
+    Subgrps.train0 <- as.character(Subgrps.train)
+    subdat <- data.frame(Subgrps=Subgrps.train0)
+    subdat <- suppressWarnings(left_join(subdat, pool.dat, by="Subgrps"))
+    Subgrps.train <- as.character(subdat$pred_opt)
+    # Merge with test #
+    Subgrps.test0 <- as.character(Subgrps.test)
+    subdat <- data.frame(Subgrps=Subgrps.test0)
+    subdat <- suppressWarnings(left_join(subdat, pool.dat, by="Subgrps"))
+    Subgrps.test <- as.character(subdat$pred_opt)
+  }
+  
+  res = list(fit = fit, Subgrps.train=Subgrps.train, Subgrps.test=Subgrps.test, 
+             pool.dat=pool.dat, Rules=Rules)
   class(res) = "submod_train"
   return(res)
 }
