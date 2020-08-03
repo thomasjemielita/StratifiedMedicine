@@ -45,11 +45,17 @@ PRISM_train = function(Y, A, X, Xtest=NULL, family="gaussian",
     mu_test <- NULL
   }
   ### Step 3: Subgroup Identification ###
+  pool.dat = NULL
   if (!(submod=="None")) {
-    if (verbose) message(paste("Subgroup Identification:",
-                                submod, sep=" "))
+    if (verbose) {
+      message(paste("Subgroup Identification:", submod, sep=" "))
+      if (pool!="no") {
+        message(paste("Pooling:", pool, sep = " "))
+      }
+    }
     step3 <- tryCatch(submod_train(Y=Y, A=A, X=X.star, Xtest=Xtest.star, 
-                                   mu_train=mu_train, family = family, 
+                                   mu_train=mu_train, family = family, pool=pool,
+                                   delta = delta, 
                                    submod=submod, hyper = submod.hyper),
                       error = function(e) "submod error")
     if (is.character(step3)) {
@@ -63,32 +69,15 @@ PRISM_train = function(Y, A, X, Xtest=NULL, family="gaussian",
       # Force to character #
       Subgrps.train <- as.character(step3$Subgrps.train)
       Subgrps.test <- as.character(step3$Subgrps.test)
+      pool.dat <- step3$pool.dat
     }
   }
   if (submod=="None") {
     submod.fit <- NULL; Rules <- NULL;
     Subgrps.train <- NULL; Subgrps.test <- NULL;
   }
-  ### Pooling Step (OTR) ###
-  pool.dat <- NULL
-  if (pool %in% c("otr:logistic","otr:rf")) {
-    if (verbose) { 
-      message(paste("Pooling:", pool, sep=" "))
-    }
-    pool.dat <- subgrps_otr(Y, A, X, mu_hat=mu_train, Subgrps=Subgrps.train, 
-                            delta = delta, method = pool)
-    Subgrps.train0 <- Subgrps.train
-    subdat <- data.frame(Subgrps=Subgrps.train)
-    subdat <- suppressWarnings(left_join(subdat, pool.dat, by="Subgrps"))
-    Subgrps.train <- as.character(subdat$pred_opt)
-  }
   ### Step 4: Parameter Estimation and Inference ###
   if (verbose) {message(paste("Parameter Estimation:", param, sep=" "))}
-  # param.dat <- tryCatch( do.call( param, list(Y=Y, A=A, X=X.star, mu_hat = mu_train,
-  #                                            Subgrps=Subgrps.train,
-  #                                            alpha_ovrl=alpha_ovrl,
-  #                                            alpha_s=alpha_s)  ),
-  #                       error = function(e) "param error" )
   param.dat <- tryCatch(param_est(Y=Y, A=A, X=X.star, param=param,
                                   mu_hat=mu_train, Subgrps=Subgrps.train,
                                   alpha_ovrl=alpha_ovrl, alpha_s=alpha_s),
