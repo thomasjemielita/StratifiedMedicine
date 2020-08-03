@@ -1,9 +1,9 @@
 # PRISM (Resample): Patient Response Identifier for Stratified Medicine
 PRISM_resamp <- function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
-                       filter="filter_glmnet", ple=NULL, submod=NULL, param=NULL,
+                       filter="glmnet", ple="ranger", submod=NULL, param=NULL,
                        meta = "X-learner",
-                       pool = "no", delta = ">0", propensity = FALSE,
                        alpha_ovrl=0.05, alpha_s = 0.05,
+                       pool = "no", delta = ">0", propensity = FALSE,
                        filter.hyper=NULL, ple.hyper=NULL, submod.hyper = NULL,
                        param.hyper = NULL, verbose=TRUE,
                        prefilter_resamp=FALSE, resample="Bootstrap", 
@@ -49,7 +49,8 @@ PRISM_resamp <- function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
   
   ### Resampling Wrapper ###
   fetty_wop <- function(r, stratify, obs.data, Xtest.R, ple, filter, submod, 
-                        param, calibrate, alpha.mat, verbose) {
+                        param, meta, pool, delta, propensity, 
+                        calibrate, alpha.mat, verbose) {
     
     if (verbose) message( paste(resample, "Sample", r) )
     ### Permutation resampling (shuffle treatment assignment) ###
@@ -77,8 +78,8 @@ PRISM_resamp <- function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
     res.R <- tryCatch(PRISM_train(Y=Y.R, A=A.R, X=X.R, Xtest=Xtest.R, family=family, 
                         filter=filter, ple=ple, submod = submod, param=param,
                         meta=meta, 
-                        pool = pool, delta = delta, propensity = propensity, 
                         alpha_ovrl = alpha_ovrl, alpha_s = alpha_s,
+                        pool = pool, delta = delta, propensity = propensity,
                         filter.hyper = filter.hyper, ple.hyper = ple.hyper,
                         submod.hyper = submod.hyper,
                         verbose = FALSE), error = function(e) "PRISM error")
@@ -180,9 +181,13 @@ PRISM_resamp <- function(PRISM.fit, Y, A, X, Xtest=NULL, family="gaussian",
   resamp.obj = lapply(1:R, fetty_wop, stratify=stratify, obs.data=obs.data,
                       Xtest.R = Xtest.R,
                       ple=ple, filter=filter, submod=submod, param=param,
+                      meta=meta, 
+                      pool=pool, delta=delta, propensity=propensity,
                       calibrate=calibrate,
                       alpha.mat = alpha.mat,
                       verbose = verbose)
+  
+  
   ## Extract Resampling parameter estimates, subject-counters, and calib.dat ##
   hold = do.call(rbind, resamp.obj)
   resamp_param = suppressWarnings(do.call(bind_rows, hold[,1]))
