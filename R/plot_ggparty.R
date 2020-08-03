@@ -1,4 +1,5 @@
 ## ggparty: Incorporate parameter estimates/CIs/etc directly onto tree plot ##
+## TO DO: Add binomial plots 
 plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
                      width_dens, nudge_dens) {
   # Extract #
@@ -45,7 +46,7 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
       estimand <- E_diff
       if (object$ple!="None") {
         mu_hat <- object$mu_train
-        if (object$param=="lm") {
+        if (!(object$param %in% c("ple", "dr"))) {
           plot.dat <- object$out.train
           plot.dat <- plot.dat[,colnames(plot.dat) %in% c("Y", "A", "Subgrps")]
           plot.dat$estimand <- with(plot.dat, ifelse(A==A_lvls[1], mu_A0, mu_A1))
