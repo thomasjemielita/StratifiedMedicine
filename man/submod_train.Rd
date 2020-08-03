@@ -13,6 +13,8 @@ submod_train(
   family = "gaussian",
   submod,
   hyper = NULL,
+  pool = "no",
+  delta = ">0",
   ...
 )
 }
@@ -39,6 +41,15 @@ to subgroups. Default for family="gaussian" is "lmtree" (MOB with OLS loss). For
 binary treatments or A=NULL.}
 
 \item{hyper}{Hyper-parameters for submod (must be list). Default is NULL.}
+
+\item{pool}{Whether to pool discovered subgroups. Default is "no" (no pooling).
+Other options include "otr:logistic", which uses an optimal treatment regime approach, 
+where a weighted logistic regression is fit with I(mu_1-mu_0>delta) as the outcome,  
+the candidate subgroups as covariates, and weights=abs(PLE). Lastly, the youden index is 
+used to assign optimal treatments across the discovered subgroups.}
+
+\item{delta}{Threshold for defining benefit vs non-benefitting patients. Only applicable 
+for pool="otr:logistic" or "otr:rf"; Default=">0".}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
