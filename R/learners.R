@@ -197,7 +197,7 @@ ple_ranger <- function(Y, X, family="gaussian", min.node.pct=0.10,
   }
   probability = FALSE
   if (family=="binomial") {
-    probability = TRUE
+    probability = FALSE
   }
   mod <- ranger::ranger(Y ~ ., data = data.frame(Y, X), 
                         probability = probability, 
@@ -206,7 +206,10 @@ ple_ranger <- function(Y, X, family="gaussian", min.node.pct=0.10,
   pred.fun = function(mod, X, tau=NULL, ...) {
     treetype = mod[[1]]$treetype
     if (treetype!="Survival") {
-      mu_hat = data.frame(mu_hat = predict(mod$mod, X)$predictions)
+      mu_hat <- data.frame(predict(mod$mod, X)$predictions)
+      if (treetype=="Probability estimation") {
+        mu_hat = data.frame(mu_hat = mu_hat[,2]) 
+      }
     }
     if (treetype=="Survival") {
       preds = predict(mod$mod, X)
@@ -437,7 +440,6 @@ submod_otr = function(Y, A, X, mu_train, alpha=0.10,
   
   ## Set up data ##
   mu_train$PLE <- mu_train[[ple_name]]
-  print(summary(mu_train$PLE))
   ind_PLE <- eval(parse(text=paste("ifelse(mu_train$PLE", thres, ", 1, 0)")))
   w_PLE <- abs(mu_train$PLE)
   hold <- data.frame(ind_PLE, X)
@@ -465,6 +467,10 @@ submod_otr = function(Y, A, X, mu_train, alpha=0.10,
 submod_mob_weib = function(Y, A, X, alpha=0.10,
                           minsize = floor(dim(X)[1]*0.10),
                           maxdepth = 4, parm=NULL, ...) {
+  
+  if (!requireNamespace("sandwich", quietly = TRUE)) {
+    stop("Package sandwich needed for submod mob_weib. Please install.")
+  }
   
   ## Fit Model ##
   mod <- partykit::mob(Y ~ A | ., data = X,
