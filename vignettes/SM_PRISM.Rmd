@@ -50,7 +50,7 @@ res_f$filter.vars
 plot_importance(res_f)
 ```
 An alternative approach is to search for variables that are potentially prognostic and/or predictive by forcing variable by treatment interactions, or Y~ENET(A,X,XA). Variables with estimated coefficients of 0 in both the main effects (X) and interaction effects (XA) are filtered. This can be implemented by tweaking the hyper-parameters: 
-```{r filter_glmnet2, warning=FALSE, message=FALSE}
+```{r filter_glmnet2, warning=FALSE, message=FALSE, include=FALSE}
 res_f2 <- filter_train(Y, A, X, filter="glmnet", hyper=list(interaction=T))
 res_f2$filter.vars
 plot_importance(res_f2)
@@ -72,8 +72,6 @@ Next, let's illustrate how to change the meta-learner and the hyper-parameters. 
 ```{r ple_train2, warning=FALSE, message=FALSE}
 res_p2 <- ple_train(Y, A, X, ple="ranger", meta="T-learner", hyper=list(mtry=5))
 summary(res_p2$mu_train)
-plot_ple(res_p2, target = "diff_1_0") + 
-  ggtitle("Waterfall Plot: E(Y|A=1)-E(Y|A=0)") + ylab("E(Y|A=1)-E(Y|A=0)")
 plot_dependence(res_p2, X=X, vars=c("X1", "X2")) + 
   ggtitle("Heat Map (By X1,X2): E(Y|A=1)-E(Y|A=0)")
   ylab("E(Y|A=1)-E(Y|A=0)")
@@ -93,8 +91,8 @@ plot(res_s1$fit$mod)
 Another generic approach is "otr", which follows an outcome weighted learning approach. Here, we regress PLE ~ ctree(X) with weights=abs(PLE) where PLE=E(Y|A=1,X)-E(Y|A=0,X) is the estimated individual treatment effect. For survival endpoints, the treatment difference would correspond to either logHR or RMST. For the example below, we set the clinically meaningful threshold to 0.1 (thres=">0.10"). 
 
 ```{r submod_train2, warning=FALSE, message=FALSE}
-res_s2 <- submod_train(Y, A, X, thres = ">0.10",
-                       mu_train=res_p2$mu_train, submod="otr")
+res_s2 <- submod_train(Y, A, X,  mu_train=res_p2$mu_train, 
+                       submod="otr", hyper=list(thres=">0.10"))
 plot(res_s2$fit$mod)
 ```
 
@@ -177,26 +175,25 @@ kable( summ.table, caption = "Default PRISM Configurations (Without Treatment, A
 
 # Example: Continuous Outcome with Binary Treatment
 
-For continuous outcome data (family="gaussian"), the default PRISM configuration is: (1) filter="glmnet" (elastic net), (2) ple="ranger" (X-learner with random forest models), (3) submod="lmtree" (model-based partitioning with OLS loss), and (4) param="dr" (doubly-robust estimator). To run PRISM, at a minimum, the outcome (Y), treatment (A), and covariates (X) must be provided. See below. 
+For continuous outcome data (family="gaussian"), the default PRISM configuration is: (1) filter="glmnet" (elastic net), (2) ple="ranger" (X-learner with random forest models), (3) submod="lmtree" (model-based partitioning with OLS loss), and (4) param="dr" (doubly-robust estimator). To run PRISM, at a minimum, the outcome (Y), treatment (A), and covariates (X) must be provided. See below. The summary gives a high-level overview of the findings (number of subgroups, parameter estimates, variables that survived the filter). The default plot() function currently combines tree plots with parameter estimates using the "ggparty" package. 
 
 ```{r default_ctns, warning=FALSE}
-# PRISM Default: filter_glmnet, ranger, lmtree, param_ple #
+# PRISM Default: filter_glmnet, ranger, lmtree, dr #
 res0 = PRISM(Y=Y, A=A, X=X)
 summary(res0)
 plot(res0) # same as plot(res0, type="tree")
 ```
-The summary gives a high-level overview of the findings (number of subgroups, parameter estimates, variables that survived the filter). The default plot() function currently combines tree plots with parameter estimates using the "ggparty" package. We can als directly look for prognostic effects by specifying omitting A (treatment) from PRISM:
+We can als0 directly look for prognostic effects by specifying omitting A (treatment) from PRISM:
 
 ```{r default_ctns_prog, warning=FALSE}
 # PRISM Default: filter_glmnet, ranger, ctree, param_lm #
 res_prog = PRISM(Y=Y, X=X)
 # res_prog = PRISM(Y=Y, A=NULL, X=X) #also works
 summary(res_prog)
-plot(res_prog)
 ```
 
 Next, circling back to the first PRISM model with treatment included, let's review other core PRISM outputs. Results relating to the filter include "filter.mod" (model output) and "filter.vars" (variables that pass the filter). The "plot_importance" function can also be called:
-```{r default_ctns_filter}
+```{r default_ctns_filter, include=FALSE}
 # elastic net model: loss by lambda #
 plot(res0$filter.mod)
 ## Variables that remain after filtering ##
@@ -206,6 +203,7 @@ plot_importance(res0)
 ```
 Results relating to "ple_train" include "ple.fit" (fitted "ple_train"), "mu.train" (training predictions), and "mu.test" (test predictions). "plot_ple" and "plot_dependence" can also be used with PRISM objects. For example, 
 ```{r default_ctns_ple}
+summary(res0$mu_train)
 plot_ple(res0)
 plot_dependence(res0, vars=c("X2"))
 ```
@@ -230,8 +228,6 @@ Moving back to the PRISM outputs, for any of the provided "param" options, a key
 ```{r default_ctns2}
 ## Overall/subgroup specific parameter estimates/inference
 res0$param.dat
-## Forest plot: Overall/subgroup specific parameter estimates (CIs)
-plot(res0, type="tree")
 ```
 
 The hyper-parameters for the individual steps of PRISM can also be easily modified. For example, "glmnet" by default selects covariates based on "lambda.min", "ranger" requires nodes to contain at least 10% of the total observations, and "lmtree" requires nodes to contain at least 10% of the total observations. To modify this:
@@ -242,7 +238,7 @@ The hyper-parameters for the individual steps of PRISM can also be easily modifi
 res_new_hyper = PRISM(Y=Y, A=A, X=X, filter.hyper = list(lambda="lambda.1se"),
                       ple.hyper = list(min.node.pct=0.05), 
                       submod.hyper = list(minsize=200), verbose=FALSE)
-plot(res_new_hyper)
+summary(res_new_hyper)
 ```
 # Example: Binary Outcome with Binary Treatment
 
@@ -263,7 +259,7 @@ plot(res0)
 
 # Example: Survival Outcome with Binary Treatment
 
-Survival outcomes are also allowed in PRISM. The default settings use glmnet to filter ("filter_glmnet"), ranger patient-level estimates ("ranger"; for survival, the output is the restricted mean survival time treatment difference), "mob_weib"" (MOB with weibull loss function) for subgroup identification, and param_cox (subgroup-specific cox regression models). Another subgroup option is to use "ctree"", which uses the conditional inference tree (ctree) algorithm to find subgroups; this looks for partitions irrespective of treatment assignment and thus corresponds to finding prognostic effects. 
+Survival outcomes are also allowed in PRISM. The default settings use glmnet to filter ("glmnet"), ranger patient-level estimates ("ranger"; for survival, the output is the restricted mean survival time treatment difference), "mob_weib"" (MOB with weibull loss function) for subgroup identification, and param_cox (subgroup-specific cox regression models). Another subgroup option is to use "ctree"", which uses the conditional inference tree (ctree) algorithm to find subgroups; this looks for partitions irrespective of treatment assignment and thus corresponds to finding prognostic effects. 
 
 ```{r default_surv}
 # Load TH.data (no treatment; generate treatment randomly to simulate null effect) ##
@@ -289,8 +285,8 @@ Resampling methods are also a feature in PRISM. Bootstrap (resample="Bootstrap")
 
 Given observed data $(Y, A, X)$, fit $PRISM(Y,A,X)$. Based on the identified $k=1,..,K$ subgroups, output subgroup assignment for each patient. For the overall population $k=0$ and each subgroup ($k=0,...,K$), store the associated parameter estimates ($\hat{\theta}_{k}$).
 For $r=1,..,R$ resamples with replacement ($(Y_r, A_r, X_r)$), fit $PRISM(Y_r, A_r, X_r)$ and obtain new subgroup assignments $k_r=1,..,K_r$ with associated parameter estimates $\hat{\theta}_{k_r}$. For subjects $i$ within subgroup $k_r$, note that everyone has the same assumed point-estimate, i.e., $\hat{\theta}_{k_r}=\hat{\theta}_{ir}$. For resample $r$, the bootstrap estimates based for the original identified subgroups ($k=0,...,K$) are calculated respectively as:
-$$ \hat{\theta}_{rk} =  \frac{\sum_{i} I(i\in S_k) \hat{\theta}_{ir}}{\sum_{i} I(i\in S_k)}  $$
-The bootstrap smoothed estimate and standard error, as well as probability statements, are calculated as:
+$$ \hat{\theta}_{rk} =  \sum_{k_r} w_{k_r} \hat{\theta}_{k_r}$$
+where $w_{k_r} = \frac{n(k \cap k_r)}{\sum_{k_r} n(k \cap k_r)}$, or the # of subjects that are in both the original subgroup $k$ and the resampled subgroup $k_r$ divided by the total #. The bootstrap smoothed estimate and standard error, as well as probability statements, are calculated as:
 $$ \tilde{\theta}_{k} =  \frac{1}{R}  \sum_r \hat{\theta}_{rk}  $$
 $$ SE(\hat{\theta}_{k})_B = \sqrt{ \frac{1}{R} \sum_r (\hat{\theta}_{rk}-\tilde{\theta}_{k})^2   } $$
 $$ \hat{P}(\hat{\theta}_{k}>c) =  \frac{1}{R}  \sum_r I(\hat{\theta}_{rk}>c)  $$
@@ -300,6 +296,7 @@ Returning to the survival example, we now re-run PRISM with 50 bootstrap resampl
 
 ```{r default_boot, warning=FALSE, message=FALSE}
 res_boot = PRISM(Y=Y, A=A, X=X, resample = "Bootstrap", R=50, ple="None")
+summary(res_boot)
 # Plot of distributions #
 plot(res_boot, type="resample", estimand = "HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
 ```
