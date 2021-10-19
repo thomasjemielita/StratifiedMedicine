@@ -12,7 +12,7 @@ ple_train(
   family = "gaussian",
   propensity = FALSE,
   ple = "ranger",
-  meta = "X-learner",
+  meta = ifelse(family == "survival", "T-learner", "X-learner"),
   hyper = NULL,
   tau = NULL,
   ...
@@ -26,24 +26,25 @@ factor). "ple_train" accomodates >2 along with binary treatments.}
 
 \item{X}{Covariate space.}
 
-\item{Xtest}{Test set. Default is NULL which uses X (training set). Variable types should
-match X.}
+\item{Xtest}{Test set. Default is NULL (no test predictions). Variable types should match X.}
 
 \item{family}{Outcome type. Options include "gaussion" (default), "binomial", and "survival".}
 
-\item{propensity}{Propensity score estimation, P(A=a|X). Default=FALSE which use the 
-marginal estimates, P(A=a) (applicable for RCT data). If TRUE, will use "ple" base learner.}
+\item{propensity}{Propensity score estimation, P(A=a|X). Default=FALSE which 
+use the marginal estimates, P(A=a) (applicable for RCT data). If TRUE, will 
+use the "ple" base learner to estimate P(A=a|X).}
 
 \item{ple}{Base-learner used to estimate patient-level equantities, such as the 
-individual treatment effect. Default is random based based through 
-"ranger". "None" uses no ple. See below for details on estimating the treatment
-contrasts.}
+conditional average treatment effect (CATE), E(Y|A=1,X)-E(Y|A=0, X) = CATE(X). 
+Default is random based based through "ranger". "None" uses no ple. See below for 
+details on estimating the treatment contrasts.}
 
 \item{meta}{Using the ple model as a base learner, meta-learners can be used for 
 estimating patient-level treatment differences. Options include "T-learner" (treatment
 specific models), "S-learner" (single model), and "X-learner". For family="gaussian" &
 "binomial", the default is "X-learner", which uses a two-stage regression 
-approach (See Kunzel et al 2019). For "survival", the default is "T-learner".}
+approach (See Kunzel et al 2019). For "survival", the default is "T-learner". "X-learner" 
+is currently not supported for survival outcomes.}
 
 \item{hyper}{Hyper-parameters for the ple model (must be list). Default is NULL.}
 
@@ -67,7 +68,7 @@ and can be used to directly fit a ple model by name.
 \details{
 ple_train uses base-learners along with a meta-learner to obtain patient-level 
 estimates under different treatment exposures (see Kunzel et al).  For family="gaussian" 
-or "binomial", output estimates of \eqn{mu(a,x)=E(Y|x,a)} and treatment differences 
+or "binomial", output estimates of \eqn{\mu(a,x)=E(Y|x,a)} and treatment differences 
 (average treatment effect or risk difference). For survival, either logHR based estimates
 or RMST based estimates can be obtained. Current base-learner ("ple") options include:
 
@@ -125,7 +126,7 @@ summary(mod3$mu_train)
 \references{
 Wright, M. N. & Ziegler, A. (2017). ranger: A fast implementation of 
 random forests for high dimensional data in C++ and R. J Stat Softw 77:1-17. 
-\url{https://doi.org/10.18637/jss.v077.i01}.
+\doi{10.18637/jss.v077.i01}
 
 Friedman, J., Hastie, T. and Tibshirani, R. (2008) Regularization Paths for
  Generalized Linear Models via Coordinate Descent,

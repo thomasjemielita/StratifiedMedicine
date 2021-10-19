@@ -28,7 +28,7 @@
 #' 
 #' hyper = list(lambda="lambda.min", family="gaussian",interaction=FALSE))
 #' 
-#' If interaction=TRUE, then Y~ENET(X,A,X*A), and variables with estimated coefficients of 
+#' If interaction=TRUE, then Y~ENET(X,X*A), and variables with estimated coefficients of 
 #' zero in both the main effects (X) and treatment-interactions (X*A) are filtered. This 
 #' aims to find variables that are prognostic and/or predictive. 
 #' 
@@ -44,7 +44,7 @@
 #' 
 #' where b=(\% of total data to sample; default=66\%), K=# of subsamples, FDR (FDR based
 #' multiplicity correction for p-values), pval.thres=0.10 (adjust to change 
-#' filtering threshold). DF2 fits Y~ranger(X, A, XA) and calculates the 
+#' filtering threshold). DF2 fits Y~ranger(X, XA) and calculates the 
 #' VI_2DF = VI_X+VI_XA, which is the variable importance of the main effect + the 
 #' interaction effect (joint test). Var(VI_2DF) = Var(VI_X)+Var(VI_AX)+2cov(VI_X, VI_AX) 
 #' where each component is calculated using the subsampling approach described above.
@@ -79,7 +79,7 @@
 #'  Software, Vol. 33(1), 1-22 Feb 2010 Vol. 33(1), 1-22 Feb 2010.
 #' @references Wright, M. N. & Ziegler, A. (2017). ranger: A fast implementation of 
 #' random forests for high dimensional data in C++ and R. J Stat Softw 77:1-17. 
-#' \url{https://doi.org/10.18637/jss.v077.i01}.
+#' \doi{10.18637/jss.v077.i01}.
 #' @references Ishwaran, H. Lu, M. (2017). Standard errors and confidence intervals 
 #' for variable importance in random forest regression, classification, and survival.
 #' Statistics in Medicine 2017. 
@@ -93,7 +93,16 @@ filter_train = function(Y, A, X, family="gaussian", filter="glmnet", hyper=NULL,
   if (is.Surv(Y) & family!="survival") {
     family <- "survival"
   }
-  fit <- do.call(filter, append(list(Y=Y, A=A, X=X, family=family), hyper))
+  
+  wrapper_filter <- function(Y, A, X, family, filter, hyper) {
+    
+    filter_fn <- get(filter, envir = parent.frame())
+    fit <- do.call(filter_fn, append(list(Y=Y, A=A, X=X, family=family), hyper))
+    
+    return(fit)
+  }
+  fit <- wrapper_filter(Y=Y, A=A, X=X, family=family, 
+                        filter=filter, hyper=hyper)
   
   res <- list(mod = fit$mod, filter.vars=fit$filter.vars, filter=filter)
   

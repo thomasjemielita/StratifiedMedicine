@@ -19,7 +19,7 @@
 #' 
 #' @details ple_train uses base-learners along with a meta-learner to obtain patient-level 
 #' estimates under different treatment exposures (see Kunzel et al).  For family="gaussian" 
-#' or "binomial", output estimates of \eqn{mu(a,x)=E(Y|x,a)} and treatment differences 
+#' or "binomial", output estimates of \eqn{\mu(a,x)=E(Y|x,a)} and treatment differences 
 #' (average treatment effect or risk difference). For survival, either logHR based estimates
 #' or RMST based estimates can be obtained. Current base-learner ("ple") options include:
 #' 
@@ -76,7 +76,7 @@
 #' @export
 #' @references Wright, M. N. & Ziegler, A. (2017). ranger: A fast implementation of 
 #' random forests for high dimensional data in C++ and R. J Stat Softw 77:1-17. 
-#' \url{https://doi.org/10.18637/jss.v077.i01}.
+#' \doi{10.18637/jss.v077.i01}
 #' @references Friedman, J., Hastie, T. and Tibshirani, R. (2008) Regularization Paths for
 #'  Generalized Linear Models via Coordinate Descent,
 #'  \url{https://web.stanford.edu/~hastie/Papers/glmnet.pdf} Journal of Statistical 
@@ -89,81 +89,103 @@
 #'
 ## To DO: T-Learner, S-Learner, S-Learner (VT) ##
 ple_train = function(Y, A, X, Xtest=NULL, family="gaussian", propensity=FALSE,
-                      ple="ranger", meta="X-learner", hyper=NULL,
-                      tau=NULL, ...) {
+                     ple="ranger", 
+                     meta=ifelse(family=="survival", "T-learner", "X-learner"), 
+                     hyper=NULL, tau=NULL, ...) {
   
-  if (is.null(Xtest)) {
-    Xtest <- X
-  }
   # Convert Names #
+  ple0 <- ple
   if (ple %in% c("ranger", "glmnet", "linear", "bart")) {
     ple <- paste("ple", ple, sep="_") 
   }
+  # Check family #
+  if (is.Surv(Y) & family!="survival") {
+    family <- "survival"
+  }
+  # Check survival / X-learner #
+  if (family=="survival" & meta=="X-learner") {
+    meta = "T-learner"
+  }
   
-  if (is.null(A) | !(meta %in% c("T-learner", "S-learner", "X-learner"))) {
-    fit <- do.call(ple, append(list(Y=Y, X=X, family=family), hyper))
-    names(fit) <- c("mod", "pred.fun")
-  }
-  if (!is.null(A)) {
-    A_lvls <- unique(A)[order(unique(A))]
-    # Propensity Estimation: RCT (sample average; or model-based) #
-    if (!propensity | length(unique(A))>2) {
-      pi_fit <- NULL
-      for (aa in A_lvls) {
-        pi.a <- mean(A==aa)
-        pi_fit <- cbind(pi_fit, pi.a)
+  wrapper_ple <- function(Y, A, X, Xtest, family, ple, meta, hyper, 
+                          propensity) {
+    
+    ple_fn <- get(ple, envir = parent.frame())
+    
+    if (is.null(A)) {
+      fit <- do.call(ple_fn, append(list(Y=Y, X=X, family=family), hyper))
+    }
+    if (!is.null(A)) {
+      
+      A_lvls <- unique(A)[order(unique(A))]
+      # Propensity #
+      if (!propensity | length(unique(A))>2) {
+        pi_fit <- NULL
+        for (aa in A_lvls) {
+          pi.a <- mean(A==aa)
+          pi_fit <- cbind(pi_fit, pi.a)
+        }
+        colnames(pi_fit) <- paste("pi", A_lvls, sep="_")
+        mod <- data.frame(pi_fit)
+        pred.fun <- function(mod, ...) {
+          pi_hat <- mod
+          return(pi_hat)
+        }
+        pfit <- list(mod=mod, pred.fun=pred.fun)
       }
-      colnames(pi_fit) <- paste("pi", A_lvls, sep="_")
-      mod <- data.frame(pi_fit)
-      pred.fun <- function(mod, ...) {
-        pi_hat <- mod
-        return(pi_hat)
+      if (propensity & length(unique(A))==2) {
+        pfit <- prop_learner(A=A, X=X, learner=ple_fn, hyper=hyper)
       }
-      pfit <- list(mod=mod, pred.fun=pred.fun)
-    }
-    if (propensity & length(unique(A))==2) {
-      pfit <- prop_learner(A=A, X=X, learner=ple, hyper=hyper)
-    }
-    if (is.Surv(Y)) {
-      tau <- NULL
-      for (a in unique(A)) {
-        tau.a <- max(Y[,1][A==a])
-        tau <- c(tau, tau.a)
+      if (survival::is.Surv(Y)) {
+        tau <- NULL
+        for (a in unique(A)) {
+          tau.a <- max(Y[,1][A==a])
+          tau <- c(tau, tau.a)
+        }
+        tau <- min(tau)
       }
-      tau <- min(tau)
+      if (!survival::is.Surv(Y)) {
+        tau <- NULL
+      }
+      
+      # Outcome (with meta) #
+      meta_avail <- c("T-learner", "X-learner", "S-learner", "DR-learner")
+      
+      if (meta %in% meta_avail) {
+        meta_use <- gsub("-", "_", meta)
+        fit <- do.call(meta_use, list(Y=Y, A=A, X=X, Xtest=Xtest, 
+                                  family=family,
+                                  ple=ple_fn, hyper=hyper, 
+                                  tau=tau, pfit=pfit))
+      }
+      if (!(meta %in% meta_avail)) {
+        fit <- do.call(ple_fn, append(list(Y=Y, A=A, X=X, 
+                                           Xtest=Xtest, family=family), hyper))
+      }
+      fit$tau <- tau
     }
-    if (!is.Surv(Y)) {
-      tau <- NULL
+    # If no prior predictions are made #
+    if (is.null(fit$mu_train)) {
+      fit$mu_train <- fit$pred.fun(fit$mod, X=X, tau=tau)
     }
-    if (meta=="T-learner") {
-      fit <- T_learner(Y=Y, A=A, X=X, family=family, ple=ple, hyper=hyper,
-                       tau=tau, pfit = pfit) 
+    if (is.null(fit$mu_test)) {
+      if (is.null(Xtest)) {
+        fit$mu_test <- NULL
+      }
+      if (!is.null(Xtest)) {
+        fit$mu_test <- fit$pred.fun(fit$mod, X=Xtest, tau=tau) 
+      }
     }
-    if (meta=="S-learner") {
-      fit <- S_learner(Y=Y, A=A, X=X, family=family, ple=ple, hyper=hyper,
-                       tau=tau, pfit = pfit) 
-    }
-    if (meta=="X-learner") {
-      fit <- X_learner(Y=Y, A=A, X=X, family=family, ple=ple, hyper=hyper, 
-                       tau=tau, pfit = pfit) 
-    }
+    return(fit)
   }
-  ### Train/Test Predictions ###
-  ## If prior predictions are made: ##
-  if (!is.null(fit$mu_train)) {
-    mu_train <- fit$mu_train
-  }
-  if (!is.null(fit$mu_test)) {
-    mu_test <- fit$mu_test
-  }
-  ## If no prior predictions are mode: ##
-  if (is.null(fit$mu_train)) {
-    mu_train <- fit$pred.fun(fit$mod, X=X, tau=tau)
-  }
-  if (is.null(fit$mu_test)) {
-    mu_test <- fit$pred.fun(fit$mod, X=Xtest, tau=tau)
-  }
-  res <- list(fit = fit, mu_train=mu_train, mu_test=mu_test)
+  
+  fit <- wrapper_ple(Y=Y, A=A, X=X, Xtest=Xtest, family=family, ple=ple,
+                     meta=meta, hyper=hyper, propensity=propensity)
+  mu_train <- fit$mu_train
+  mu_test <- fit$mu_test
+  
+  res <- list(fit = fit, mu_train=mu_train, mu_test=mu_test, 
+              ple=ple0, meta=meta, family=family)
   class(res) <- "ple_train"
   return(res)
 }

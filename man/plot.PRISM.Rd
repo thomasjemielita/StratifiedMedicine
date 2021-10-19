@@ -54,12 +54,17 @@ bootstrap or CV  based resampling is used. Only applicable for type="submod".
 If bootstrap calibration is used, calibrated CIs are presented. If no calibration,
 then percentile Cis are presented with the smoothed bootstrap point-estimates.}
 
-\item{tree.plots}{Type of plots to include in the "tree" plot. Default="outcome". For non-survival
-data, this includes boxplots of treatment-specific outcomes (param="lm"), 
-model-based estimates (param="ple"), or double-robust pseudo outcomes (param="lm"). For survival
-data, kaplan-meier plots are shown. For "density", the estimated probability density of the 
-treatment effects is shown 
-(normal approximation, unless resampling is used). "both" combines both plots.}
+\item{tree.plots}{Type of plots to include in each node of the "tree" plot. Default="outcome". 
+For non-survival data, if the fitted PRISM object (x) does not include patient-level 
+estimates (ple="None"), or if param="lm", this will plot the observed outcomes (Y) by the 
+treatment assignment (A). If the fitted PRISM object includes patient-level estimates 
+(ex: ple="ranger"), this includes box-plots of the model-based (if param="ple") or double-robust
+based (if param="dr") counter-factual estimates of E(Y|X,A=a) for continuous outcomes or 
+Prob(Y=1|X,A=a) for binary outcomes (truncated to 0,1). For survival data, Kaplan-Meier 
+based survival estimates are plotted by treatment group. For "density", the estimated 
+probability density of the treatment effects is shown (normal approximation, unless resampling is used). 
+"both" include the "outcome" and "density" plots. If tree.plots = "none", then only the 
+tree structure is shown.}
 
 \item{nudge_out}{Nudge tree outcome plot (see ggparty for details)}
 

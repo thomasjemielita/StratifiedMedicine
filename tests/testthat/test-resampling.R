@@ -8,20 +8,15 @@ test_that("Test different resampling approaches (continuous)", {
   X = dat_ctns$X
   A = dat_ctns$A
   
-  
   # ### Bootstrap ###
-  res0 <- PRISM(Y, A, X, resample="Bootstrap", R=50)
+  res0 <- PRISM(Y, A, X, ple="None", param="lm", resample="Bootstrap", R=50)
   test0 = ifelse( is.null(res0$resamp.dist), 0, 1)
 
-  ### Permutation ###
-  res1 <- PRISM(Y, A, X, resample="Permutation", R=50)
+  ### Cross-Validation ###
+  res1 <- PRISM(Y, A, X, ple="None", param="lm", resample="CV")
   test1 = ifelse( is.null(res1$resamp.dist), 0, 1)
 
-  ### Cross-Validation ###
-  res2 <- PRISM(Y, A, X, resample="CV")
-  test2 = ifelse( is.null(res2$resamp.dist), 0, 1)
-
-  tests_ctns = ifelse( sum(test0,test1,test2)==3, 1, 0)
+  tests_ctns = ifelse( sum(test0,test1)==2, 1, 0)
 
   ### Output Test Results ###
   expect_equal(tests_ctns, 1L)
@@ -45,15 +40,11 @@ test_that("Test different resampling approaches (survival)", {
   res0 <- PRISM(Y, A, X, resample="Bootstrap", R=50, ple="None")
   test0 = ifelse( is.null(res0$resamp.dist), 0, 1)
   
-  ### Permutation ###
-  res1 <- PRISM(Y, A, X, resample="Permutation", R=50, ple="None")
+  ### Cross-Validation ###
+  res1 <- PRISM(Y, A, X, resample="CV", ple="None")
   test1 = ifelse( is.null(res1$resamp.dist), 0, 1)
   
-  ### Cross-Validation ###
-  res2 <- PRISM(Y, A, X, resample="CV", ple="None")
-  test2 = ifelse( is.null(res2$resamp.dist), 0, 1)
-  
-  tests_surv = ifelse( sum(test0,test1,test2)==3, 1, 0)
+  tests_surv = ifelse( sum(test0,test1)==2, 1, 0)
   
   ### Output Test Results ###
   expect_equal(tests_surv, 1L)

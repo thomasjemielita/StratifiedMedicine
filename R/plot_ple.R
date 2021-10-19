@@ -33,22 +33,50 @@ plot_ple <- function(object, target=NULL, type="waterfall", ...) {
     stop("Check ple model fit, no training estimates available.")
   }
   mu_hat <- object$mu_train
+  family <- object$family
   if (is.null(mu_hat$Subgrps)) {
     mu_hat$Subgrps <- rep("Overall", dim(mu_hat)[1])
   }
+  # No target provided #
   if (is.null(target)) {
     ple_name <- colnames(mu_hat)[grepl("diff", colnames(mu_hat))]
     ple_name <- ple_name[1]
     mu_hat$PLE <- mu_hat[[ple_name]]
   }
+  # Target Provided #
   if (!is.null(target)) {
     ple_name <- target
     mu_hat$PLE <- mu_hat[[target]]
   }
-  if (!is.null(mu_hat$estimand)) {
-    ## TO DO ##
+  # Set up Labels #
+  pieces <- unlist(strsplit(ple_name, "_"))
+  if (pieces[1] %in% c("diff")) {
+    if (family=="gaussian") {
+      ple.label <- paste("E(Y|X,A=", pieces[2], ")-", "E(Y|X,A=", pieces[3], ")", sep="")
+    }
+    if (family=="binomial") {
+      ple.label <- paste("P(Y=1|X,A=", pieces[2], ")-", "P(Y=1|X,A=", pieces[3], ")", sep="")
+    }
+    if (family=="survival") {
+      if (object$ple=="ranger") {
+        treetype <- object$treetype
+        # if (is.null(object$treetype) & class(object)=="ple_train") {
+        #   treetype <- object$fit$mod$fit0[[1]]$mod$mod$treetype
+        # }
+        # if (treetype=="Regression") {
+        #   ple.label <- paste("logT(X,A=", pieces[2], ")-", "logT(X,A=", pieces[3], ")", sep="")
+        # }
+        ple.label <- paste("RMST(X,A=", pieces[2], ")-", "RMST(X,A=", pieces[3], ")", sep="") 
+      }
+      if (object$ple %in% c("linear", "glmnet")) {
+        ple.label <- paste("logHR(X,A=", pieces[2], ")-", "logHR(X,A=", pieces[3], ")", sep="")
+      }
+    } 
   }
-  ple.label <- ple_name ## TO DO ##
+  if (pieces[1] != "diff") {
+    ple.label <- ple_name
+  }
+  # Set up Label #
   y.label <- paste("Estimates:", ple.label)
   x.label <- y.label
   mu_hat$id = 1:nrow(mu_hat)

@@ -4,24 +4,24 @@
 \alias{param_combine}
 \title{Overall Population Estimate: Aggregating Subgroup-Specific Parameter Estimates}
 \usage{
-param_combine(param.dat, combine = "SS", alpha_ovrl = 0.05, ...)
+param_combine(param.dat, combine = "SS", alpha = 0.05, ...)
 }
 \arguments{
 \item{param.dat}{Parameter data-set with subgroup-specific point estimates, SEs, and
 sample sizes.}
 
-\item{combine}{Method to combine subgroup-specific estimates. Default is "adaptive".
-combine="SS" uses sample size weighting.}
+\item{combine}{Method to combine subgroup-specific estimates. Default is "SS",
+or sample size weighting. Another option is "maxZ"(see Mehrotra
+and Marceau-West 2021).}
 
-\item{alpha_ovrl}{Two-sided alpha level for overall population. Default=0.05}
+\item{alpha}{Two-sided alpha level for overall population. Default=0.05}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
 \value{
-Data-frame with overall population point estimate, SE, and CI
+Data-frame with point estimate, SE, and CI
 }
 \description{
 Function that combines subgroup-specific estimates to obtain an overall population
-estimate. Options including sample size weighting and adaptive weighting (default; as
-described in Marceau-West and Mehrotra (to appear)).
+estimate. Options including sample size weighting and max Z weighting
 }

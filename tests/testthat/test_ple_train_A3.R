@@ -19,12 +19,12 @@ test_that("Test whether ple_train works (ctns: A=3)", {
   dat <- rbind(dat_1, dat_2)
   
   Y <- dat$Y
-  X <- dat %>% select(-A, -Y)
+  X <- dat[,!(colnames(dat) %in% c("A", "Y"))]
   A <- dat$A
   
   
-  learners <- c("ranger", "glmnet", "linear", "bart")
-  metas <- c("T-learner", "X-learner", "S-learner")
+  learners <- c("ranger", "linear")
+  metas <- c("T-learner", "X-learner", "S-learner", "DR-learner")
   res_dat <- NULL
   
   for (learn in learners) {
@@ -32,7 +32,6 @@ test_that("Test whether ple_train works (ctns: A=3)", {
       message(paste("Learner", learn))
       message(paste("Meta-learner", meta))
       res <- ple_train(Y, A, X, ple=learn, meta=meta)
-      print(summary(res$mu_train))
       class_ind <- ifelse(class(res)=="ple_train", 1, 0)
       mu_ind <- ifelse(!is.null(res$mu_train), 1, 0)
       hold <- data.frame(learn=learn, meta=meta, class_ind=class_ind, mu_ind=mu_ind)
@@ -47,7 +46,6 @@ test_that("Test whether ple_train works (binomial; A=3)", {
   
   skip_on_cran()
   ## Binomial ##
-  ## Continuous ##
   dat_bin = generate_subgrp_data(family="binomial")
   Y = dat_bin$Y
   X = dat_bin$X
@@ -64,11 +62,11 @@ test_that("Test whether ple_train works (binomial; A=3)", {
   dat <- rbind(dat_1, dat_2)
   
   Y <- dat$Y
-  X <- dat %>% select(-A, -Y)
+  X <- dat[,!(colnames(dat) %in% c("A", "Y"))]
   A <- dat$A
   
-  learners <- c("ranger", "glmnet", "linear", "bart")
-  metas <- c("T-learner", "X-learner", "S-learner")
+  learners <- c("ranger", "linear")
+  metas <- c("T-learner", "X-learner", "S-learner", "DR-learner")
   res_dat <- NULL
   
   for (learn in learners) {
@@ -111,23 +109,26 @@ test_that("Test whether ple_train works (survival; A=3)", {
   dat$cens <- dat$Y[,2]
   dat <- dat[, !(colnames(dat) %in% c("Y"))]
   Y <- with(dat, Surv(time, cens))
-  X <- dat[,!(colnames(dat) %in% c("time", "cens")) ]
+  X <- dat[,!(colnames(dat) %in% c("time", "cens", "A")) ]
   A <- dat$A
   
-  learners <- c("ranger", "glmnet", "linear")
-  metas <- c("T-learner", "S-learner")
+  learners <- c("ranger", "linear")
+  metas <- c("T-learner", "S-learner", "DR-learner")
+  grid.dat <- expand.grid(learners, metas)
+  tests <- !(grid.dat$Var1=="linear" & grid.dat$Var2=="DR-learner")
+  grid.dat <- grid.dat[tests,]
   res_dat <- NULL
   
-  for (learn in learners) {
-    for (meta in metas) {
-      message(paste("Learner", learn))
-      message(paste("Meta-learner", meta))
-      res <- ple_train(Y, A, X, ple=learn, meta=meta, family="survival")
-      class_ind <- ifelse(class(res)=="ple_train", 1, 0)
-      mu_ind <- ifelse(!is.null(res$mu_train), 1, 0)
-      hold <- data.frame(learn=learn, meta=meta, class_ind=class_ind, mu_ind=mu_ind)
-      res_dat <- rbind(res_dat, hold)
-    }
+  for (ii in 1:dim(grid.dat)[1]) {
+    learn <- grid.dat$Var1[ii]
+    meta <- grid.dat$Var2[ii]
+    message(paste("Learner", learn))
+    message(paste("Meta-learner", meta))
+    res <- ple_train(Y, A, X, ple=learn, meta=meta, family="survival")
+    class_ind <- ifelse(class(res)=="ple_train", 1, 0)
+    mu_ind <- ifelse(!is.null(res$mu_train), 1, 0)
+    hold <- data.frame(learn=learn, meta=meta, class_ind=class_ind, mu_ind=mu_ind)
+    res_dat <- rbind(res_dat, hold)
   }
   res_surv <- res_dat
   eql_surv <- (mean(res_surv$class_ind) + mean(res_surv$mu_ind))/2

@@ -245,15 +245,96 @@ resamp_metrics = function(param.dat, resamp_param, resamp_calib, resample) {
   return(final_ests)
 }
 
-#### Weibull Mob Functions ###
+#### Survival Helper Functions ####
+
+# Weibull Functions (for MOB) #
 wbreg <- function(y, x, start = NULL, weights = NULL, offset = NULL, ...) {
   survreg(y ~ 0 + x, weights = weights, dist = "weibull", ...)
 }
 logLik.survreg <- function(object, ...) {
   structure(object$loglik[2], df = sum(object$df), class = "logLik")
 }
-
-### RMST Estimation: based on survRM2 ###
+aft_mavg <- function(y, x, start = NULL, weights = NULL, offset=NULL,
+                      ..., 
+                      estfun = FALSE, object = FALSE) {
+  
+  # x <- x[, 2]
+  dist.vec <- c("weibull", "lognormal", "loglogistic")
+  obj <- list()
+  fits <- NULL
+  est_fun <- list()
+  for (dist in dist.vec) {
+    
+    fit <- tryCatch(survreg(y ~ 0 + x, dist=dist, ...,
+                            weights = weights), 
+                    error = function(e) paste("error", e),
+                    warning = function(w) paste("convergence error", w))
+    
+    if (is.character(fit)) {
+      hold <- data.frame(dist=dist, AIC=NA, loglik=NA, df=NA,
+                         est=NA, SE=NA, parm=NA)
+    }
+    if (is.list(fit)) {
+      # tbl <- summary(fit)$table
+      # est <- tbl[,1]
+      # SE <- tbl[,2]
+      est <- coef(fit)
+      SE <- summary(fit)$table[names(est),2]
+      hold <- data.frame(dist=dist, AIC=stats::AIC(fit), 
+                         loglik = fit$loglik[2],
+                         df = sum(fit$df),
+                         est=est, SE=NA)
+      hold$parm <- rownames(hold)
+      rownames(hold) <- NULL
+      est_fun00 <- sandwich::estfun(fit)
+      est_fun <- append(est_fun, list(est_fun00))
+      obj <- append(obj, list(fit))
+    } 
+    fits <- rbind(fits, hold)
+  }
+  names(obj) <- dist.vec
+  fits <- fits[!is.na(fits$est),]
+  # model averaging #
+  out_dat <- NULL
+  for (p in unique(fits$parm)) {
+    ma.fit <- .model_average(fits=fits[fits$parm==p,])
+    w.MA <- ma.fit$fits$w.MA
+    hold <- data.frame(parm = p, est = ma.fit$est.MA)
+    hold$loglik <- sum(ma.fit$fits$w.MA %*% ma.fit$fits$loglik)
+    hold$AIC <- sum(ma.fit$fits$w.MA %*% ma.fit$fits$AIC)
+    hold$df <- mean(ma.fit$fits$df)
+    out_dat <- rbind(out_dat, hold)
+  }
+  obj <- append(obj, 
+                list(wdat=data.frame(ma.fit$fits[,c("dist", "AIC", "w.MA")])))
+  class(obj) <- "aft_mavg"
+  # Obtain weighted est FUN #
+  est_fun1 <- 0
+  for (i in 1:length(w.MA)) {
+    
+    est_fun1 <- est_fun1 + w.MA[i]*est_fun[[i]]
+    
+  }
+  coef_hold <- out_dat$est
+  names(coef_hold) <- out_dat$parm
+  
+  out <- list(coefficients = coef_hold, 
+              objfun = -mean(out_dat$loglik),
+              estfun = if (estfun) est_fun1 else NULL,
+              object = if (object) obj else NULL)
+  return(out)
+}
+predict.aftmavg <- function(object, newdata) {
+  
+  dist.vec <- object$wdat$dist
+  pred <- 0
+  for (dist in dist.vec) {
+    hold <- predict(object[[dist]], newdata=newdata)
+    pred <- pred + object$wdat$w.MA[object$wdat$dist==dist]*hold
+  }
+  return(pred)
+}
+# RMST Estimation: based on survRM2 #
 rmst_single = function(time, status, tau=NULL) {
   if (is.null(tau)) {
     tau = max(time)
@@ -273,6 +354,37 @@ rmst_single = function(time, status, tau=NULL) {
   SE = sqrt( sum(cumsum(rev(AUC[-1]))^2 * rev(var.vec)[-1]) )
   return( list(rmst=est, rmst.se=SE))
 }
+# IPC Weights (based on "Survival Ensembles 2006 Hothorn T et al") #
+ipc_weights <- function(y_surv, max_w = 5) {
+  
+  event <- y_surv[,2]
+  y_cens <- survival::Surv(y_surv[,1], 1-event)
+  
+  mod <- survfit(y_cens ~ 1)
+  times <- y_surv[,1]
+  cens_est <- rep(NA, length(times))
+  ind_vec <- times %in% mod$time
+  
+  for (i in 1:length(cens_est)) {
+    if (ind_vec[i]) {
+      cens_est[i] <- mod$surv[mod$time == times[i]]
+    }
+    if (!ind_vec[i]) {
+      before_t <- mod$time[mod$time < times[i]]
+      if (length(before_t) == 0) {
+        cens_est[i] <- 1
+      }
+      if (length(before_t) > 0) {
+        cens_est[i] <- mod$surv[mod$time == max(before_t)]
+      }
+    }
+  }
+  cens_est[event == 0] <- 1
+  ipc_w <- event / cens_est
+  ipc_w[ipc_w > max_w] <- max_w
+  
+  return(ipc_w)
+}
 
 ## P-value converter ##
 pval_convert <- function(p_value) {
@@ -291,90 +403,7 @@ rmst_calc <- function(time, surv, tau) {
   rmst = sum(areas)
   return(rmst)
 }
-### Pooling Function ###
-pooler_run <- function(Y, A, X, mu_hat, Subgrps, delta, method = "otr:logistic",
-                       class.metric="youden") {
-  
-  # delta <- ">0"
-  ## OTR based pooling ##
-  if (method %in% c("otr:logistic", "otr:rf")) {
-    
-    if (!requireNamespace("pROC", quietly = TRUE)) {
-      stop("Package pROC needed for OTR-based poolings. Please install.")
-    }
-    
-    ple_name <- colnames(mu_hat)[grepl("diff", colnames(mu_hat))]
-    ind_ple <- eval(parse(text=paste(paste("ifelse(mu_hat$",ple_name,sep=""),
-                                     delta, ", 1, 0)")))
-    w_ple <- abs(mu_hat[[ple_name]])
-    Subgrps.mat <- data.frame(Subgrps=as.factor(Subgrps))
-    Subgrps.mat <- data.frame(model.matrix(~.-1, data=Subgrps.mat))
-    otr_dat <- data.frame(ind_ple, Subgrps.mat)
-    # OTR: Logistic #
-    if (method=="otr:logistic") {
-      mod <- suppressWarnings(glm(ind_ple ~ . -1, 
-                                  data = otr_dat,
-                                  family = "binomial", weights = w_ple))
-      prob_opt <- as.numeric(predict(mod, type="response"))
-    }
-    # OTR: Random forest # 
-    if (method=="otr:rf") {
-      mod <- ranger::ranger(ind_ple ~ ., 
-                            data=data.frame(otr_dat, X),
-                            case.weights = w_ple)
-      prob_opt <- mod$predictions
-    }
-    # # Classify Patients #
-    # if (class.metric=="youden") {
-    #   rocobj <- suppressMessages(pROC::roc(ind_ple, prob_opt))
-    #   yindex <- suppressWarnings(pROC::coords(rocobj, "best"))$threshold
-    #   delta_opt <- yindex
-    # }
-    class_dat <- gen_class_metrics(outcome=ind_ple, pred=prob_opt)
-    yindex_val <- NA
-    if (class.metric=="youden") {
-      # Youden #
-      yindex_val <- unique(class_dat$yindex)
-      delta_opt <- yindex_val
-    } 
-    out_dat <- data.frame(Subgrps, prob_opt = prob_opt, delta_opt=delta_opt)
-    out_dat <- unique(out_dat)
-    A_lvls <- unique(A)[order(unique(A))]
-    out_dat$pred_opt <- with(out_dat, ifelse(prob_opt<=delta_opt, "1", "2"))
-                                            # A_lvls[1], A_lvls[2]))
-    out_dat$Subgrps <- as.character(out_dat$Subgrps)
-    out_dat$pred_opt <- as.character(out_dat$pred_opt)
-    out_dat <- out_dat[,c("Subgrps", "prob_opt", "pred_opt", "delta_opt")]
-  }
-  return(out_dat)
-}
-## Generate PPV, NPV, Sens, Spec, etc (across cut-points) ##
-gen_class_metrics <- function(outcome, pred) {
-  
-  rocobj <- suppressMessages(pROC::roc(outcome, pred))
-  yindex <- suppressWarnings(pROC::coords(rocobj, "best"))$threshold
-  
-  delta_vec <- seq(0, 1, by=0.01)
-  summ <- NULL
-  for (delta in delta_vec) {
-    pred_01 <- ifelse(pred>delta, 1, 0)
-    pred_01 <- factor(pred_01, levels = c("0", "1"))
-    tab <- table(pred_01, outcome, exclude = "no")
-    acc <- tab[1,1] + tab[2,2] / length(outcome)
-    spec <- tab[1,1] / sum(tab[,1])
-    sens <- tab[2,2] / sum(tab[,2])
-    npv <- tab[1,1] / sum(tab[1,])
-    ppv <- tab[2,2] / sum(tab[2,])
-    # confusionMatrix(as.factor(pred_01), as.factor(outcome), positive = "1")
-    f1 <- 2*(ppv*sens)/(ppv+sens)
-    hold <- data.frame(delta=delta, acc=acc, 
-                       sens=sens, spec=spec, 
-                       ppv=ppv, npv=npv, f1=f1)
-    summ <- rbind(summ, hold)
-  }
-  summ$yindex <- yindex
-  return(summ)
-}
+
 ## Probability Calculator (input desired threshold and PRISM.fit) ##
 prob_calculator <- function(fit, thres=">0") {
   
@@ -427,7 +456,24 @@ prob_calculator <- function(fit, thres=">0") {
     param.dat <- left_join(param.dat, prob.dat, by=c("Subgrps", "estimand"))
   }
   # Create column name #
-  colnames(param.dat)[which(colnames(param.dat)=="prob.est")] <- thres.name
+  # colnames(param.dat)[which(colnames(param.dat)=="prob.est")] <- thres.name
   fit$param.dat <- param.dat
   return(fit)
+}
+#### Modeling Averaging Functions ####
+.weights.MA = function(weights){
+  w = weights
+  w = w-min(w)
+  norm.const = sum(exp(-w/2))
+  w_out = exp(-w/2)/norm.const
+  return(w_out)
+}
+.model_average <- function(fits, type="AIC"){
+  
+  fits$w.MA <- .weights.MA(fits$AIC)
+  est.MA <- with(fits, as.numeric(w.MA %*% est) )
+  var.MA <- with(fits, sum(w.MA*(SE^2+(est-est.MA)^2)))
+  SE.MA <- sqrt(var.MA)
+  
+  return( list(est.MA=est.MA, SE.MA=SE.MA, var.MA=var.MA, fits=fits))
 }

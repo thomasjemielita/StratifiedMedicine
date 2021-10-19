@@ -50,13 +50,35 @@ plot_dependence <- function(object, X=NULL, target=NULL, vars,
     }
     out.train <- data.frame(X)
   }
+  family <- object$family
   ## Target? ##
   if (is.null(target)) {
     ple_name <- colnames(object$mu_train)[grepl("diff", colnames(object$mu_train))]
     ple_name <- ple_name[1]
   }
   if (!is.null(target)) { ple_name <- target }
-  
+  # Set up Labels #
+  pieces <- unlist(strsplit(ple_name, "_"))
+  if (pieces[1] %in% c("diff")) {
+    if (family=="gaussian") {
+      ple.label <- paste("E(Y|X,A=", pieces[2], ")-", "E(Y|X,A=", pieces[3], ")", sep="")
+    }
+    if (family=="binomial") {
+      ple.label <- paste("P(Y=1|X,A=", pieces[2], ")-", "P(Y=1|X,A=", pieces[3], ")", sep="")
+    }
+    if (family=="survival") {
+      if (object$ple=="ranger") {
+        ple.label <- paste("RMST(X,A=", pieces[2], ")-", "RMST(X,A=", pieces[3], ")", sep="")
+      }
+      if (object$ple %in% c("linear", "glmnet")) {
+        ple.label <- paste("logHR(X,A=", pieces[2], ")-", "logHR(X,A=", pieces[3], ")", sep="")
+      }
+    } 
+  }
+  if (pieces[1] != "diff") {
+    ple.label <- ple_name
+  }
+  # Set up data for estimation #
   if (is.null(grid.data)) {
     numb_vars <- length(vars)
     var1_type <- ifelse(is.numeric(out.train[,vars[1]]), "ctns", "fact")
@@ -136,7 +158,7 @@ plot_dependence <- function(object, X=NULL, target=NULL, vars,
   X.grid = do.call(rbind, X.grid)
   counter.vec = X.grid$counter
   X.grid = X.grid[,!(colnames(X.grid) %in% "counter")]
-  
+
   # Univariate (Marginal Effect) #
   if (numb_vars==1) {
     if (class(object)=="PRISM") {
@@ -145,6 +167,7 @@ plot_dependence <- function(object, X=NULL, target=NULL, vars,
     if (class(object)=="ple_train") {
       grid.ple = predict(object, newdata = X.grid) 
     }
+    y.label <- paste("Estimates:", ple.label)
     grid.ple$PLE <- grid.ple[[ple_name]]
     avg.ple = aggregate(grid.ple$PLE ~ counter.vec, FUN="mean")
     est.dat = data.frame(grid.data, est = avg.ple$`grid.ple$PLE`)
@@ -152,7 +175,7 @@ plot_dependence <- function(object, X=NULL, target=NULL, vars,
                               ggplot2::aes_string(x=name.var1, y="est")) + 
       ggplot2::geom_point() + ggplot2::geom_smooth(se=FALSE) + 
       ggplot2::xlab(name.var1) +
-      ggplot2::ylab(ple_name)
+      ggplot2::ylab(y.label)
       ggplot2::geom_rug(data=out.train, 
                         ggplot2::aes_string(name.var1), sides="b", inherit.aes = F)
     res <- res.est
@@ -168,7 +191,7 @@ plot_dependence <- function(object, X=NULL, target=NULL, vars,
     res.est = ggplot2::ggplot(data = est.dat, 
                               ggplot2::aes_string(x=name.var1, y=name.var2, fill="est")) +
       ggplot2::geom_tile() + ggplot2::labs(fill = "est") + 
-      ggplot2::ggtitle(paste("Heat Map:", ple_name))+
+      ggplot2::ggtitle(paste("Heat Map Estimates:", ple.label))+
       ggplot2::geom_rug(data=out.train, 
                         ggplot2::aes_string(name.var1, name.var2), inherit.aes = F) + 
       ggplot2::scale_fill_gradient2(low="navy", mid="white", high="red")

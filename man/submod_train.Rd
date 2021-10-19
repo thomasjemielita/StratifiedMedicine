@@ -13,8 +13,19 @@ submod_train(
   family = "gaussian",
   submod,
   hyper = NULL,
+  ple = "ranger",
+  ple.hyper = NULL,
+  meta = ifelse(family == "survival", "T-learner", "X-learner"),
+  propensity = FALSE,
   pool = "no",
   delta = ">0",
+  param = NULL,
+  resample_submod = NULL,
+  R_submod = 20,
+  combine = "SS",
+  alpha_ovrl = 0.05,
+  alpha_s = 0.05,
+  verbose.resamp = FALSE,
   ...
 )
 }
@@ -26,30 +37,83 @@ factor). "ple_train" accomodates >2 along with binary treatments.}
 
 \item{X}{Covariate space.}
 
-\item{Xtest}{Test set. Default is NULL which uses X (training set). Variable types should
-match X.}
+\item{Xtest}{Test set. Default is NULL (no test predictions). Variable types should match X.}
 
 \item{mu_train}{Patient-level estimates in training set (see \code{ple_train}). 
 Default=NULL}
 
 \item{family}{Outcome type. Options include "gaussion" (default), "binomial", and "survival".}
 
-\item{submod}{Subgroup identification model function. Maps the observed data and/or PLEs
-to subgroups. Default for family="gaussian" is "lmtree" (MOB with OLS loss). For 
-"binomial" the default is "glmtree" (MOB with binomial loss). Default for "survival" is
-"mob_weib" (MOB with weibull loss). "None" uses no submod. Currently only available for 
+\item{submod}{Subgroup identification model function. Options include tree-methods that 
+target the treatment by variable interaction directly ("lmtree", "glmtree", "mob_weib"),
+regress the CATE ("rpart_cate", "ctree_cate"), and target prognostic variables ("rpart", "ctree").
+Default for family="gaussian" is "lmtree" (MOB with OLS loss). For "binomial" the default is 
+"glmtree" (MOB with binomial loss). Default for "survival" is "lmtree" (log-rank transformation 
+on survival outcomes and then fit MOB-OLS). "None" uses no submod. Currently only available for 
 binary treatments or A=NULL.}
 
 \item{hyper}{Hyper-parameters for submod (must be list). Default is NULL.}
 
-\item{pool}{Whether to pool discovered subgroups. Default is "no" (no pooling).
-Other options include "otr:logistic", which uses an optimal treatment regime approach, 
-where a weighted logistic regression is fit with I(mu_1-mu_0>delta) as the outcome,  
-the candidate subgroups as covariates, and weights=abs(PLE). Lastly, the youden index is 
-used to assign optimal treatments across the discovered subgroups.}
+\item{ple}{Base-learner used to estimate patient-level equantities, such as the 
+conditional average treatment effect (CATE), E(Y|A=1,X)-E(Y|A=0, X) = CATE(X). 
+Default is random based based through "ranger". "None" uses no ple. See below for 
+details on estimating the treatment contrasts.}
 
-\item{delta}{Threshold for defining benefit vs non-benefitting patients. Only applicable 
-for pool="otr:logistic" or "otr:rf"; Default=">0".}
+\item{ple.hyper}{Hyper-parameters for the PLE function (must be list). 
+Default is NULL.}
+
+\item{meta}{Using the ple model as a base learner, meta-learners can be used for 
+estimating patient-level treatment differences. Options include "T-learner" (treatment
+specific models), "S-learner" (single model), and "X-learner". For family="gaussian" &
+"binomial", the default is "X-learner", which uses a two-stage regression 
+approach (See Kunzel et al 2019). For "survival", the default is "T-learner". "X-learner" 
+is currently not supported for survival outcomes.}
+
+\item{propensity}{Propensity score estimation, P(A=a|X). Default=FALSE which 
+use the marginal estimates, P(A=a) (applicable for RCT data). If TRUE, will 
+use the "ple" base learner to estimate P(A=a|X).}
+
+\item{pool}{Whether to pool the initial identified subgroups (ex: tree nodes).
+Default = "no". Other options include "trteff" or "trteff_boot" (check if 
+naive or bootstrap treatment estimate is beyond clinical meaningful 
+threshold delta, ex: trteff_boot > 0), and optimal treatment regime (OTR) pooling, 
+"otr:logistic", "otr:rf". "otr:logistic" fits weighted logistic regression 
+with I(mu_1-mu_0>delta) as the outcome, the candidate subgroups as covariates, 
+and weights=abs((mu_1-mu_0) - delta). "otr:rf" follows the same approach but 
+with weighted random forest, and also includes X in the regression. Regardless 
+of the pooling approach, the key output is "trt_assign", a data-frame with the 
+initial subgroups and the pooled subgroups (ex: dopt=1, patient should receive
+ A=1, vs dopt=0, patient should receive A=0).}
+
+\item{delta}{Threshold for defining benefit vs non-benefitting patients. 
+Only applicable for submod="otr", and if pooling is used (see "pool"). 
+Default=">0".}
+
+\item{param}{Parameter estimation and inference function. Based on the discovered 
+subgroups, estimate parameter estimates and correspond variability metrics. Options
+include "lm" (unadjusted linear regression), "dr" (doubly-robust estimator),
+"gcomp" (G-computation, average the patient-level estimates), "cox" (cox regression),
+and "rmst" (RMST based estimates as in survRMST package). Default for "gaussian",
+"binomial" is "dr", while default for "survival" is "cox". Currently only available 
+for binary treatments or A=NULL.}
+
+\item{resample_submod}{For submod only, resampling method for treatment effect estimates.
+Options include "Bootstrap" or NULL (no resampling).}
+
+\item{R_submod}{For submod only, number of resamples for treatment effect estimates.
+Only applicable if resample_submod="Bootstrap" and/or pool="trteff_boot".}
+
+\item{combine}{Method of combining group-specific point-estimates. Options 
+include "SS" (sample size weighting), and "maxZ" 
+(see: Mehrotra and Marceau-West). This is used for pooling (ex: within dopt=1
+groups, aggregate group-specific treatment estimates), and for calculating 
+the overall population treatment effect estimate.}
+
+\item{alpha_ovrl}{Two-sided alpha level for overall population. Default=0.05}
+
+\item{alpha_s}{Two-sided alpha level at subgroup level. Default=0.05}
+
+\item{verbose.resamp}{Output iterations during resampling? Default=FALSE}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
@@ -72,11 +136,13 @@ fitted model.
 \details{
 submod_train currently fits a number of tree-based subgroup models, most of
 which aim to find subgroups with varying treatment effects (i.e. predictive variables).
-Current options include:
+Let E(Y|A=1,X)-E(Y|A=0,X) = CATE(X) correspond to the estimated conditional average treatment 
+effect. Current options include:
 
 1. lmtree: Wrapper function for the function "lmtree" from the partykit package. Here, 
-model-based partitioning (MOB) with an OLS loss function, Y~MOB_LM(A,X), is used to 
-identify prognostic and/or predictive variables. 
+model-based partitioning (MOB) with an OLS loss function, Y~MOB_OLS(A,X), is used to 
+identify prognostic and/or predictive variables. If the outcome Y is survival, then 
+this outcome will first be transformed via log-rank scores (coin::logrank_trafo(Y)).
 
 Default hyper-parameters are: 
 hyper = list(alpha=0.05, maxdepth=4, parm=NULL, minsize=floor(dim(X)[1]*0.10)).
@@ -86,35 +152,35 @@ model-based partitioning (MOB) with GLM binomial + identity link loss function,
 (Y~MOB_GLM(A,X)), is used to identify prognostic and/or predictive variables.
 
 Default hyper-parameters are:
- hyper = list(link="identity", alpha=0.05, maxdepth=4, parm=NULL, 
- minsize=floor(dim(X)[1]*0.10)).
+hyper = list(link="identity", alpha=0.05, maxdepth=4, parm=NULL, minsize=floor(dim(X)[1]*0.10)).
 
-3. ctree: Wrapper function for the function "ctree" from the partykit package. Here, 
-conditional inference trees are used to identify either prognostic, Y~CTREE(X), 
-or predictive variables, PLE~CTREE(X) (outcome_PLE=TRUE; requires mu_train data).
-
-Default hyper-parameters are:
-hyper=list(alpha=0.10, minbucket = floor(dim(X)[1]*0.10), 
-maxdepth = 4, outcome_PLE=FALSE). 
-
-4. otr: Optimal treatment regime approach using "ctree". Based on patient-level 
-treatment effect estimates, fit PLE~CTREE(X) with weights=abs(PLE). 
+3. ctree / ctree_cate: Wrapper function for the function "ctree" from the partykit package. Here, 
+conditional inference trees are used to identify either prognostic ("ctree"), Y~CTREE(X), 
+or predictive variables, CATE(X) ~ CTREE(X).
 
 Default hyper-parameters are:
-hyper=list(alpha=0.10, minbucket = floor(dim(X)[1]*0.10), 
-maxdepth = 4, thres=">0"). 
+hyper=list(alpha=0.10, minbucket = floor(dim(X)[1]*0.10), maxdepth = 4). 
 
-4. mob_weib: Wrapper function for the function "mob" with weibull loss function using
+4. rpart / rpart_cate: Recursive partitioning through the "rpart" R package. Here, 
+recursive partitioning and regression trees are used to identify either prognostic ("rpart"),
+Y~rpart(X), or predictive variables ("rpart_cate"), CATE(X)~rpart(X).
+
+Default hyper-parameters are:
+hyper=list(alpha=0.10, minbucket = floor(dim(X)[1]*0.10), maxdepth = 4). 
+
+5. mob_weib: Wrapper function for the function "mob" with weibull loss function using
 the partykit package. Here, model-based partitioning (MOB) with weibull loss (survival),
 (Y~MOB_WEIB(A,X)), is used to identify prognostic and/or predictive variables.
  
 Default hyper-parameters are:
 hyper = list(alpha=0.10, maxdepth=4, parm=NULL, minsize=floor(dim(X)[1]*0.10)).
 
-5. rpart: Recursive partitioning through the "rpart" R package. Here, 
-recursive partitioning and regression trees are used to identify either prognostic,
-Y~rpart(X), or predictive variables, PLE~rpart(X) (outcome_PLE=TRUE; 
-requires mu_train data).
+6. otr: Optimal treatment regime approach using "ctree". Based on CATE estimates and 
+clinically meaningful threshold delta (ex: >0), fit I(CATE>delta)~CTREE(X) with 
+weights=abs(CATE-delta). 
+
+Default hyper-parameters are:
+hyper=list(alpha=0.10, minbucket = floor(dim(X)[1]*0.10), maxdepth = 4, delta=">0").
 }
 \examples{
 
@@ -130,6 +196,7 @@ A = dat_ctns$A
 mod1 = submod_train(Y=Y, A=A, X=X, Xtest=X, submod="submod_lmtree")
 table(mod1$Subgrps.train)
 plot(mod1$fit$mod)
+mod1$trt_eff
 
 }
 

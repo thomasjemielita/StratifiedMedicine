@@ -1,3 +1,12 @@
+# StratifiedMedicine 1.0.4
+* Fixed bugs for plot() for type="resample" and tree.plots="density", such that density plots match up with right tree nodes.
+* Added pool="trteff","trteff_boot" (pools subgroups based on naive or bootstrap resampling based treatment effect estimates)
+* Added submod="ctree_cate", CATE~ctree(X), and submod="rpart_cate", CATE~rpart(X).
+
+# StratifiedMedicine 1.0.3
+* Fixed bugs for plot() (when family="survival"), such that Kaplan-meier plots match up with right tree nodes
+* Updated documentation and plot labels
+
 # StratifiedMedicine 1.0.2
 
 * Fixed bugs relating to binary outcome data (family="binomial")

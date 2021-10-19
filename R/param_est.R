@@ -25,6 +25,7 @@
 #'   }
 #' @export
 #' @importFrom survival coxph
+#' @importFrom stats AIC
 #' @references Funk et al. Doubly Robust Estimation of Causal Effects. 
 #' Am J Epidemiol 2011. 173(7): 761-767.
 #' @references Andersen, P. and Gill, R. (1982). Cox’s regression model for counting 
@@ -53,41 +54,53 @@
 param_est = function(Y, A, X, param, mu_hat=NULL, Subgrps, 
                      alpha_ovrl=0.05, alpha_s=0.05, combine="SS",...) {
   
-  if (param %in% c("lm", "ple", "dr", "rmst", "cox")) {
+  if (param %in% c("lm", "ple", "gcomp", "dr", "rmst", "cox", "aft")) {
     param <- paste("param", param, sep="_")
   }
   numb_subs <- length(unique(Subgrps))
   Subgrps <- as.character(Subgrps)
+  type_mu <- ifelse(is.null(dim(mu_hat)), "vec", "df")
   # Estimation across subgroups #
-  looper <- function(s, alpha, mu_hat) {
+  looper <- function(s, alpha, mu_hat, sname = NULL) {
     Y.s <- Y[Subgrps %in% s]
     A.s <- A[Subgrps %in% s]
     X.s <- X[Subgrps %in% s,]
-    mu_hat.s <- mu_hat[Subgrps %in% s,]
-    res <- do.call(param, list(Y=Y.s, A=A.s, X=X.s, mu_hat=mu_hat.s, alpha=alpha))
-    s_use <- ifelse(dim(X.s)[1]==dim(X)[1], "ovrl", s)
+    if (type_mu=="vec") {
+      mu_hat.s <- mu_hat[Subgrps %in% s]
+    }
+    if (type_mu=="df") {
+      mu_hat.s <- mu_hat[Subgrps %in% s,]
+    }
+    res <- do.call(param, list(Y=Y.s, A=A.s, X=X.s, mu_hat=mu_hat.s, 
+                               alpha=alpha))
+    if (is.null(sname)) { s_use = s}
+    if (!is.null(sname)) {s_use = sname}
     res <- data.frame(Subgrps=s_use, res, alpha=alpha)
     return(res)
   }
-  S_levels = names(table(Subgrps))
+  S_levels <- names(table(Subgrps))
   res_s <- lapply(S_levels, looper, alpha=alpha_s, mu_hat=mu_hat)
   param.dat <- do.call(rbind, res_s)
   ## If One Subgroup ##
   if (numb_subs==1) {
-    param.dat = param.dat
+    param_ovrl <- param.dat
+    param_ovrl$Subgrps <- "ovrl"
+    param.dat = rbind(param.dat, param_ovrl)
   }
   if (numb_subs>1) {
     if (param %in% c("param_dr", "param_ple")) {
-      param_ovrl <- looper(S_levels, alpha=alpha_ovrl, mu_hat=mu_hat)
+      param_ovrl <- looper(S_levels, alpha=alpha_ovrl, mu_hat=mu_hat,
+                           sname = "ovrl")
     }
     if (!(param %in% c("param_dr", "param_ple"))) {
-      param_ovrl = NULL
+      param_ovrl <- NULL
       for (e in unique(param.dat$estimand)){
-        hold = param_combine(param.dat = param.dat[param.dat$estimand==e,],
-                             alpha_ovrl=alpha_ovrl, combine=combine)
-        hold$estimand = e
-        hold = hold[,c("Subgrps", "N", "estimand", "est", "SE", "LCL", "UCL", "pval")]
-        param_ovrl = rbind(param_ovrl, hold)
+        hold <- param_combine(param.dat = param.dat[param.dat$estimand==e,],
+                             alpha=alpha_ovrl, combine=combine)
+        hold$estimand <- e
+        hold <- hold[,c("Subgrps", "N", "estimand", "est", "SE", 
+                       "LCL", "UCL", "pval")]
+        param_ovrl <- rbind(param_ovrl, hold)
       }
     }
     param_ovrl$alpha <- alpha_ovrl

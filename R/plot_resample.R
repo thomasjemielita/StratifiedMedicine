@@ -12,7 +12,8 @@ plot_resample <- function(x, target=NULL) {
   ## Target? ##
   if (is.null(target)) {
     t_name <- unique(plot.dat$estimand)
-    t_name <- t_name[grepl("diff", t_name) | grepl("logHR", t_name)]
+    t_name <- t_name[grepl("mu", t_name) | grepl("logHR", t_name) |
+                       grepl("logT", t_name)]
     t_name <- t_name[1]
   }
   if (!is.null(target)) { t_name <- target }
@@ -27,11 +28,11 @@ plot_resample <- function(x, target=NULL) {
     ggplot2::xlab( paste("Bootstrap Estimates:", t_name)  ) +
     ggplot2::facet_wrap(~Rules) +
     ggplot2::ggtitle("Bootstrap Distribution of Overall/Subgroup Estimates")+
-    ggplot2::theme(plot.title=element_text(size=16,face="bold"),
-                   axis.text.y=element_blank(),
-                   axis.ticks.y=element_blank(),
-                   axis.text.x=element_text(face="bold"),
-                   axis.title=element_text(size=12,face="bold"))+
+    ggplot2::theme(plot.title=ggplot2::element_text(size=16,face="bold"),
+                   axis.text.y=ggplot2::element_blank(),
+                   axis.ticks.y=ggplot2::element_blank(),
+                   axis.text.x=ggplot2::element_text(face="bold"),
+                   axis.title=ggplot2::element_text(size=12,face="bold"))+
     ggplot2::theme_bw()
   return(res)
 }

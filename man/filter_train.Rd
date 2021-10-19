@@ -60,7 +60,7 @@ regress Y~ENET(X) with hyper-parameters:
 
 hyper = list(lambda="lambda.min", family="gaussian",interaction=FALSE))
 
-If interaction=TRUE, then Y~ENET(X,A,X*A), and variables with estimated coefficients of 
+If interaction=TRUE, then Y~ENET(X,X*A), and variables with estimated coefficients of 
 zero in both the main effects (X) and treatment-interactions (X*A) are filtered. This 
 aims to find variables that are prognostic and/or predictive. 
 
@@ -76,7 +76,7 @@ hyper=list(b=0.66, K=200, DF2=FALSE, FDR=FALSE, pval.thres=0.10)
 
 where b=(\% of total data to sample; default=66\%), K=# of subsamples, FDR (FDR based
 multiplicity correction for p-values), pval.thres=0.10 (adjust to change 
-filtering threshold). DF2 fits Y~ranger(X, A, XA) and calculates the 
+filtering threshold). DF2 fits Y~ranger(X, XA) and calculates the 
 VI_2DF = VI_X+VI_XA, which is the variable importance of the main effect + the 
 interaction effect (joint test). Var(VI_2DF) = Var(VI_X)+Var(VI_AX)+2cov(VI_X, VI_AX) 
 where each component is calculated using the subsampling approach described above.
@@ -112,7 +112,7 @@ Friedman, J., Hastie, T. and Tibshirani, R. (2008) Regularization Paths for
 
 Wright, M. N. & Ziegler, A. (2017). ranger: A fast implementation of 
 random forests for high dimensional data in C++ and R. J Stat Softw 77:1-17. 
-\url{https://doi.org/10.18637/jss.v077.i01}.
+\doi{10.18637/jss.v077.i01}.
 
 Ishwaran, H. Lu, M. (2017). Standard errors and confidence intervals 
 for variable importance in random forest regression, classification, and survival.

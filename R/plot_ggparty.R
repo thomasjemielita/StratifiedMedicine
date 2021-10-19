@@ -19,7 +19,12 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
   # param.dat$LCL0 <- param.dat$LCL
   # param.dat$UCL0 <- param.dat$UCL
   # param.dat$prob.est <- param.dat$`Prob(>0)`
-  Subgrps <- as.numeric(unique(param.dat$Subgrps[param.dat$Subgrps!="ovrl"]))
+  if (is.null(object$trt_assign)) {
+    Subgrps_num <- as.numeric(unique(object$out.train$Subgrps))
+  }
+  if (!is.null(object$trt_assign)) {
+    Subgrps_num <- as.numeric(unique(object$trt_assign$Subgrps))
+  }
   
   param.dat$label <- with(param.dat, paste( sprintf("%.2f", round(est0,2)),
                                             " [",
@@ -116,7 +121,7 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
         pred.s$A <- factor(pred.s$A, levels = A_lvls)
       }
       pred.s <- data.frame(id=s, pred.s)
-      pred.surv <- suppressWarnings( bind_rows(pred.surv, pred.s) )
+      pred.surv <- suppressWarnings( dplyr::bind_rows(pred.surv, pred.s) )
     } 
     plot.dat <- pred.surv
     n.events <- sum(param.subs$events)
@@ -139,7 +144,7 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
     if (object$param=="cox") {
       param.subs$est0 <- log(param.subs$est0)
     }
-    for (s in unique(Subgrps)) {
+    for (s in unique(param.subs$Subgrps)) {
       dat.s <- rnorm(10000, mean = param.subs$est0[param.subs$Subgrps==s],
                      sd = param.subs$SE0[param.subs$Subgrps==s])
       dat.s <- data.frame(Subgrps=s, estimand=estimand, est=dat.s)
@@ -153,18 +158,16 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
   }
   dat.dens <- NULL
   for (s in unique(post.prob$Subgrps)){
-    hold.s = post.prob %>% filter(Subgrps==s)
+    hold.s = post.prob[post.prob$Subgrps==s,]
     dat.s = with(density(hold.s$est, na.rm=T), data.frame(x, y))
     dat.s = data.frame(id = s, dat.s)
     dat.dens = rbind(dat.dens, dat.s)
   }
   max.dens <- max(dat.dens$y)*1.05
-  dat.dens$id <- as.character(dat.dens$id)
   
   # If Applicable: Map "Pooled Subgroups" back to original tree #
-  if (!is.null(object$pool.dat)) {
-    pool.dat <- object$pool.dat
-    pool.dat <- pool.dat[,c("Subgrps", "pred_opt")]
+  if (!is.null(object$trt_assign)) {
+    pool.dat <- unique(object$trt_assign)
     colnames(pool.dat) <- c("Subgrps0", "Subgrps")
     # Merge with param #
     param.dat <- left_join(param.dat, pool.dat, by="Subgrps")
@@ -178,20 +181,47 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
     dat.dens <- left_join(dat.dens, pool.dat, by="id")
     dat.dens$trt_assign <- dat.dens$id
     dat.dens$id <- dat.dens$Subgrps0
-    Subgrps <- as.numeric(unique(dat.dens$Subgrps0))
     param.subs <- left_join(param.subs, pool.dat, by="id")
     param.subs$trt_assign <- param.subs$id
     param.subs$Subgrps <- param.subs$Subgrps0
   }
   # Make sure id is numeric #
   plot.dat$id <- as.numeric(plot.dat$id)
-  # Add estimates into tree #
+  dat.dens$id <- as.numeric(dat.dens$id)
+  
+  # Change estimand labels (based on types) #
+  if (family=="gaussian") {
+    if (!is.null(object$out.train$A)) {
+      plot.dat$estimand <- with(plot.dat, 
+                               paste("E(Y|X,A=", 
+                                     sub(".*_", "", estimand), ")", sep=""))
+      param.subs$estimand <- paste("E(Y|A=", A_lvls[2], ")-", 
+                                   "E(Y|A=", A_lvls[1], ")", sep="")
+      dat.dens$estimand <- paste("E(Y|A=", A_lvls[2], ")-", 
+                                 "E(Y|A=", A_lvls[1], ")", sep="")
+    }
+  }
+  if (family=="binomial") {
+    if (!is.null(object$out.train$A)) {
+      plot.dat$estimand = with(plot.dat, 
+                               paste("P(Y=1|X,A=", 
+                                     sub(".*_", "", estimand), ")", sep=""))
+      param.subs$estimand = paste("P(Y=1|A=", A_lvls[2], ")-", 
+                                  "P(Y=1|A=", A_lvls[1], ")", sep="")
+      plot.dat$est <- with(plot.dat, ifelse(est<0, 0, ifelse(est>1, 1, est)))
+      dat.dens$estimand <- paste("P(Y=1|A=", A_lvls[2], ")-", 
+                                 "P(Y=1|A=", A_lvls[1], ")", sep="")
+    }
+  }
+  # Add estimates into tree (add in density/outcome data? Then can check if merged)#
   ct_node <- as.list(ct$node)
-  for (s in Subgrps) {
+  for (s in Subgrps_num) {
     ct_node[[s]]$info$label <- param.subs$label[param.subs$Subgrps==s] 
     ct_node[[s]]$info$N <- param.subs$N[param.subs$Subgrps==s] 
     ct_node[[s]]$info$estimand <- param.subs$estimand[param.subs$Subgrps==s]
     ct_node[[s]]$info$prob.est <- param.subs$prob.est[param.subs$Subgrps==s]
+    ct_node[[s]]$info$plot.dat <- plot.dat[plot.dat$id==s,]
+    ct_node[[s]]$info$dat.dens <- dat.dens[dat.dens$id==s,]
     if (family=="survival") {
       ct_node[[s]]$info$events <- param.subs$events[param.subs$Subgrps==s] 
     }
@@ -207,7 +237,7 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
   
   
   ## Plot setup ##
-  add_vars_list <- list(N = "$node$info$N", est = "$node$info$label", 
+  add_vars_list <- list(N = "$node$info$N", 
                         estimand = "$node$info$estimand", 
                         prob.est = "$node$info$prob.est",
                         label = "$node$info$label")
@@ -248,20 +278,21 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
                        list(size = 8, fontface="bold"),
                        list(size = 8),
                        list(size = 8)),
-      ids = "terminal")
+      ids = "terminal", nudge_x = ifelse(plots=="none", 0.05, 0))
     # Outcome Plot #
     out_plot <- ggparty::geom_node_plot(
       gglist = list(ggplot2::geom_boxplot(data=plot.dat,
-                                          ggplot2::aes(x=estimand, y=est, fill=estimand)),
-                                      ggplot2::scale_x_discrete(expand=c(0.4, 0.4)), 
-                                      ggplot2::xlab(""),
-                                      ggplot2::ylab("Estimate"),
-                                      ggplot2::theme_bw(), 
-                                      ggplot2::theme(axis.text.y = ggplot2::element_blank()),
-                                      ggplot2::coord_flip()),
-                               nudge_x = nudge_out, width = width_out,
-                               shared_axis_labels = TRUE,
-                               legend_separator = TRUE, scales = "fixed")
+                                          ggplot2::aes(x=estimand, y=est, 
+                                                       fill=estimand)),
+                    ggplot2::scale_x_discrete(expand=c(0.4, 0.4)), 
+                    ggplot2::xlab(""),
+                    ggplot2::ylab("Estimate"),
+                    ggplot2::theme_bw(), 
+                    ggplot2::theme(axis.text.y = ggplot2::element_blank()),
+                    ggplot2::coord_flip()),
+      nudge_x = nudge_out, width = width_out,
+      shared_axis_labels = TRUE,
+      legend_separator = TRUE, scales = "fixed") 
     # Density Plot #
     dens_plot <- ggparty::geom_node_plot(
       gglist = list( ggplot2::geom_area(data=dat.dens, 
@@ -277,7 +308,10 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
                                       ggplot2::element_text(size = 8, face = "bold")),
                      ggplot2::xlab("Density"), ylab("") ), shared_axis_labels = TRUE,
       width=width_dens, nudge_x = nudge_dens)
-    # Outcome Only #
+    # Different Plot Types #
+    if (plots=="none") {
+      plt.out <- plt
+    }
     if (plots=="outcome") {
       plt.out <- plt + out_plot 
     }
@@ -308,7 +342,8 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
                          list(size = 8, fontface="bold"),
                          list(size = 8), 
                          list(size = 8)),
-        ids = "terminal")
+        ids = "terminal",
+        nudge_x = ifelse(plots=="none", 0.05, 0))
     if (is.null(out.train$A)) {
       gg_line <- ggplot2::geom_line(data=plot.dat,aes(x=time, y=surv), size=1.5)
     }
@@ -337,6 +372,9 @@ plot_ggparty = function(object, plots, prob.thres, width_out, nudge_out,
                      ggtitle(estimand),
                      ggplot2::theme(plot.title = element_text(size = 8, face = "bold"))),
       shared_axis_labels = TRUE, width = width_dens, nudge_x = nudge_dens)
+    if (plots=="none") {
+      plt.out <- plt
+    }
     if (plots=="outcome") {
       plt.out <- plt + out_plot
     }

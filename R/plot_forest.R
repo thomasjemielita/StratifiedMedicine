@@ -25,7 +25,7 @@ plot_forest <- function(x) {
     ggplot2::facet_wrap(~Rules, strip.position = "left", 
                         nrow = length(unique(plot.dat$Rules)),
                         scales = "free_y") + 
-    ggplot2::xlab("Subgroup") + ylab("Estimate (95% CI)") + ggtitle("PRISM Forest Plot") +
+    ggplot2::xlab("Subgroup") + ylab("Estimate (95% CI)") + ggtitle("Forest Plot") +
     ggplot2::theme_bw() + 
     ggplot2::theme(plot.title=element_text(size=16,face="bold"),
                    axis.text.y=element_blank(),

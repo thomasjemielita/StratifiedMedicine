@@ -1,9 +1,9 @@
 ---
-title: "User-specific Models: StratifiedMedicine"
+title: "User Specific Models"
 output: rmarkdown::html_vignette
 author: "Thomas Jemielita"
 vignette: >
-  %\VignetteIndexEntry{User_Specific_Models_PRISM}
+  %\VignetteIndexEntry{User Specific Models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -37,7 +37,7 @@ summ.table = data.frame( `Model` = c("filter", "ple", "submod", "param"),
                         `Description` = c("Variables that pass filter",
                                           "Model fit(s) and prediction function",
                                           "Model fit(s) and prediction function",
-                                          "Parameter Estimates") )
+                                          "Treatment Effect Estimates") )
 kable( summ.table, caption = "Key Outputs by Model" )
 ```
 
@@ -167,7 +167,7 @@ param_template <- function(Y, A, X, mu_hat, alpha,...){
   # Key Outputs: Subgroup specific and overall parameter estimates
   mod <- # Call parameter model #
   # Extract estimates/variability and combine #
-  param.dat <- data.frame(n=n, estimand="mu_1", 
+  param.dat <- data.frame(n=n, estimand="mu_1-mu_0", 
                           est=est, SE=SE, LCL=LCL, UCL=UCL, pval=pval)
   return(param.dat)
 }
