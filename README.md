@@ -4,7 +4,6 @@
 # StratifiedMedicine
 
 <!-- badges: start -->
-
 <!-- badges: end -->
 
 The goal of StratifiedMedicine is to develop analytic and visualization
@@ -26,27 +25,25 @@ Stratified Medicine; combines tools 1-4). Development of this package is
 ongoing.
 
 Given a data-structure of (Y,A,X) (outcome, treatments, covariates),
-PRISM is a five step feature, which comprise of individual tools
+PRISM is a four step feature, which comprise of individual tools
 mentioned above:
 
-1.  **Filter (filter\_train)**: Reduce covariate space by removing
+1.  **Filter (filter_train)**: Reduce covariate space by removing
     variables unrelated to outcome/treatment.
 
-2.  **Patient-level estimate (ple\_train)**: Estimate counterfactual
+2.  **Patient-level estimate (ple_train)**: Estimate counterfactual
     patient-level quantities, for example the conditional average
-    treatment effect (CATE), θ(x) = E(Y|X=x, A=1)-E(Y|X=x,A=0)
+    treatment effect (CATE), E(Y\|X=x, A=1)-E(Y\|X=x,A=0).
 
-3.  **Subgroup model (submod\_train)**: Tree-based models to identify
-    groups with heterogeneous treatment effects (ex: responder vs
-    non-responder)
+3.  **Subgroup model (submod_train)**: Tree-based models to identify
+    groups with heterogeneous treatment effects. Based on initial
+    subgroups (ex: tree nodes), we may also pool patients into
+    “benefitting” and “non-benefitting” (see “pool” argument). With or
+    without pooling, subgroup-specific treatment estimates and
+    variability metrics are also provided.
 
-4.  **Treatment Effect estimation and inference (param\_est)**: For the
-    overall population and discovered subgroups, output point estimates
-    and variability metrics. These outputs are crucial for Go-No-Go
-    decision making.
-
-5.  **Resampling**: Steps 1-4 are repeated through bootstrap resampling
-    for improved parameter estimation and inference.
+4.  **Resampling**: Steps 1-3 are repeated through bootstrap resampling
+    for improved statistical performance of subgroup-specific estimates.
 
 ## Installation
 
@@ -67,18 +64,16 @@ devtools::install_github("thomasjemielita/StratifiedMedicine")
 ## Example: Continuous Outcome with Binary Treatment
 
 Suppose the estimand or question of interest is the average treatment
-effect, θ<sub>0</sub> = E(Y|A=1)-E(Y|A=0). The goal is to understand
-whether there is any treatment heterogeneity across patients and if
-there are any distinct subgroups with similar responses. In this
-example, we simulate continuous data where roughly 30% of the patients
-receive no treatment-benefit for using \(A=1\) vs \(A=0\). Responders vs
-non-responders are defined by the continuous predictive covariates
-\(X1\) and \(X2\) for a total of four subgroups. Subgroup treatment
-effects are:
-
-θ<sub>1</sub> = 0 (X1 ≤ 0, X2 ≤ 0), θ<sub>2</sub> = 0.25 (X1 \> 0, X2 ≤
-0), θ<sub>3</sub> = 0.45 (X1 ≤ 0, X2 \> 0), θ<sub>4</sub> = 0.65 (X1 \>
-0, X2 \>0)
+effect, E(Y\|A=1)-E(Y\|A=0). The goal is to understand whether there is
+any treatment heterogeneity across patients and if there are any
+distinct subgroups with similar responses. In this example, we simulate
+continuous data where roughly 30% of the patients receive no
+treatment-benefit for using A=1 (study treatment) vs A=0 (control).
+Responders (should receive study treatment) vs non-responders (should
+receive control) are defined by the continuous predictive covariates X1
+and X2 for a total of four subgroups. Subgroup treatment effects are 0
+(X1 \<= 0, X2 \<= 0), 0.25 (X1 \> 0, X2 \<= 0), 0.45 (X1 \<= 0, X2 \>
+0), 0.65 (X1 \> 0, X2 \>0)
 
 ``` r
 library(StratifiedMedicine)
@@ -96,7 +91,6 @@ plot_importance(res_f)
 ![](man/figures/README-example-1.png)<!-- -->
 
 ``` r
-
 # counterfactual estimates (ple) #
 res_p <- ple_train(Y, A, X, ple="ranger")
 plot_dependence(res_p, X=X, vars="X1")
@@ -106,9 +100,16 @@ plot_dependence(res_p, X=X, vars="X1")
 ![](man/figures/README-example-2.png)<!-- -->
 
 ``` r
+# subgroup model #
+res_s <- submod_train(Y, A, X, submod="lmtree")
+plot_tree(res_s)
+```
 
+![](man/figures/README-example-3.png)<!-- -->
+
+``` r
 # PRISM Default: filter=glmnet, ple=ranger, submod=lmtree, param=dr #
-res0 = PRISM(Y=Y, A=A, X=X)
+res0 = PRISM(Y=Y, A=A, X=X, submod.hyper = list(maxdepth = 3))
 #> Observed Data
 #> Filtering: glmnet
 #> Counterfactual Estimation: ranger (X-learner)
@@ -117,42 +118,40 @@ res0 = PRISM(Y=Y, A=A, X=X)
 plot(res0) # default: tree plot 
 ```
 
-![](man/figures/README-example-3.png)<!-- -->
+![](man/figures/README-example-4.png)<!-- -->
 
 ``` r
 plot(res0, type="PLE:waterfall")
 ```
 
-![](man/figures/README-example-4.png)<!-- -->
-
-``` r
-
-## Dependence Plots (univariate and heat maps)
-plot_dependence(res0, vars="X1")
-#> `geom_smooth()` using method = 'loess' and formula 'y ~ x'
-```
-
 ![](man/figures/README-example-5.png)<!-- -->
 
 ``` r
-plot_dependence(res0, vars="X2")
+## Dependence Plots (univariate and heat maps)
+plot_dependence(res0, vars="X1")
 #> `geom_smooth()` using method = 'loess' and formula 'y ~ x'
 ```
 
 ![](man/figures/README-example-6.png)<!-- -->
 
 ``` r
-plot_dependence(res0, vars=c("X1", "X2"))
+plot_dependence(res0, vars="X2")
+#> `geom_smooth()` using method = 'loess' and formula 'y ~ x'
 ```
 
 ![](man/figures/README-example-7.png)<!-- -->
 
+``` r
+plot_dependence(res0, vars=c("X1", "X2"))
+```
+
+![](man/figures/README-example-8.png)<!-- -->
+
 Overall, the StratifiedMedicine R package provides information at the
-patient-level, the subgroup-level (if any), and the overall population.
-While there are defaults in place, the user can also input their own
-functions/model wrappers into each of the individual tools. For more
-details and more examples, we refer the reader to the following
-vignettes, [Overview of
+patient-level and the subgroup-level (if any). While there are defaults
+in place, the user can also input their own functions/model wrappers
+into each of the individual tools. For more details and more examples,
+we refer the reader to the following vignettes, [Overview of
 Package](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_PRISM.html),
 [User Specific
 Models](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_User_Models.html).

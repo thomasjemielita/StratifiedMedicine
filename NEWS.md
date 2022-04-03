@@ -1,3 +1,9 @@
+# StratifiedMedicine 1.0.5
+* Enhanced summary() function for both PRISM and submod_train
+* Added plot_tree for submod_train function.
+* Added resampling functionality to submod_train function
+* Minor bug fixes throughout (ex: T-learner with non-null Xtest dataset)
+
 # StratifiedMedicine 1.0.4
 * Fixed bugs for plot() for type="resample" and tree.plots="density", such that density plots match up with right tree nodes.
 * Added pool="trteff","trteff_boot" (pools subgroups based on naive or bootstrap resampling based treatment effect estimates)
