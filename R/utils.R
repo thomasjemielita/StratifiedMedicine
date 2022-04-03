@@ -1,9 +1,143 @@
+
+.add_trt_details <- function(Y, Subgrps, trt_dat, family) {
+  
+  if (!("Prob(>0)" %in% names(trt_dat))) {
+    trt_dat$`Prob(>0)` <- with(trt_dat, 1-pnorm(0, mean=est, sd=SE))
+  }
+  if (family=="survival") {
+    event.tot <- sum(Y[,2])
+    event.subs <- aggregate(Y[,2] ~ Subgrps, FUN="sum")
+    colnames(event.subs) <- c("Subgrps", "events")
+    event.dat <- rbind( data.frame(Subgrps="ovrl", events=event.tot),
+                        event.subs)
+    trt_dat <- left_join(trt_dat, event.dat, by="Subgrps")
+  }
+  return(trt_dat)
+}
+trt_data_cleaner <- function(trt_dat, round_est=4, round_SE=4,
+                    round_CI=4) {
+  trt_dat <- trt_dat[order(trt_dat$estimand, trt_dat$Subgrps),]
+  trt_dat$est <- with(trt_dat, round(est,round_est) )
+  trt_dat$SE <- with( trt_dat,  round(SE,round_SE) )
+  trt_dat$LCL <- with( trt_dat,  round(LCL,round_CI) )
+  trt_dat$UCL <- with( trt_dat,  round(UCL,round_CI) )
+  return(trt_dat)
+}
+summary_output_submod <- function(object, round_est=4, round_SE=4,
+                                  round_CI=4) {
+  
+  out <- NULL
+  out$submod_call <- object$submod_call
+  ind_pool <- ifelse(is.null(object$trt_assign), FALSE, TRUE)
+  ind_resamp <- ifelse(is.null(object$trt_eff_resamp), FALSE, TRUE)
+  
+  # Set up Subgroups / Trt Ests #
+  trt_eff_obs <- trt_data_cleaner(object$trt_eff_obs, round_est=round_est,
+                                  round_SE=round_SE, round_CI=round_CI)
+  if (!ind_pool) {
+    if (inherits(object, "PRISM")) {
+      numb.subs <- with(object, length(unique(out.train$Subgrps)))
+    }
+    if (inherits(object, "submod_train")) {
+      numb.subs <- with(object, length(unique(Subgrps.train))) 
+    }
+  }
+  if (ind_pool) {
+    numb.subs <- paste("Before Pooling, ", length(unique(object$trt_assign$Subgrps)))
+    trt_eff_pool <- trt_data_cleaner(object$trt_eff_pool)
+    pool_name <- paste("Treatment Effect Estimates (", 
+                       unique(object$trt_eff_pool$type),
+                       " pooling)",sep="")
+    trt_eff_dopt <- trt_data_cleaner(object$trt_eff_dopt)
+  }
+  if (ind_resamp) {
+    trt_eff_resamp <- trt_data_cleaner(object$trt_eff_resamp)
+  }
+  out$`Number of Identified Subgroups` <- numb.subs
+  
+  # Variables selected #
+  if (inherits(object, "PRISM")) {
+    if (c("party") %in% class(object$submod.fit$mod)) {
+      submod_vars <- getUsefulPredictors(object$submod.fit$mod)
+      out$`Variables that Define the Subgroups` <- paste(submod_vars, collapse=", ")
+    } 
+  }
+  if (inherits(object, "submod_train")) {
+    if (c("party") %in% class(object$fit$mod)) {
+      submod_vars <- getUsefulPredictors(object$fit$mod)
+      out$`Variables that Define the Subgroups` <- paste(submod_vars, collapse=", ")
+    }
+  }
+  
+  if (!ind_pool) {
+    out$`Treatment Effect Estimates (observed)` <- trt_eff_obs 
+  }
+  if (ind_pool) {
+    out$`Treatment Effect Estimates (pooling)` <- trt_eff_pool
+    out$`Treatment Effect Estimates (optimal trt)` <- trt_eff_dopt
+    # names(out)[4] <- pool_name 
+  }
+  if (ind_resamp) {
+    out$`Treatment Effect Estimates (bootstrap)` <- trt_eff_resamp
+  }
+  # if (inherits(object, "PRISM")) {
+  #   trt_eff_prism <- trt_data_cleaner(object$param.dat)
+  #   out$`Treatment Effect Estimates (Final)` <- trt_eff_prism
+  # }
+  return(out)
+}
+### Default Treatment Estimates for Plots (PRISM) ###
+default_trt_plots <- function(obj, est.resamp=TRUE) {
+  
+  # Default Setup #
+  param.dat <- obj$param.dat
+  param.dat$est0 <- param.dat$est
+  param.dat$SE0 <- param.dat$SE
+  param.dat$LCL0 <- param.dat$LCL
+  param.dat$UCL0 <- param.dat$UCL
+  param.dat$prob.est <- param.dat$`Prob(>0)`
+  # resample <- ifelse(is.null(obj$resample), "None", obj$resample)
+  # bayes <- ifelse(is.null(obj$bayes.fun), FALSE, TRUE)
+  # label.param <- ""
+  # if (est.resamp & (resample %in% c("Bootstrap", "CV"))) {
+  #   if (resample=="Bootstrap" & is.null(param.dat$LCL.calib)) {
+  #     param.dat$est0 <- param.dat$est_resamp
+  #     param.dat$SE0 <- param.dat$SE_resamp
+  #     param.dat$LCL0 <- param.dat$LCL.pct
+  #     param.dat$UCL0 <- param.dat$UCL.pct
+  #     label.param <- "(Boot,Pct)"
+  #   }
+  #   if (resample=="Bootstrap" & !is.null(param.dat$LCL.calib)) {
+  #     param.dat$SE0 <- param.dat$SE_resamp
+  #     param.dat$LCL0 <- param.dat$LCL.calib
+  #     param.dat$UCL0 <- param.dat$UCL.calib
+  #     label.param <- "(Boot,Calib)"
+  #   }
+  #   if (resample=="CV"){
+  #     param.dat$est0 <- param.dat$est_resamp
+  #     param.dat$LCL0 <- param.dat$LCL.CV
+  #     param.dat$UCL0 = param.dat$UCL.CV
+  #     label.param <- "(CV)"
+  #   }
+  # }
+  # if (obj$family=="survival") {
+  #   if (obj$param=="cox") {
+  #     param.dat$est0 = exp(param.dat$est0)
+  #     param.dat$LCL0 = exp(param.dat$LCL0)
+  #     param.dat$UCL0 = exp(param.dat$UCL0)
+  #     param.dat$estimand = gsub("logHR", "HR", param.dat$estimand)
+  #     param.dat$prob.est = 1-param.dat$`Prob(>0)`
+  #   }
+  # }
+  obj$param.dat <- param.dat
+  return(obj)
+}
 ### Extract Predictors Used in Party/MOB Tree ###
 getUsefulPredictors <- function(x) {
-  varid <- nodeapply(x, ids = nodeids(x),
-                     FUN = function(n) split_node(n)$varid)
+  varid <- partykit::nodeapply(x, ids = partykit::nodeids(x),
+                     FUN = function(n) partykit::split_node(n)$varid)
   varid <- unique(unlist(varid))
-  names(data_party(x))[varid]
+  names(partykit::data_party(x))[varid]
 }
 ## Extract summary statistics (linear regression: Y~A within subgroup) ##
 lm_stats = function(summ.fit, Subgrps, s, alpha, noA) {
@@ -171,78 +305,76 @@ calibrate_alpha = function(resamp_calib, alpha_ovrl, alpha_s) {
   return(out)
 }
 ### Resampling metric calculation ####
-resamp_metrics = function(param.dat, resamp_param, resamp_calib, resample) {
+resamp_metrics = function(trt_eff, resamp_dist, resamp_calib, resample) {
 
-  calibrate=FALSE
-  alpha_ovrl = unique(param.dat$alpha[param.dat$Subgrps==0])
-  alpha_s = unique(param.dat$alpha[param.dat$Subgrps>0])
+  calibrate <- FALSE
+  alpha_ovrl <- unique(trt_eff$alpha[trt_eff$Subgrps=="ovrl"])
+  alpha_s <- unique(trt_eff$alpha[trt_eff$Subgrps!="ovrl"])
   ## Calculate calibrated alpha ##
   if (!is.null(resamp_calib)) {
-    alpha_c = calibrate_alpha(resamp_calib=resamp_calib, alpha_ovrl=alpha_ovrl,
+    alpha_c <- calibrate_alpha(resamp_calib=resamp_calib, alpha_ovrl=alpha_ovrl,
                               alpha_s=alpha_s)
-    alpha.ovrl_c = alpha_c$alpha_calib[alpha_c$ovrl_ind==1]
-    alpha.s_c = alpha_c$alpha_calib[alpha_c$ovrl_ind==0]
-    param.dat$alpha_c = with(param.dat, ifelse(Subgrps==0,alpha.ovrl_c,
+    alpha.ovrl_c <- alpha_c$alpha_calib[alpha_c$ovrl_ind==1]
+    alpha.s_c <- alpha_c$alpha_calib[alpha_c$ovrl_ind==0]
+    trt_eff$alpha_c <- with(trt_eff, ifelse(Subgrps==0,alpha.ovrl_c,
                                                alpha.s_c))
-    calibrate=TRUE
+    calibrate <- TRUE
   }
   # Loop through estimands #
   looper = function(e) {
-    final_ests = param.dat[param.dat$estimand==e,]
-    final_ests$est_resamp = NA
-    final_ests$SE_resamp = NA
-    if (resample=="Permutation") {
-      final_ests$pval_perm = NA
-    }
-    if (resample=="Bootstrap") {
-      final_ests = final_ests %>% 
-        mutate(bias.boot = NA, LCL.pct = NA, UCL.pct= NA, `Prob(>0)`=NA)
-      if (calibrate) {
-        final_ests$LCL.calib = with(final_ests, est - qt(1-alpha_c/2, df=N-1)*SE)
-        final_ests$UCL.calib = with(final_ests, est + qt(1-alpha_c/2, df=N-1)*SE)
-      }
-    }
-    for (sub in unique(final_ests$Subgrps)) {
-      if (sub<=0) { alpha = alpha_ovrl }
-      if (sub>0 ) { alpha = alpha_s }
-      hold = final_ests[final_ests$Subgrps==sub,]
-      hold.R = resamp_param[resamp_param$Subgrps==sub & resamp_param$estimand==e,]
+    
+    trt_obs = trt_eff[trt_eff$estimand==e,]
+    # if (calibrate) {
+    #   LCL_calib = with(trt_resamp, est - qnorm(1-alpha_c/2, df=N-1)*SE)
+    #   UCL_calib = with(trt_resamp, est + qnorm(1-alpha_c/2, df=N-1)*SE)
+    # }
+    est_out <- NULL
+    for (sub in unique(trt_obs$Subgrps)) {
+      if (sub=="ovrl") { alpha = alpha_ovrl }
+      if (sub!="ovrl") { alpha = alpha_s }
+      
+      hold = trt_obs[trt_obs$Subgrps==sub,]
+      hold.R = resamp_dist[resamp_dist$Subgrps==sub & resamp_dist$estimand==e,]
       est0 = hold$est
       est.vec = hold.R$est
-      ## Permutation (est, SE, p-value) ##
+
+      pval_resamp <- NA
+      bias_resamp <- NA
       if (resample=="Permutation") {
-        final_ests$est_resamp[final_ests$Subgrps==sub] = mean(hold.R$est, na.rm=TRUE)
-        final_ests$SE_resamp[final_ests$Subgrps==sub] = sd( est.vec, na.rm=TRUE)
-        final_ests$pval_perm[final_ests$Subgrps==sub] =
-          (sum(abs(est.vec)>abs(est0), na.rm=TRUE) + 1 ) / (length(na.omit(est.vec))+1)
+        est_resamp <- mean(hold.R$est, na.rm=TRUE)
+        SE_resamp <- sd( est.vec, na.rm=TRUE)
+        pval_resamp <- (sum(abs(est.vec)>abs(est0), na.rm=TRUE) + 1) / 
+          (length(na.omit(est.vec))+1)
       }
-      ## Bootstrap (smoothed est, SE, bias, pct CI) ##
       if (resample=="Bootstrap") {
-        final_ests$est_resamp[final_ests$Subgrps==sub] = mean(hold.R$est, na.rm=TRUE)
-        final_ests$SE_resamp[final_ests$Subgrps==sub] = sd( est.vec, na.rm=TRUE)
-        final_ests$bias.boot[final_ests$Subgrps==sub] = mean(hold.R$bias, na.rm=TRUE)
-        quants = as.numeric(
+        est_resamp <- mean(hold.R$est, na.rm=TRUE)
+        SE_resamp <- sd( est.vec, na.rm=TRUE)
+        bias_resamp <- mean(hold.R$bias, na.rm=TRUE)
+        quants <- as.numeric(
           quantile(est.vec, probs=c(alpha/2, (1-alpha/2)), na.rm = TRUE) )
-        final_ests$LCL.pct[final_ests$Subgrps==sub] = quants[1]
-        final_ests$UCL.pct[final_ests$Subgrps==sub] = quants[2]
-        final_ests$`Prob(>0)`[final_ests$Subgrps==sub] = mean(hold.R$est>0, na.rm=TRUE)
+        LCL_resamp <- quants[1]
+        UCL_resamp <- quants[2]
       }
-      ## Cross-validation (Cross-fitting estimate) ##
       if (resample=="CV") {
         N.tot = sum(hold.R$N)
         est.CF <- with(hold.R, weighted.mean(est, N))
         SE.CF <- with(hold.R, sqrt(  sum( (N/N.tot)^2*SE^2) ) )
-        final_ests$est_resamp[final_ests$Subgrps==sub] = est.CF
-        final_ests$SE_resamp[final_ests$Subgrps==sub] = SE.CF
-        final_ests$LCL.CV[final_ests$Subgrps==sub] = est.CF - qnorm(1-alpha/2)*SE.CF
-        final_ests$UCL.CV[final_ests$Subgrps==sub] = est.CF + qnorm(1-alpha/2)*SE.CF
+        est_resamp <- est.CF
+        SE_resamp <- SE.CF
+        LCL_resamp <- est.CF - qnorm(1-alpha/2)*SE.CF
+        UCL_resamp <- est.CF + qnorm(1-alpha/2)*SE.CF
       }
+      hold <- data.frame(Subgrps = sub, estimand=e, est = est_resamp, 
+                         SE=SE_resamp, LCL = LCL_resamp, UCL = UCL_resamp,
+                         pval = pval_resamp, alpha = alpha)
+      est_out <- rbind(est_out, hold)
     }
-    return(final_ests)
+    return(est_out)
   }
-  final_ests = lapply(unique(param.dat$estimand), looper)
-  final_ests = do.call(rbind, final_ests)
-  return(final_ests)
+  trt_resamp = lapply(unique(trt_eff$estimand), looper)
+  trt_resamp = do.call(rbind, trt_resamp)
+  trt_resamp$resample <- resample
+  return(trt_resamp)
 }
 
 #### Survival Helper Functions ####
@@ -424,8 +556,14 @@ prob_calculator <- function(fit, thres=">0") {
     thres <- paste(dir,numb,sep=" ")
   }
   # Check resampling / bayesian #
-  resamp <- ifelse(is.null(fit$resample), "None", as.character(fit$resample))
-  bayes <- ifelse(is.null(fit$bayes.fun), FALSE, TRUE)
+  if (inherits(fit, "PRISM")) {
+    resamp <- ifelse(is.null(fit$resample), "None", as.character(fit$resample))
+    bayes <- ifelse(is.null(fit$bayes.fun), FALSE, TRUE)
+  }
+  if (inherits(fit, "submod_train")) {
+    resamp <- "None"
+    bayes <- FALSE
+  }
   # Normal Approx (if no normal/bayes)
   if (resamp=="None" & !bayes) {
     prob.est <- with(param.dat, 1-pnorm(numb, mean=est, sd=SE))
@@ -446,7 +584,7 @@ prob_calculator <- function(fit, thres=">0") {
   }
   # Resampling #
   if (resamp %in% c("Bootstrap", "Permutation")) {
-    rdist <- fit$resamp.dist
+    rdist <- fit$resamp_dist
     rdist$prob.est = eval(parse(text=paste("ifelse(rdist$est",thres, ", 1, 0)")))
     prob.dat <- aggregate(prob.est ~ Subgrps*estimand, data=rdist, FUN="mean")
     if (fit$param=="param_cox") {

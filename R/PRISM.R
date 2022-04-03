@@ -11,6 +11,8 @@
 #' factor). "ple_train" accomodates >2 along with binary treatments.
 #' @param X Covariate space. 
 #' @param Xtest Test set. Default is NULL (no test predictions). Variable types should match X.
+#' @param mu_train Patient-level estimates in training set (see \code{ple_train}). 
+#' Default=NULL
 #' @param family Outcome type. Options include "gaussion" (default), "binomial", and "survival".
 #' @param filter Filter model to determine variables that are likely associated with the 
 #' outcome and/or treatment. Outputs a potential reduce list of varia where X.star 
@@ -81,8 +83,10 @@
 #' and R=5 for CV). This resamples the entire PRISM procedure. 
 #' @param resample_submod For submod only, resampling method for treatment effect estimates.
 #' Options include "Bootstrap" or NULL (no resampling).
-#' @param R_submod For submod only, number of resamples for treatment effect estimates.
-#' Only applicable if resample_submod="Bootstrap" and/or pool="trteff_boot". 
+#' @param R_submod Number of resamples for resample_submod
+#' @param resample_pool For submod only, resampling method for pooling step. 
+#' nly applicable if resample_submod="Bootstrap" and/or pool="trteff_boot". 
+#' @param R_pool Number of resamples for resample_pool
 #' @param calibrate Bootstrap calibration for nominal alpha (Loh et al 2016).
 #' Default=FALSE. For TRUE, outputs the calibrated alpha level and calibrated 
 #' CIs for the overall population and subgroups. Not applicable for permutation 
@@ -100,6 +104,8 @@
 #' @param verbose Detail progress of PRISM? Default=TRUE
 #' @param verbose.resamp Output iterations during resampling? Default=FALSE
 #' @param seed Seed for PRISM run (Default=777) 
+#' @param efficient If TRUE (default for PRISM), then models (filter, ple, submod) will 
+#' store reduced set of outputs for faster speed. 
 #'
 #' @return Trained PRISM object. Includes filter, ple, submod, and param outputs.
 #'  \itemize{
@@ -113,7 +119,7 @@
 #'   \item out.test - Test data-set with identified subgroups
 #'   \item Rules - Subgroup rules / definitions
 #'   \item param.dat - Parameter estimates and variablity metrics (depends on param)
-#'   \item resamp.dist - Resampling distributions (NULL if no resampling is done)
+#'   \item resamp_dist - Resampling distributions (NULL if no resampling is done)
 #' }
 #' @export
 #' @importFrom stats aggregate coef lm glm model.matrix p.adjust pnorm confint
@@ -225,7 +231,7 @@
 #'   # Plot of distributions and P(est>0) #
 #'   plot(res_boot, type="resample", estimand = "E(Y|A=1)-E(Y|A=0)")+
 #'   geom_vline(xintercept = 0)
-#'   aggregate(I(est>0)~Subgrps, data=res_boot$resamp.dist, FUN="mean")
+#'   aggregate(I(est>0)~Subgrps, data=res_boot$resamp_dist, FUN="mean")
 #' }
 #' 
 #' ## Examples: Binary Outcome ##
@@ -260,22 +266,22 @@
 #'   plot(res_weib, type="PLE:waterfall")
 #'   plot(res_weib)
 #'   
-#'   # PRISM: glmnet ==> Random Forest to estimate Treatment-Specific RMST
-#'   # ==> OTR (CTREE, uses RMST estimates as input) ==> Cox for HRs #
-#'   res_otr = PRISM(Y=Y, A=A, X=X)
-#'   plot(res_otr)
+#'   #PRISM: glmnet ==> Random Forest to estimate Treatment-Specific RMST
+#'   #RPART_CATE: Regress RMST on RPART for subgroups #
+#'   res_cate = PRISM(Y=Y, A=A, X=X, submod="rpart_cate")
+#'   plot(res_cate)
 #'
 #'   # PRISM: ENET ==> CTREE ==> Cox; with bootstrap #
 #'   res_ctree1 = PRISM(Y=Y, A=A, X=X, ple="None", submod = "ctree",
 #'                      resample="Bootstrap", R=50, verbose.resamp = TRUE)
 #'   plot(res_ctree1)
 #'   plot(res_ctree1, type="resample", estimand="HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
-#'   aggregate(I(est<0)~Subgrps, data=res_ctree1$resamp.dist, FUN="mean")
+#'   aggregate(I(est<0)~Subgrps, data=res_ctree1$resamp_dist, FUN="mean")
 #' }
 #'
 
 ##### PRISM: Patient Responder Identifiers for Stratified Medicine ########
-PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
+PRISM <- function(Y, A=NULL, X, Xtest=NULL, mu_train=NULL, family="gaussian",
                  filter="glmnet", ple="ranger", submod=NULL, param=NULL,
                  meta = ifelse(family=="survival", "T-learner", "X-learner"),
                  pool="no", delta = ">0", 
@@ -283,13 +289,17 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
                  combine = "SS",
                  alpha_ovrl=0.05, alpha_s = 0.05,
                  filter.hyper=NULL, ple.hyper=NULL, submod.hyper = NULL,
-                 resample = NULL, stratify="trt",
+                 resample = NULL, stratify=ifelse(!is.null(A), "trt", "no"),
                  R = NULL, resample_submod = NULL, R_submod=NULL, 
+                 resample_pool = NULL, R_pool=NULL,
                  calibrate=FALSE, alpha.mat=NULL,
                  filter.resamp = NULL, ple.resamp = NULL,
                  verbose=TRUE,
-                 verbose.resamp = FALSE, seed=777){
+                 verbose.resamp = FALSE, seed=777, 
+                 efficient = TRUE){
 
+  func_call <- match.call()
+  
   if (is.null(A)){
     message("No Treatment Variable (A) Provided: Searching for Prognostic Effects")
     if (!is.null(submod)){
@@ -342,28 +352,34 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
     }
   }
   
+  list_args <- list(family = family, filter = filter, 
+                    ple = ple, submod = submod, param = param,
+                    meta = meta, pool = pool,
+                    delta = delta, propensity = propensity,
+                    combine = combine,
+                    resample_submod = resample_submod, R_submod=R_submod,
+                    resample_pool = resample_pool, R_pool=R_pool,
+                    alpha_ovrl = alpha_ovrl, alpha_s = alpha_s, 
+                    filter.hyper = filter.hyper, ple.hyper = ple.hyper,
+                    submod.hyper = submod.hyper, verbose = verbose, 
+                    efficient = efficient)
+  
   ## Train PRISM on Observed Data (Y,A,X) ##
   if (verbose) {message("Observed Data")}
   set.seed(seed)
-  res0 <- PRISM_train(Y = Y, A = A, X = X, Xtest = Xtest, family = family, 
-                     filter = filter, ple = ple, submod = submod, param = param,
-                     meta = meta, pool = pool,
-                     delta = delta, propensity = propensity,
-                     combine = combine,
-                     resample_submod = resample_submod, R_submod=R_submod,
-                     alpha_ovrl = alpha_ovrl, alpha_s = alpha_s,
-                     filter.hyper = filter.hyper, ple.hyper = ple.hyper,
-                     submod.hyper = submod.hyper, verbose = verbose)
-  Subgrps <- res0$Subgrps.train
-  mu_train <- res0$mu_train
-  param.dat <- res0$param.dat
+  fit0 <- do.call("PRISM_train", 
+                 append(list(Y=Y, A=A, X=X, Xtest = Xtest), list_args))
+  Subgrps <- fit0$Subgrps.train
+  mu_train <- fit0$mu_train
+  param.dat <- fit0$param.dat
   param.dat <- param.dat[order(param.dat$Subgrps, param.dat$estimand),]
-  resamp.dist <- NULL # Set to NULL (needed if no resampling)
-  resamp.calib <- NULL # Set to NULL (needed if no resampling)
+  resamp_dist <- NULL
+  resamp_subgrps <- NULL 
+  resamp_calib <- NULL
   
-  ### Resampling (Bootstrapping, Permutation, or CV) ###
+  ## Resampling ##
   if (is.null(R) & !is.null(resample)){
-    if (resample %in% c("Permutation", "Bootstrap")){R <- 100}
+    if (resample %in% c("Permutation", "Bootstrap")){R <- 50}
     if (resample == "CV" ) {R <- 5}
   }
   if ( !is.null(resample)) {
@@ -377,63 +393,57 @@ PRISM = function(Y, A=NULL, X, Xtest=NULL, family="gaussian",
     ## Resampling: Auto-checks ##
     if (is.null(filter.resamp)) {  filter.resamp <- filter  }
     if (is.null(ple.resamp)) {  ple.resamp <- ple  }
-    ## Run PRISM (Resampling) ##
-    resR = PRISM_resamp(PRISM.fit = res0, Y = Y, A = A, X = X, 
-                        Xtest = Xtest, family = family,  filter = filter.resamp, 
-                        ple = ple.resamp, submod = submod, param = param, 
-                        meta = meta, pool = pool,
-                        delta = delta, propensity = propensity,
-                        combine = combine,
-                        resample_submod = resample_submod, R_submod=R_submod,
-                        alpha_ovrl = alpha_ovrl, alpha_s = alpha_s,
-                        filter.hyper = filter.hyper, ple.hyper = ple.hyper, 
-                        submod.hyper = submod.hyper, verbose = verbose.resamp,
-                        resample = resample, 
-                        R = R, stratify = stratify, calibrate = calibrate, 
-                        alpha.mat = alpha.mat)
-    param.dat <- resR$param.dat
-    resamp.dist <- resR$resamp.dist
-    resamp.calib <- resR$resamp.calib
+    list_args_R <- list_args
+    list_args_R$filter <- filter.resamp
+    list_args_R$ple <- ple.resamp
+    
+    fitR <- resampler_general(Y=Y, A=A, X=X, fit=fit0, 
+                              wrapper="PRISM_train",
+                              list_args=list_args_R, 
+                              resample = resample, R=R, 
+                              stratify=stratify, 
+                              fixed_subs = "false", 
+                              calibrate = calibrate, 
+                              alpha.mat = alpha.mat, 
+                              verbose=verbose.resamp)
+    param.dat <- fitR$trt_eff_resamp
+    resamp_dist <- fitR$resamp_dist
+    resamp_subgrps <- fitR$resamp_subgrps
   }
-  # Calculate empirical normal probabilities if missing from param.dat #
-  if (!("Prob(>0)" %in% names(param.dat))) {
-    param.dat$`Prob(>0)` <- with(param.dat, 1-pnorm(0, mean=est, sd=SE))
-  }
-  # Number of Events (if survival) #
-  if (family=="survival") {
-    event.tot <- sum(Y[,2])
-    event.subs <- aggregate(Y[,2] ~ Subgrps, FUN="sum")
-    colnames(event.subs) <- c("Subgrps", "events")
-    event.dat <- rbind( data.frame(Subgrps="ovrl", events=event.tot),
-                        event.subs)
-    param.dat <- left_join(param.dat, event.dat, by="Subgrps")
-  }
+  # Add Details to Trt Estimates #
+  param.dat <- .add_trt_details(Y=Y, Subgrps=Subgrps, trt_dat = param.dat, family=family)
   
   if (is.null(A)) {
-    out.train <- data.frame(Y, X, Subgrps=res0$Subgrps.train)
+    out.train <- data.frame(Y, X, Subgrps=fit0$Subgrps.train)
   }
   if (!is.null(A)) {
-    out.train <- data.frame(Y, A, X, Subgrps=res0$Subgrps.train)
+    out.train <- data.frame(Y, A, X, Subgrps=fit0$Subgrps.train)
   }
   if (is.null(Xtest)) { 
     out.test <- NULL
   } 
   else { 
-    out.test <- data.frame(Xtest, Subgrps=res0$Subgrps.test) 
+    out.test <- data.frame(Xtest, Subgrps=fit0$Subgrps.test) 
   }
     
   ### Return Results ##
-  res = list(filter.mod = res0$filter.mod, filter.vars = res0$filter.vars,
-             ple.fit = res0$ple.fit, mu_train=res0$mu_train, mu_test=res0$mu_test,
-             submod.fit = res0$submod.fit,
+  res = list(call = func_call, filter.mod = fit0$filter.mod, filter.vars = fit0$filter.vars,
+             ple.fit = fit0$ple.fit, mu_train=fit0$mu_train, mu_test=fit0$mu_test,
+             submod.fit = fit0$submod.fit,
              out.train = out.train,
              out.test = out.test,
-             Rules=res0$Rules,
-             param.dat = param.dat, pool=pool, trt_assign=res0$trt_assign,
-             trt_eff = res0$trt_eff, trt_eff_pool = res0$trt_eff_pool,
-             trt_eff_dopt = res0$trt_eff_dopt, 
-             resample=resample, resamp.dist = resamp.dist, 
-             resamp.calib = resamp.calib, family = family,
+             Rules=fit0$Rules,
+             param.dat = param.dat, 
+             pool=pool, trt_assign=fit0$trt_assign,
+             trt_eff = fit0$trt_eff, trt_eff_obs = fit0$trt_eff_obs,
+             trt_eff_pool = fit0$trt_eff_pool, trt_eff_dopt = fit0$trt_eff_dopt, 
+             trt_eff_resamp = fit0$trt_eff_resamp, 
+             resample=resample, resamp_dist = resamp_dist, 
+             resamp_subgrps = resamp_subgrps, 
+             resamp_calib = resamp_calib, 
+             submod_rdist = fit0$submod_rdist,
+             resamp_subgrps_submod = fit0$resamp_subgrps,
+             family = family,
              filter = filter, ple = ple, submod=submod, param=param,
              meta = meta, combine = combine,
              alpha_ovrl = alpha_ovrl, alpha_s = alpha_s,
@@ -502,10 +512,13 @@ predict.PRISM = function(object, newdata=NULL, type="all", ...){
 
 #' PRISM: Patient Response Identifier for Stratified Medicine (Summary)
 #'
-#' Predictions for PRISM algorithm. Given the training set (Y,A,X) or new test set (Xtest),
-#' output ple predictions and identified subgroups with correspond parameter estimates.
+#' Summary for PRISM algorithm results. Outputs configuration, which variables pass the filter (if used),
+#' subgroup summaries, and treatment effect estimates.
 #'
 #' @param object Trained PRISM model.
+#' @param round_est Rounding for trt ests (default=4)
+#' @param round_SE Rounding for trt SEs (default=4)
+#' @param round_CI Rounding for trt CIs (default=4)
 #' @param ... Any additional parameters, not currently passed through.
 #'
 #' @return List of key PRISM outputs: (1) Configuration, (2) Variables that pass filter 
@@ -515,13 +528,19 @@ predict.PRISM = function(object, newdata=NULL, type="all", ...){
 #' @method summary PRISM
 #' @export
 #' 
-summary.PRISM = function(object,...){
+summary.PRISM = function(object, round_est=4,
+                         round_SE=4, round_CI=4,...){
 
   out <- NULL
   alpha_ovrl <- object$alpha_ovrl
   alpha_s <- object$alpha_s
+  # Call #
+  out$call <- object$call
   # Configuration #
-  out$`PRISM Configuration` <- with(object, paste(filter, ple, submod, param, sep=" => "))
+  out$`PRISM Configuration` <- with(object, paste("[Filter]", filter, "=>",
+                                                  "[PLE]", ple, "=>",
+                                                  "[Subgroups]", submod, "=>",
+                                                  "[Param]", param, sep=" "))
   if (!is.null(object$resample)) {
     out$`PRISM Configuration` <- paste(out$`PRISM Configuration`, object$resample, sep="=> ")
   }
@@ -530,47 +549,34 @@ summary.PRISM = function(object,...){
     out$`Variables that Pass Filter` <- object$filter.vars
   }
   # Subgroup summary #
-  if (is.null(object$pool.dat)) {
-    numb.subs <- with(object, length(unique(out.train$Subgrps)))
-  }
-  if (!is.null(object$pool.dat)) {
-    numb.subs <- paste("Before Pooling, ", length(unique(object$pool.dat$Subgrps)))
-  }
-  out$`Number of Identified Subgroups` <- numb.subs
-  if (c("party") %in% class(object$submod.fit$mod)) {
-    submod_vars <- getUsefulPredictors(object$submod.fit$mod)
-    out$`Variables that Define the Subgroups` <- paste(submod_vars, collapse=", ")
-  }
-  # Parameter Estimation Summary #
-  param.dat <- object$param.dat
-  param.dat <- param.dat[order(param.dat$estimand, param.dat$Subgrps),]
-  param.dat$est = with(param.dat, round(est,4) )
-  param.dat$SE = with( param.dat,  round(SE,4) )
-  param.dat$CI = with(param.dat, paste("[",round(LCL,4), ",", 
-                                       round(UCL,4), "]", sep=""))
+  out_submod <- summary_output_submod(object, round_est=round_est,
+                                      round_SE=round_SE, round_CI=round_CI)
+  out <- append(out, out_submod)
+  
+  # # Final Estimates Summary #
+  # if (!is.null(object$resample)) {
+  #   
+  #   param.dat <- object$param.dat
+  #   trt_final <- param.dat
+  #   trt_final <- trt_final[,c("Subgrps", "N", "estimand", "est_resamp", "SE_resamp")]
+  #   
+  # }
+  
   if (!is.null(object$resample)) {
+    
+    param.dat <- trt_data_cleaner(object$param.dat, round_est=round_est,
+                                    round_SE=round_SE, round_CI=round_CI)
     if (object$resample=="Bootstrap") {
-      param.dat$`bias (boot)` = with(param.dat, round(bias.boot,4))
-      param.dat$`est (boot)` = with(param.dat, round(est_resamp,4))
-      param.dat$`CI (boot pct)` = with(param.dat, paste("[",round(LCL.pct,4), ",", 
-                                                  round(UCL.pct,4), "]", sep=""))
-    }
-    if (object$resample=="Permutation") {
-      param.dat$`pval (perm)` = param.dat$pval_perm
+      out$`Treatment Effect Estimates (bootstrap)` <- param.dat
     }
     if (object$resample=="CV") {
-      param.dat$`est (cv)` = with(param.dat, round(est_resamp,4))
-      param.dat$`CI (cv)` = with(param.dat, paste("[",round(LCL.CV,4), ",", 
-                                           round(UCL.CV,4), "]", sep=""))
+      out$`Treatment Effect Estimates (CV)` <- param.dat
     }
+    if (object$resample=="Permutation") {
+      out$`Treatment Effect Estimates (Permutation)` <- param.dat
+    }
+    
   }
-  param.dat$alpha = with(param.dat, ifelse(Subgrps=="ovrl", alpha_ovrl, alpha_s))
-  param.dat = param.dat[, colnames(param.dat) %in% 
-                          c("Subgrps", "N", "estimand", "est", "SE", "CI", "alpha",
-                            "bias (boot)",
-                            "est (boot)", "est (cv)", "CI (boot pct)", "CI (cv)",
-                            "pval (perm)")]
-  out$`Parameter Estimates` = param.dat
   class(out) <- "summary.PRISM"
   out
 }

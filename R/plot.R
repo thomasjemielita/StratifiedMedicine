@@ -34,15 +34,11 @@ globalVariables(c("Rules", "est", "LCL", "UCL", "PLE", "label", "N", "estimand",
 #' probability density of the treatment effects is shown (normal approximation, unless resampling is used). 
 #' "both" include the "outcome" and "density" plots. If tree.plots = "none", then only the 
 #' tree structure is shown.
-#' @param tree.thres Probability threshold, ex: P(Mean(A=1 vs A=0)>c. Default=NULL, 
+#' @param prob.thres Probability threshold, ex: P(Mean(A=1 vs A=0)>c. Default=NULL, 
 #' which defaults to using ">0", unless param="cox", which  "P(HR(A=1 vs A=0))<1". 
-#' If a density plot is included, setting tree.thres=">c" will use green colors 
-#' for values above c, and red colors for values below c. If tree.thres="<c", the 
+#' If a density plot is included, setting prob.thres=">c" will use green colors 
+#' for values above c, and red colors for values below c. If prob.thres="<c", the 
 #' reverse color scheme is used.
-#' @param est.resamp Should plot present resampling based estimates? Default=TRUE if 
-#' bootstrap or CV  based resampling is used. Only applicable for type="submod". 
-#' If bootstrap calibration is used, calibrated CIs are presented. If no calibration,
-#' then percentile Cis are presented with the smoothed bootstrap point-estimates.
 #' @param nudge_out Nudge tree outcome plot (see ggparty for details)
 #' @param nudge_dens Nudge tree density plot
 #' @param width_out Width of tree outcome plot (see ggparty for details)
@@ -61,8 +57,8 @@ globalVariables(c("Rules", "est", "LCL", "UCL", "PLE", "label", "N", "estimand",
 
 
 plot.PRISM = function(x, type="tree", target=NULL, grid.data=NULL, grid.thres=">0",
-                      tree.thres=NULL,
-                      est.resamp=TRUE, tree.plots="outcome",
+                      prob.thres=NULL,
+                      tree.plots="outcome",
                       nudge_out=0.1, width_out=0.5,
                       nudge_dens=ifelse(tree.plots=="both", 0.3, 0.1),
                       width_dens=0.5, ...) {
@@ -84,64 +80,28 @@ plot.PRISM = function(x, type="tree", target=NULL, grid.data=NULL, grid.thres=">
     return(res)
   }
   # Default Setup #
+  x <- default_trt_plots(obj=x)
   param.dat <- x$param.dat
-  param.dat$est0 <- param.dat$est
-  param.dat$SE0 <- param.dat$SE
-  param.dat$LCL0 <- param.dat$LCL
-  param.dat$UCL0 <- param.dat$UCL
-  param.dat$prob.est <- param.dat$`Prob(>0)`
   resample <- ifelse(is.null(x$resample), "None", x$resample)
   bayes <- ifelse(is.null(x$bayes.fun), FALSE, TRUE)
-  label.param <- ""
-  if (est.resamp & (resample %in% c("Bootstrap", "CV"))) {
-    if (resample=="Bootstrap" & is.null(param.dat$LCL.calib)) {
-      param.dat$est0 <- param.dat$est_resamp
-      param.dat$SE0 <- param.dat$SE_resamp
-      param.dat$LCL0 <- param.dat$LCL.pct
-      param.dat$UCL0 <- param.dat$UCL.pct
-      label.param <- "(Boot,Pct)"
-    }
-    if (resample=="Bootstrap" & !is.null(param.dat$LCL.calib)) {
-      param.dat$SE0 <- param.dat$SE_resamp
-      param.dat$LCL0 <- param.dat$LCL.calib
-      param.dat$UCL0 <- param.dat$UCL.calib
-      label.param <- "(Boot,Calib)"
-    }
-    if (resample=="CV"){
-      param.dat$est0 <- param.dat$est_resamp
-      param.dat$LCL0 <- param.dat$LCL.CV
-      param.dat$UCL0 = param.dat$UCL.CV
-      label.param <- "(CV)"
-    }
-  }
-  if (x$family=="survival") {
-    if (x$param=="cox") {
-      param.dat$est0 = exp(param.dat$est0)
-      param.dat$LCL0 = exp(param.dat$LCL0)
-      param.dat$UCL0 = exp(param.dat$UCL0)
-      param.dat$estimand = gsub("logHR", "HR", param.dat$estimand)
-      param.dat$prob.est = 1-param.dat$`Prob(>0)`
-    }
-  }
-  x$param.dat <- param.dat
-  
+ 
   if (type=="tree" & length(unique(x$out.train$Subgrps))==1) {
     type = "forest"
   }
   if (type=="tree"){
-    if (!is.null(tree.thres)) {
-      thres.name <- paste("Prob(",tree.thres, ")", sep="")
-      x2 <- prob_calculator(x, thres=tree.thres)
+    if (!is.null(prob.thres)) {
+      thres.name <- paste("Prob(",prob.thres, ")", sep="")
+      x2 <- prob_calculator(x, thres=prob.thres)
     }
-    if (is.null(tree.thres)) {
+    if (is.null(prob.thres)) {
       x2 <- x
-      tree.thres <- ifelse(x2$param=="cox", "<1", ">0")
+      prob.thres <- ifelse(x2$param=="cox", "<1", ">0")
     }
     cls <- class(x2$submod.fit$mod)
     if ("party" %in% cls) {
       # print(x2$param.dat)
-      res <- do.call("plot_ggparty", list(object=x2, plots=tree.plots,
-                                       prob.thres = tree.thres,
+      res <- do.call("plot_tree", list(object=x2, plots=tree.plots,
+                                       prob.thres = prob.thres,
                                        nudge_out=nudge_out, width_out=width_out,
                                        nudge_dens=nudge_dens, width_dens=width_dens))
     }

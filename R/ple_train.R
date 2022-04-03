@@ -88,7 +88,7 @@
 #' @seealso \code{\link{PRISM}}
 #'
 ## To DO: T-Learner, S-Learner, S-Learner (VT) ##
-ple_train = function(Y, A, X, Xtest=NULL, family="gaussian", propensity=FALSE,
+ple_train <- function(Y, A, X, Xtest=NULL, family="gaussian", propensity=FALSE,
                      ple="ranger", 
                      meta=ifelse(family=="survival", "T-learner", "X-learner"), 
                      hyper=NULL, tau=NULL, ...) {
@@ -99,7 +99,7 @@ ple_train = function(Y, A, X, Xtest=NULL, family="gaussian", propensity=FALSE,
     ple <- paste("ple", ple, sep="_") 
   }
   # Check family #
-  if (is.Surv(Y) & family!="survival") {
+  if (survival::is.Surv(Y) & family!="survival") {
     family <- "survival"
   }
   # Check survival / X-learner #

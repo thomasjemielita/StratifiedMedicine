@@ -473,6 +473,7 @@ submod_otr <- function(Y, A, X, mu_train, alpha=0.10,
   ## Set up data ##
   mu_train$PLE <- mu_train[[ple_name]]
   ind_PLE <- eval(parse(text=paste("ifelse(mu_train$PLE", delta, ", 1, 0)")))
+
   # Threshold as numeric #
   delta.num <- substr(delta, 2, nchar(delta))
   if (suppressWarnings(is.na(as.numeric(delta.num)))) {
@@ -480,6 +481,7 @@ submod_otr <- function(Y, A, X, mu_train, alpha=0.10,
   }
   delta.num <- as.numeric(delta.num)
   w_PLE <- abs(mu_train$PLE - delta.num)
+  w_PLE <- w_PLE / mean(w_PLE)
   hold <- data.frame(ind_PLE, X)
   # Fit Model #
   mod <- suppressWarnings(partykit::ctree(ind_PLE ~ ., data = hold, weights = w_PLE,

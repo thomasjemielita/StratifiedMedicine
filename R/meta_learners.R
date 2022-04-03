@@ -6,31 +6,37 @@ T_learner <- function(Y, A, X, Xtest, family, ple, hyper, pfit, tau=NULL, ...) {
   n_tr <- dim(X)[1]
   n_ts <- dim(Xfull)[1]
   ids_tr <- 1:nrow(X)
+  null_Xtest <- ifelse(is.null(Xtest), TRUE, FALSE)
   
   fit_learner <- function(a) {
+    
     fit <- do.call(ple, append(list(Y=Y[A==a], X=X[A==a,], 
                                     Xtest = Xfull,
                                     family=family), hyper))
+    # Test #
+    if (is.null(fit$mu_test)) {
+      mu_ts <- fit$pred.fun(fit$mod, Xfull, tau=tau)
+    }
+    if (!is.null(fit$mu_test)) {
+      mu_ts <- fit$mu_test
+    }
+    # Replace Test Preds with Train Preds (useful for rf models with oob preds) #
     if (!is.null(fit$mu_train)) {
       mu_tr <- data.frame(ids = ids_tr[A==a], mu_a = fit$mu_train)
-      if (is.null(fit$mu_test)) {
-        mu_ts <- fit$pred.fun(fit$mod, Xfull[A!=a,], tau=tau)
-      }
-      if (!is.null(fit$mu_test)) {
-        mu_ts <- fit$mu_test[A!=a]
-      } 
-      mu_ts <- data.frame(ids = ids_tr[A!=a], mu_a = mu_ts)
-      mu_dat <- rbind(mu_tr, mu_ts)
+      mu_ts1 <- mu_ts[1:n_tr]
+      mu_ts1 <- data.frame(ids = ids_tr[A!=a], mu_a = mu_ts1[A!=a])
+      mu_dat <- rbind(mu_tr, mu_ts1)
       mu_dat <- mu_dat[order(mu_dat$ids),]
       mu_a <- mu_dat$mu_a
+      if (!null_Xtest) {
+        mu_a <- c(mu_a, mu_ts[(n_tr+1):n_ts])
+      }
     }
     if (is.null(fit$mu_train)) {
-      if (is.null(fit$mu_test)) {
-        mu_a <- fit$pred.fun(fit$mod, Xfull, tau=tau)
+      mu_a <- mu_ts
+      if (is.null(Xtest)) {
+        
       }
-      if (!is.null(fit$mu_test)) {
-        mu_a <- fit$mu_test
-      } 
     }
     
     return(list(fit=fit, mu_a=mu_a))
@@ -54,7 +60,7 @@ T_learner <- function(Y, A, X, Xtest, family, ple, hyper, pfit, tau=NULL, ...) {
   n_tr <- dim(X)[1]
   n_ts <- dim(Xfull)[1]
   mu_train <- mu_hat[1:n_tr,]
-  mu_test <- if (!is.null(Xtest)) mu_hat[(n_tr+1):n_ts,] else NULL
+  mu_test <- if (!null_Xtest) mu_hat[(n_tr+1):n_ts,] else NULL
   
   pred.fun <- function(fit, X, tau=NULL) {
     fit0 <- fit$fit0
@@ -135,13 +141,19 @@ X_learner <- function(Y, A, X, Xtest, family, ple, hyper, pfit, tau=NULL, ...) {
   next_learner <- function(aa) {
     aa_name <- paste("mu", aa, sep="_")
     ref_name <- paste("mu", A_lvls[1], sep="_")
-    if (is.Surv(Y)) { Y <- Y[,1]; }
+    if (survival::is.Surv(Y)) { Y <- Y[,1]; }
     imp_aa <- (Y[A==aa]-mu_tr[ref_name])[,1]
     imp_ref <- (mu_tr[aa_name]-Y[A==A_lvls[1]])[,1]
     fit_aa <- do.call(ple, append(list(Y=imp_aa, X=X, Xtest=Xtest,
                                        family="gaussian"), hyper))
     fit_ref <- do.call(ple, append(list(Y=imp_ref, X=X, Xtest=Xtest,
                                         family="gaussian"), hyper))
+    if (is.null(fit_aa$mu_train)) {
+      fit_aa$mu_train <- fit_aa$pred.fun(fit_aa$mod, X=data.frame(X), tau=tau)
+    }
+    if (is.null(fit_ref$mu_train)) {
+      fit_ref$mu_train <- fit_ref$pred.fun(fit_ref$mod, X=data.frame(X), tau=tau)
+    }
     fit <- list(fit_aa=fit_aa, fit_ref=fit_ref)
     return(fit)
   }

@@ -9,6 +9,7 @@ PRISM(
   A = NULL,
   X,
   Xtest = NULL,
+  mu_train = NULL,
   family = "gaussian",
   filter = "glmnet",
   ple = "ranger",
@@ -25,17 +26,20 @@ PRISM(
   ple.hyper = NULL,
   submod.hyper = NULL,
   resample = NULL,
-  stratify = "trt",
+  stratify = ifelse(!is.null(A), "trt", "no"),
   R = NULL,
   resample_submod = NULL,
   R_submod = NULL,
+  resample_pool = NULL,
+  R_pool = NULL,
   calibrate = FALSE,
   alpha.mat = NULL,
   filter.resamp = NULL,
   ple.resamp = NULL,
   verbose = TRUE,
   verbose.resamp = FALSE,
-  seed = 777
+  seed = 777,
+  efficient = TRUE
 )
 }
 \arguments{
@@ -47,6 +51,9 @@ factor). "ple_train" accomodates >2 along with binary treatments.}
 \item{X}{Covariate space.}
 
 \item{Xtest}{Test set. Default is NULL (no test predictions). Variable types should match X.}
+
+\item{mu_train}{Patient-level estimates in training set (see \code{ple_train}). 
+Default=NULL}
 
 \item{family}{Outcome type. Options include "gaussion" (default), "binomial", and "survival".}
 
@@ -137,8 +144,12 @@ and R=5 for CV). This resamples the entire PRISM procedure.}
 \item{resample_submod}{For submod only, resampling method for treatment effect estimates.
 Options include "Bootstrap" or NULL (no resampling).}
 
-\item{R_submod}{For submod only, number of resamples for treatment effect estimates.
-Only applicable if resample_submod="Bootstrap" and/or pool="trteff_boot".}
+\item{R_submod}{Number of resamples for resample_submod}
+
+\item{resample_pool}{For submod only, resampling method for pooling step. 
+nly applicable if resample_submod="Bootstrap" and/or pool="trteff_boot".}
+
+\item{R_pool}{Number of resamples for resample_pool}
 
 \item{calibrate}{Bootstrap calibration for nominal alpha (Loh et al 2016).
 Default=FALSE. For TRUE, outputs the calibrated alpha level and calibrated 
@@ -163,6 +174,9 @@ and instead the original model estimates are resampled (less computationally
 \item{verbose.resamp}{Output iterations during resampling? Default=FALSE}
 
 \item{seed}{Seed for PRISM run (Default=777)}
+
+\item{efficient}{If TRUE (default for PRISM), then models (filter, ple, submod) will 
+store reduced set of outputs for faster speed.}
 }
 \value{
 Trained PRISM object. Includes filter, ple, submod, and param outputs.
@@ -177,7 +191,7 @@ Trained PRISM object. Includes filter, ple, submod, and param outputs.
   \item out.test - Test data-set with identified subgroups
   \item Rules - Subgroup rules / definitions
   \item param.dat - Parameter estimates and variablity metrics (depends on param)
-  \item resamp.dist - Resampling distributions (NULL if no resampling is done)
+  \item resamp_dist - Resampling distributions (NULL if no resampling is done)
 }
 }
 \description{
@@ -277,7 +291,7 @@ library(ggplot2)
   # Plot of distributions and P(est>0) #
   plot(res_boot, type="resample", estimand = "E(Y|A=1)-E(Y|A=0)")+
   geom_vline(xintercept = 0)
-  aggregate(I(est>0)~Subgrps, data=res_boot$resamp.dist, FUN="mean")
+  aggregate(I(est>0)~Subgrps, data=res_boot$resamp_dist, FUN="mean")
 }
 
 ## Examples: Binary Outcome ##
@@ -312,17 +326,17 @@ plot(res0)
   plot(res_weib, type="PLE:waterfall")
   plot(res_weib)
   
-  # PRISM: glmnet ==> Random Forest to estimate Treatment-Specific RMST
-  # ==> OTR (CTREE, uses RMST estimates as input) ==> Cox for HRs #
-  res_otr = PRISM(Y=Y, A=A, X=X)
-  plot(res_otr)
+  #PRISM: glmnet ==> Random Forest to estimate Treatment-Specific RMST
+  #RPART_CATE: Regress RMST on RPART for subgroups #
+  res_cate = PRISM(Y=Y, A=A, X=X, submod="rpart_cate")
+  plot(res_cate)
 
   # PRISM: ENET ==> CTREE ==> Cox; with bootstrap #
   res_ctree1 = PRISM(Y=Y, A=A, X=X, ple="None", submod = "ctree",
                      resample="Bootstrap", R=50, verbose.resamp = TRUE)
   plot(res_ctree1)
   plot(res_ctree1, type="resample", estimand="HR(A=1 vs A=0)")+geom_vline(xintercept = 1)
-  aggregate(I(est<0)~Subgrps, data=res_ctree1$resamp.dist, FUN="mean")
+  aggregate(I(est<0)~Subgrps, data=res_ctree1$resamp_dist, FUN="mean")
 }
 
 }

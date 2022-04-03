@@ -53,7 +53,7 @@
     trt_assign <- dplyr::left_join(trt_assign, 
                                    trt_eff_pool[,c("Subgrps", "dopt")], 
                                    by=c("Subgrps"))
-    trt_eff_pool$type <- "trteff"
+    trt_eff_pool$type <- pool
     
   }
   # OTR Pooling #

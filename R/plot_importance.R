@@ -23,10 +23,10 @@
 
 plot_importance <- function(object, top_n=NULL, ...) {
   
-  if (class(object)=="filter_train") {
+  if (inherits(object, "filter_train")) {
     filter.mod <- object$mod
   }
-  if (class(object)=="PRISM") {
+  if (inherits(object, "PRISM")) {
     filter.mod <- object$filter.mod
   }
   if (object$filter=="filter_glmnet" | object$filter=="glmnet") { 

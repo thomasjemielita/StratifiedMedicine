@@ -85,7 +85,7 @@
 #' Statistics in Medicine 2017. 
 #' @seealso \code{\link{PRISM}}
 #'
-filter_train = function(Y, A, X, family="gaussian", filter="glmnet", hyper=NULL, ...) {
+filter_train <- function(Y, A, X, family="gaussian", filter="glmnet", hyper=NULL, ...) {
   
   if (filter %in% c("glmnet", "ranger")) {
     filter <- paste("filter", filter, sep="_")

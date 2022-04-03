@@ -51,7 +51,7 @@
 #'
 #' @seealso \code{\link{param_combine}}
 #' 
-param_est = function(Y, A, X, param, mu_hat=NULL, Subgrps, 
+param_est <- function(Y, A, X, param, mu_hat=NULL, Subgrps, 
                      alpha_ovrl=0.05, alpha_s=0.05, combine="SS",...) {
   
   if (param %in% c("lm", "ple", "gcomp", "dr", "rmst", "cox", "aft")) {

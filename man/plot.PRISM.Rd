@@ -10,8 +10,7 @@
   target = NULL,
   grid.data = NULL,
   grid.thres = ">0",
-  tree.thres = NULL,
-  est.resamp = TRUE,
+  prob.thres = NULL,
   tree.plots = "outcome",
   nudge_out = 0.1,
   width_out = 0.5,
@@ -43,16 +42,11 @@ be continuous). This is required for type="heatmap". Default=NULL.}
 type="heatmap". Default is ">0". Direction can be reversed and can include equality
 sign (ex: "<=").}
 
-\item{tree.thres}{Probability threshold, ex: P(Mean(A=1 vs A=0)>c. Default=NULL, 
+\item{prob.thres}{Probability threshold, ex: P(Mean(A=1 vs A=0)>c. Default=NULL, 
 which defaults to using ">0", unless param="cox", which  "P(HR(A=1 vs A=0))<1". 
-If a density plot is included, setting tree.thres=">c" will use green colors 
-for values above c, and red colors for values below c. If tree.thres="<c", the 
+If a density plot is included, setting prob.thres=">c" will use green colors 
+for values above c, and red colors for values below c. If prob.thres="<c", the 
 reverse color scheme is used.}
-
-\item{est.resamp}{Should plot present resampling based estimates? Default=TRUE if 
-bootstrap or CV  based resampling is used. Only applicable for type="submod". 
-If bootstrap calibration is used, calibrated CIs are presented. If no calibration,
-then percentile Cis are presented with the smoothed bootstrap point-estimates.}
 
 \item{tree.plots}{Type of plots to include in each node of the "tree" plot. Default="outcome". 
 For non-survival data, if the fitted PRISM object (x) does not include patient-level 

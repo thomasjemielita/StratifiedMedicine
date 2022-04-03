@@ -1,6 +1,6 @@
 ### Resampling ###
 plot_resample <- function(x, target=NULL) {
-  plot.dat = x$resamp.dist
+  plot.dat = x$resamp_dist
   if (is.null(x$Rules)) {
     plot.dat$Rules = ifelse(plot.dat$Subgrps=="ovrl", "Overall",
                             as.character(plot.dat$Subgrps))
@@ -23,8 +23,8 @@ plot_resample <- function(x, target=NULL) {
     plot.dat$estimand = "HR(A=1 vs A=0)" 
     t_name <- "HR(A=1 vs A=0)"
   }
-  res = ggplot2::ggplot(plot.dat, ggplot2::aes(est)) + 
-    ggplot2::geom_density() +
+  res = ggplot2::ggplot(plot.dat, ggplot2::aes(est, fill=Rules)) + 
+    ggplot2::geom_density(alpha=0.30) +
     ggplot2::xlab( paste("Bootstrap Estimates:", t_name)  ) +
     ggplot2::facet_wrap(~Rules) +
     ggplot2::ggtitle("Bootstrap Distribution of Overall/Subgroup Estimates")+

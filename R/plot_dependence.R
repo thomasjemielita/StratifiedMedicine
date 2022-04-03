@@ -41,10 +41,10 @@
 plot_dependence <- function(object, X=NULL, target=NULL, vars, 
                             grid.data=NULL, ...) {
   
-  if (class(object)=="PRISM") {
+  if (inherits(object, "PRISM")) {
     out.train <- object$out.train
   }
-  if (class(object)=="ple_train") {
+  if (inherits(object, "ple_train")) {
     if (is.null(X)) {
       stop("Must supply covariate data (X)")
     }
@@ -161,10 +161,10 @@ plot_dependence <- function(object, X=NULL, target=NULL, vars,
 
   # Univariate (Marginal Effect) #
   if (numb_vars==1) {
-    if (class(object)=="PRISM") {
+    if (inherits(object, "PRISM")) {
       grid.ple = predict(object, newdata = X.grid, type="ple")
     }
-    if (class(object)=="ple_train") {
+    if (inherits(object, "ple_train")) {
       grid.ple = predict(object, newdata = X.grid) 
     }
     y.label <- paste("Estimates:", ple.label)

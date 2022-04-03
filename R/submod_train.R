@@ -106,18 +106,24 @@
 #' @importFrom stats binomial
 #' @seealso \code{\link{PRISM}}
 #'
-submod_train = function(Y, A, X, Xtest=NULL, 
+submod_train <- function(Y, A, X, Xtest=NULL, 
                         mu_train=NULL,
-                        family="gaussian", submod, hyper=NULL, 
+                        family="gaussian", submod="lmtree", hyper=NULL,
                         ple = "ranger", ple.hyper=NULL,
                         meta = ifelse(family=="survival", "T-learner", "X-learner"),
                         propensity = FALSE,
                         pool="no", delta=">0", param=NULL,
-                        resample_submod = NULL,
-                        R_submod = 20,
+                        resample = NULL,
+                        R = 20,
+                        resample_pool = NULL,
+                        R_pool = 20,
+                        stratify=ifelse(!is.null(A), "trt", "no"),
                         combine = "SS",
                         alpha_ovrl = 0.05, alpha_s = 0.05,
-                        verbose.resamp = FALSE, ...) {
+                        verbose.resamp = FALSE,
+                        efficient = FALSE, ...) {
+  
+  func_call <- match.call()
   
   # Convert Names #
   submod0 <- submod
@@ -140,136 +146,206 @@ submod_train = function(Y, A, X, Xtest=NULL,
       param <- "lm"
     }
   }
-  if (is.null(resample_submod) & pool=="trteff_boot") {
-    resample_submod <- "Bootstrap"
-  }
+
   cate_ind <- submod0 %in% c("rpart_cate", "ctree_cate")
   
-  list_args <- list(submod=submod, family=family,
-                    param=param,  hyper = hyper, delta = delta, 
-                    ple=ple, meta=meta, propensity=propensity, 
-                    ple.hyper=ple.hyper, cate_ind=cate_ind, 
-                    combine=combine, alpha_ovrl=alpha_ovrl,
-                    alpha_s=alpha_s)
+  list_args <- list(family = family, submod = submod, 
+                    hyper = hyper, 
+                    ple = ple, ple.hyper = ple.hyper,
+                    meta = meta, propensity = propensity,
+                    delta = delta, param = param,
+                    alpha_ovrl = alpha_ovrl, alpha_s = alpha_s,
+                    cate_ind = cate_ind, combine=combine, 
+                    pool = pool, resample_pool = resample_pool,
+                    R_pool = R_pool, verbose.resamp = verbose.resamp)
   
-  wrapper_submod <- function(Y, A, X, submod, mu_train, family,
+  reorder_subs <- function(trt_dat) {
+    trt_dat <- trt_dat[order(trt_dat$Subgrps),]
+    return(trt_dat)
+  }
+  
+  wrapper_submod <- function(Y, A, X, Xtest, submod, mu_train, family,
+                             param, hyper, delta, 
+                             ple, meta, propensity, ple.hyper, 
+                             cate_ind, combine, 
+                             alpha_ovrl, alpha_s, 
+                             pool, resample_pool,
+                             R_pool, verbose.resamp, ...) {
+    
+    # Initial Subgroups #
+    wrapper_init <- function(Y, A, X, Xtest=NULL, submod, mu_train, family,
                              param, hyper, delta, 
                              ple, meta, propensity, ple.hyper, cate_ind,
-                             combine, alpha_ovrl, alpha_s) {
-    
-    if (cate_ind) {
-     
-      if (is.null(mu_train)) {
-        ple_fit <- ple_train(Y=Y, A=A, X=X, family=family,
-                             ple=ple, meta=meta, propensity=propensity, 
-                             hyper = ple.hyper)
-        mu_train <- ple_fit$mu_train
+                             combine, alpha_ovrl, alpha_s, ...) {
+      
+      if (cate_ind | param=="dr") {
+        
+        if (is.null(mu_train)) {
+          ple_fit <- ple_train(Y=Y, A=A, X=X, family=family,
+                               ple=ple, meta=meta, propensity=propensity, 
+                               hyper = ple.hyper)
+          mu_train <- ple_fit$mu_train
+        }
+        ple_name <- colnames(mu_train)[grepl("diff", colnames(mu_train))]
+        ple_name <- ple_name[1]
+        Y_use <- mu_train[[ple_name]]
       }
-      ple_name <- colnames(mu_train)[grepl("diff", colnames(mu_train))]
-      ple_name <- ple_name[1]
-      Y_use <- mu_train[[ple_name]]
-    }
-    if (!cate_ind) {
-      Y_use <- Y
+      if (!cate_ind) {
+        Y_use <- Y
+      }
+      
+      submod_fn <- get(submod, envir = parent.frame())
+      
+      fit = do.call(submod_fn, append(list(Y=Y_use, A=A, X=X, mu_train=mu_train,
+                                           family=family, delta=delta), hyper))
+      
+      # Training Preds #
+      if (!is.null(fit$Subgrps.train)) {
+        Subgrps.train = fit$Subgrps.train
+        pred.train = fit$pred.train
+      }
+      if (is.null(fit$Subgrps.train)) {
+        out = fit$pred.fun(fit$mod, X=X)
+        Subgrps.train = out$Subgrps
+        pred.train = out$pred
+      }
+      # Test Preds #
+      if (!is.null(fit$Subgrps.test)) {
+        Subgrps.test <-fit$Subgrps.test
+      }
+      if (is.null(fit$Subgrps.test)) {
+        if (is.null(Xtest)) {
+          Subgrps.test <- NULL
+        }
+        if (!is.null(Xtest)) {
+          Subgrps.test <- NULL
+          if (!is.null(fit$pred.fun)) {
+            Subgrps.test = fit$pred.fun(fit$mod, X=Xtest)$Subgrps
+          }
+        }
+      }
+      fit$Subgrps <- fit$Subgrps.train <- as.character(Subgrps.train)
+      fit$Subgrps.test <- as.character(Subgrps.test)
+      fit$mu_train <- mu_train
+      fit$hyper <- hyper
+      fit$delta <- delta
+      
+      # Are there treatment estimates? #
+      if (is.null(fit$trt_eff)) {
+        trt_eff <- tryCatch(param_est(Y=Y, A=A, X=X, param=param,
+                                      mu_hat=mu_train, Subgrps=Subgrps.train,
+                                      alpha_ovrl=alpha_ovrl, alpha_s=alpha_s, 
+                                      combine=combine),
+                            error = function(e) paste("param error:", e) )
+        fit$trt_eff <- trt_eff
+        fit$param <- fit$param
+      }
+      
+      return(fit)
     }
     
-    submod_fn <- get(submod, envir = parent.frame())
+    fit <- do.call("wrapper_init", 
+                   append(list(Y=Y, A=A, X=X, Xtest=Xtest, mu_train=mu_train), list_args))
+    Subgrps.train <- fit$Subgrps.train
+    Subgrps.test <- fit$Subgrps.test
+    trt_eff_obs <- trt_eff <- reorder_subs(fit$trt_eff)
+    Rules = fit$Rules
     
-    fit = do.call(submod_fn, append(list(Y=Y_use, A=A, X=X, mu_train=mu_train,
-                                      family=family, delta=delta), hyper))
-    
-    # If prior predictions are made #
-    if (!is.null(fit$Subgrps.train)) {
-      Subgrps.train = fit$Subgrps.train
-      pred.train = fit$pred.train
-    }
-    # If no prior predictions are made #
-    if (is.null(fit$Subgrps.train)) {
-      out = fit$pred.fun(fit$mod, X=X)
-      Subgrps.train = out$Subgrps
-      pred.train = out$pred
-    }
-    fit$Subgrps <- as.character(Subgrps.train)
-    fit$mu_train <- mu_train
-    fit$hyper <- hyper
-    fit$delta <- delta
-    
-    # Are there treatment estimates? #
-    if (is.null(fit$trt_eff)) {
-      trt_eff <- tryCatch(param_est(Y=Y, A=A, X=X, param=param,
-                                    mu_hat=mu_train, Subgrps=Subgrps.train,
-                                    alpha_ovrl=alpha_ovrl, alpha_s=alpha_s, 
-                                    combine=combine),
-                          error = function(e) paste("param error:", e) )
-      fit$trt_eff <- trt_eff
-      fit$param <- fit$param
+    # Resampling: Trt Estimates #
+    resamp_dist <- NULL
+    if (pool=="trteff_boot") {
+      resample_pool <- "Bootstrap"
+      if (resample_pool=="Bootstrap") {
+        message(paste("Bootstrap Resampling (Internal Pooling); R=", R_pool, sep=""))
+        resamp_fit <- resampler_general(Y=Y, A=A, X=X, fit=fit, wrapper="wrapper_init",
+                                     list_args=list_args,  resample = "Bootstrap",
+                                     R=R_pool, stratify=stratify,
+                                     fixed_subs = "false", verbose=verbose.resamp)
+        resamp_dist <- resamp_fit$resamp_dist
+        fit$trt_eff <- resamp_fit$trt_eff_resamp
+        trt_eff <- reorder_subs(fit$trt_eff)
+      }
     }
     
-    return(fit)
+    # Pooling? #
+    trt_assign <- NULL
+    trt_eff_pool <- NULL
+    trt_eff_dopt <- NULL
+    
+    if (pool %in% c("trteff", "trteff_boot", "otr:logistic", "otr:rf")) {
+      pool_res <- .pooler(Y=Y, A=A, X=X, wrapper = "wrapper_submod",
+                          fit=fit, delta=delta, pool = pool, 
+                          alpha_ovrl = alpha_ovrl, alpha_s = alpha_s, 
+                          combine = combine)
+      trt_assign <- pool_res$trt_assign
+      trt_eff_pool <- reorder_subs(pool_res$trt_eff_pool)
+      trt_eff <- trt_eff_dopt <- reorder_subs(pool_res$trt_eff_dopt)
+      Subgrps.train <- trt_assign$dopt
+      if (!is.null(Subgrps.test)) {
+        subdat <- data.frame(Subgrps=as.character(Subgrps.test))
+        subdat <- suppressWarnings(left_join(subdat, unique(trt_assign), 
+                                             by="Subgrps"))
+        Subgrps.test <- subdat$dopt 
+      }
+    }
+    
+    res0 = list(fit = fit, Subgrps=Subgrps.train,
+                Subgrps.train=Subgrps.train, Subgrps.test=Subgrps.test, 
+                trt_assign = trt_assign, trt_eff = trt_eff, 
+                trt_eff_obs = trt_eff_obs, trt_eff_pool = trt_eff_pool,
+                trt_eff_dopt = trt_eff_dopt, Rules=Rules, resamp_dist_pool=resamp_dist)
+    return(res0)
   }
+  fit0 <- do.call("wrapper_submod", 
+                 append(list(Y=Y, A=A, X=X, Xtest=Xtest, mu_train=mu_train), list_args))
   
-  fit <- do.call("wrapper_submod", 
-                  append(list(Y=Y, A=A, X=X, mu_train=mu_train), list_args))
-  Subgrps.train <- fit$Subgrps
-
-  # Test Predictions #
-  if (!is.null(fit$Subgrps.test)) {
-    Subgrps.test <- as.character(fit$Subgrps.test)
-  }
-  if (is.null(fit$Subgrps.test)) {
-    if (is.null(Xtest)) {
-      Subgrps.test <- NULL
-    }
-    if (!is.null(Xtest)) {
-      Subgrps.test = as.character(fit$pred.fun(fit$mod, X=Xtest)$Subgrps)
-    }
-  }
-  Rules = fit$Rules
   
-  # Resampling: Trt Estimates #
+  # Final Resampling: Subgroup Stability / Trt Estimates #
   resamp_dist <- NULL
-  if (!is.null(resample_submod)) {
-    if (resample_submod=="Bootstrap") {
-      resamp_fit <- resampler_boot(Y=Y, A=A, X=X, fit=fit, wrapper="wrapper_submod",
-                                   list_args=list_args, R=R_submod, stratify="trt", 
+  resamp_subgrps <- NULL
+  trt_eff_resamp <- NULL
+  if (!is.null(resample)) {
+    if (resample=="Bootstrap") {
+      message(paste("Bootstrap Resampling (full submod_train process); R=", R, sep=""))
+      resamp_two <- resampler_general(Y=Y, A=A, X=X, fit=fit0, wrapper="wrapper_submod",
+                                   list_args=list_args, resample = "Bootstrap", 
+                                   R=R, stratify=stratify,
                                    fixed_subs = "false", verbose=verbose.resamp)
-      resamp_dist <- resamp_fit$boot_dist
-      fit$trt_eff0 <- fit$trt_eff
-      fit$trt_eff <- resamp_fit$boot_trt_eff
+      resamp_subgrps <- resamp_two$resamp_subgrps
+      resamp_dist <- resamp_two$resamp_dist
+      trt_eff_resamp <- reorder_subs(resamp_two$trt_eff_resamp)
+      trt_eff_resamp <- trt_eff_resamp[,c("Subgrps", "N", "estimand", "est", "SE",
+                                      "LCL", "UCL", "alpha")]
+      fit0$trt_eff <- trt_eff_resamp
     }
   }
   
-  # Pooling? #
-  trt_assign <- NULL
-  trt_eff_pool <- NULL
-  trt_eff_dopt <- NULL
   
-  if (pool %in% c("trteff", "trteff_boot", "otr:logistic", "otr:rf")) {
-    pool_res <- .pooler(Y=Y, A=A, X=X, wrapper = "wrapper_submod",
-                       fit=fit, delta=delta, pool = pool, 
-                       alpha_ovrl = alpha_ovrl, alpha_s = alpha_s, 
-                       combine = combine)
-    trt_assign <- pool_res$trt_assign
-    trt_eff_pool <- pool_res$trt_eff_pool
-    trt_eff_dopt <- pool_res$trt_eff_dopt
-    # Set training subgroups (dopt) #
-    Subgrps.train <- trt_assign$dopt
-    # Set test subgroups (dopt) #
-    if (!is.null(Subgrps.test)) {
-      subdat <- data.frame(Subgrps=as.character(Subgrps.test))
-      subdat <- suppressWarnings(left_join(subdat, unique(trt_assign), 
-                                           by="Subgrps"))
-      Subgrps.test <- subdat$dopt 
+  # Output final list #
+  res <- append(list(submod_call = func_call), fit0)
+  res <- append(res, list(resamp_subgrps=resamp_subgrps, 
+                          resamp_dist=resamp_dist, 
+                          trt_eff_resamp = trt_eff_resamp,
+                          list_args = list_args))
+  if (!efficient) {
+    if (is.null(A)) {
+      out.train <- data.frame(Y, X, Subgrps=res$Subgrps.train)
     }
+    if (!is.null(A)) {
+      out.train <- data.frame(Y, A, X, Subgrps=res$Subgrps.train)
+    }
+    if (is.null(Xtest)) { 
+      out.test <- NULL
+    } 
+    else { 
+      out.test <- data.frame(Xtest, Subgrps=res$Subgrps.test) 
+    }
+    res <- append(res, list(out.train = out.train, out.test=out.test))
   }
   
-  res = list(fit = fit, Subgrps.train=Subgrps.train, Subgrps.test=Subgrps.test, 
-             trt_assign = trt_assign, trt_eff_pool = trt_eff_pool,
-             trt_eff_dopt = trt_eff_dopt, Rules=Rules, resamp_dist=resamp_dist)
   class(res) = "submod_train"
   return(res)
 }
-
 #' Subgroup Identification: Train Model (Predictions)
 #'
 #' Prediction function for the trained subgroup identification model (submod).
@@ -308,4 +384,29 @@ predict.submod_train = function(object, newdata=NULL, ...){
   preds = object$fit$pred.fun(object$fit$mod, newdata)
   ## Return Results ##
   return(  list(Subgrps=preds$Subgrps, pred=preds$pred) )
+}
+#' Subgroup Identification (Summary)
+#'
+#' Summary for subgroup identification function. 
+#'
+#' @param object Trained submod_train model.
+#' @param round_est Rounding for trt ests (default=4)
+#' @param round_SE Rounding for trt SEs (default=4)
+#' @param round_CI Rounding for trt CIs (default=4)
+#' @param ... Any additional parameters, not currently passed through.
+#'
+#' @return List of key outputs (1) Number of Identified Subgroups, and (2) Treatment effect estimates, 
+#' SEs, and CIs for each subgroup/estimand
+#' 
+#' @method summary submod_train
+#' @export
+#' 
+summary.submod_train = function(object, round_est=4,
+                                round_SE=4, round_CI=4,...){
+  
+  out <- summary_output_submod(object=object, round_est=round_est,
+                               round_SE=round_SE, round_CI=round_CI)
+  
+  class(out) <- "summary.submod_train"
+  return(out)
 }

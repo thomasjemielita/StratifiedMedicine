@@ -4,10 +4,16 @@
 \alias{summary.PRISM}
 \title{PRISM: Patient Response Identifier for Stratified Medicine (Summary)}
 \usage{
-\method{summary}{PRISM}(object, ...)
+\method{summary}{PRISM}(object, round_est = 4, round_SE = 4, round_CI = 4, ...)
 }
 \arguments{
 \item{object}{Trained PRISM model.}
+
+\item{round_est}{Rounding for trt ests (default=4)}
+
+\item{round_SE}{Rounding for trt SEs (default=4)}
+
+\item{round_CI}{Rounding for trt CIs (default=4)}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
@@ -17,6 +23,6 @@ List of key PRISM outputs: (1) Configuration, (2) Variables that pass filter
 SEs, and CIs for each subgroup/estimand
 }
 \description{
-Predictions for PRISM algorithm. Given the training set (Y,A,X) or new test set (Xtest),
-output ple predictions and identified subgroups with correspond parameter estimates.
+Summary for PRISM algorithm results. Outputs configuration, which variables pass the filter (if used),
+subgroup summaries, and treatment effect estimates.
 }

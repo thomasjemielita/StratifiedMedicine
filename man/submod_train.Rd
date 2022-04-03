@@ -11,7 +11,7 @@ submod_train(
   Xtest = NULL,
   mu_train = NULL,
   family = "gaussian",
-  submod,
+  submod = "lmtree",
   hyper = NULL,
   ple = "ranger",
   ple.hyper = NULL,
@@ -20,12 +20,16 @@ submod_train(
   pool = "no",
   delta = ">0",
   param = NULL,
-  resample_submod = NULL,
-  R_submod = 20,
+  resample = NULL,
+  R = 20,
+  resample_pool = NULL,
+  R_pool = 20,
+  stratify = ifelse(!is.null(A), "trt", "no"),
   combine = "SS",
   alpha_ovrl = 0.05,
   alpha_s = 0.05,
   verbose.resamp = FALSE,
+  efficient = FALSE,
   ...
 )
 }
@@ -97,11 +101,21 @@ and "rmst" (RMST based estimates as in survRMST package). Default for "gaussian"
 "binomial" is "dr", while default for "survival" is "cox". Currently only available 
 for binary treatments or A=NULL.}
 
-\item{resample_submod}{For submod only, resampling method for treatment effect estimates.
-Options include "Bootstrap" or NULL (no resampling).}
+\item{resample}{Resampling method for resample-based treatment effect estimates 
+and variability metrics. Options include "Bootstrap" and 
+"CV" (cross-validation). Default=NULL (No resampling).}
 
-\item{R_submod}{For submod only, number of resamples for treatment effect estimates.
-Only applicable if resample_submod="Bootstrap" and/or pool="trteff_boot".}
+\item{R}{Number of resamples (default=NULL; R=100 for Permutation/Bootstrap 
+and R=5 for CV). This resamples the entire PRISM procedure.}
+
+\item{resample_pool}{For submod only, resampling method for pooling step. 
+nly applicable if resample_submod="Bootstrap" and/or pool="trteff_boot".}
+
+\item{R_pool}{Number of resamples for resample_pool}
+
+\item{stratify}{Stratified resampling? Default="trt" (stratify by A). Other
+options include "sub" (stratify by the identified subgroups), "trt_sub" 
+(stratify by A and the identified subgroups), and "no" (no stratification).}
 
 \item{combine}{Method of combining group-specific point-estimates. Options 
 include "SS" (sample size weighting), and "maxZ" 
@@ -114,6 +128,9 @@ the overall population treatment effect estimate.}
 \item{alpha_s}{Two-sided alpha level at subgroup level. Default=0.05}
 
 \item{verbose.resamp}{Output iterations during resampling? Default=FALSE}
+
+\item{efficient}{If TRUE (default for PRISM), then models (filter, ple, submod) will 
+store reduced set of outputs for faster speed.}
 
 \item{...}{Any additional parameters, not currently passed through.}
 }
