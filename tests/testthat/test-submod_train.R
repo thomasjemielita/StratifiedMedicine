@@ -60,6 +60,7 @@ test_that("Test whether submod_train works (ctns)", {
   
   ind_PLE <- ifelse(mu_train$diff_1_0 > 0.10, 1, 0)
   w_PLE <- abs(mu_train$diff_1_0 - 0.10)
+  w_PLE <- w_PLE / mean(w_PLE)
   hold <- data.frame(ind_PLE, X)
   sub4 <- ctree(ind_PLE ~ ., data = hold, weights = w_PLE, 
                control = partykit::ctree_control(alpha=0.10, 
@@ -146,6 +147,7 @@ test_that("Test whether submod_train works (binomial)", {
   
   ind_PLE <- ifelse(mu_train$diff_1_0 > 0.02, 1, 0)
   w_PLE <- abs(mu_train$diff_1_0 - 0.02)
+  w_PLE <- w_PLE / mean(w_PLE)
   hold <- data.frame(ind_PLE, X)
   sub4 <- ctree(ind_PLE ~ ., data = hold, weights = w_PLE, 
                 control = partykit::ctree_control(alpha=0.10, 
@@ -259,6 +261,7 @@ test_that("Test whether submod_train works (survival)", {
   
   ind_PLE <- ifelse(mu_train$diff_1_0 > 50, 1, 0)
   w_PLE <- abs(mu_train$diff_1_0 - 50)
+  w_PLE <- w_PLE / mean(w_PLE)
   hold <- data.frame(ind_PLE, X)
   sub4 <- ctree(ind_PLE ~ ., data = hold, weights = w_PLE, 
                 control = partykit::ctree_control(alpha=0.10, 

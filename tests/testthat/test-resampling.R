@@ -10,11 +10,11 @@ test_that("Test different resampling approaches (continuous)", {
   
   # ### Bootstrap ###
   res0 <- PRISM(Y, A, X, ple="None", param="lm", resample="Bootstrap", R=50)
-  test0 = ifelse( is.null(res0$resamp.dist), 0, 1)
-
+  test0 = ifelse( is.null(res0$resamp_dist), 0, 1)
+  
   ### Cross-Validation ###
   res1 <- PRISM(Y, A, X, ple="None", param="lm", resample="CV")
-  test1 = ifelse( is.null(res1$resamp.dist), 0, 1)
+  test1 = ifelse( is.null(res1$resamp_dist), 0, 1)
 
   tests_ctns = ifelse( sum(test0,test1)==2, 1, 0)
 
@@ -38,11 +38,11 @@ test_that("Test different resampling approaches (survival)", {
   
   ### Bootstrap ###
   res0 <- PRISM(Y, A, X, resample="Bootstrap", R=50, ple="None")
-  test0 = ifelse( is.null(res0$resamp.dist), 0, 1)
+  test0 = ifelse( is.null(res0$resamp_dist), 0, 1)
   
   ### Cross-Validation ###
   res1 <- PRISM(Y, A, X, resample="CV", ple="None")
-  test1 = ifelse( is.null(res1$resamp.dist), 0, 1)
+  test1 = ifelse( is.null(res1$resamp_dist), 0, 1)
   
   tests_surv = ifelse( sum(test0,test1)==2, 1, 0)
   

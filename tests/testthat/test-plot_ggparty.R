@@ -62,10 +62,10 @@ test_that("Test whether plot_ggparty works (ctns)", {
   
   p1_est <- res1$param.dat
   p1_est <- p1_est[p1_est$Subgrps!="ovrl",]
-  p1_est$label <- with(p1_est, paste( sprintf("%.2f", round(est_resamp,2)),
+  p1_est$label <- with(p1_est, paste( sprintf("%.2f", round(est,2)),
                                       " [",
-                                      sprintf("%.2f", round(LCL.pct,2)), ",",
-                                      sprintf("%.2f", round(UCL.pct,2)), "]", sep=""))
+                                      sprintf("%.2f", round(LCL,2)), ",",
+                                      sprintf("%.2f", round(UCL,2)), "]", sep=""))
   p1_est$prob.est <- with(p1_est, sprintf("%.2f", round(`Prob(>0)`,2)))
   
   p1 <- plot(res1, type="tree", tree.plots = "density")
@@ -90,7 +90,7 @@ test_that("Test whether plot_ggparty works (ctns)", {
   for (s in unique(p1_check$Subgrps)) {
     
     plot.s <- p1$data$info_list[[as.numeric(s)]]$dat.dens
-    hold.s = res1$resamp.dist[res1$resamp.dist$Subgrps==s,]
+    hold.s = res1$resamp_dist[res1$resamp_dist$Subgrps==s,]
     dat.s = with(density(hold.s$est, na.rm=T), data.frame(x, y))
     hold <- data.frame(plot.s, dat.s)
     p1_densdat <- rbind(hold, p1_densdat)
@@ -176,10 +176,10 @@ test_that("Test whether plot_ggparty works (binomial)", {
   
   p1_est <- res1$param.dat
   p1_est <- p1_est[p1_est$Subgrps!="ovrl",]
-  p1_est$label <- with(p1_est, paste( sprintf("%.2f", round(est_resamp,2)),
+  p1_est$label <- with(p1_est, paste( sprintf("%.2f", round(est,2)),
                                       " [",
-                                      sprintf("%.2f", round(LCL.pct,2)), ",",
-                                      sprintf("%.2f", round(UCL.pct,2)), "]", sep=""))
+                                      sprintf("%.2f", round(LCL,2)), ",",
+                                      sprintf("%.2f", round(UCL,2)), "]", sep=""))
   p1_est$prob.est <- with(p1_est, sprintf("%.2f", round(`Prob(>0)`,2)))
   
   p1 <- plot(res1, type="tree", tree.plots = "density")
@@ -204,7 +204,7 @@ test_that("Test whether plot_ggparty works (binomial)", {
   for (s in unique(p1_check$Subgrps)) {
     
     plot.s <- p1$data$info_list[[as.numeric(s)]]$dat.dens
-    hold.s = res1$resamp.dist[res1$resamp.dist$Subgrps==s,]
+    hold.s = res1$resamp_dist[res1$resamp_dist$Subgrps==s,]
     dat.s = with(density(hold.s$est, na.rm=T), data.frame(x, y))
     hold <- data.frame(plot.s, dat.s)
     p1_densdat <- rbind(hold, p1_densdat)
@@ -304,10 +304,10 @@ test_that("Test whether plot_ggparty works (survival)", {
   
   p1_est <- res1$param.dat
   p1_est <- p1_est[p1_est$Subgrps!="ovrl",]
-  p1_est$label <- with(p1_est, paste( sprintf("%.2f", round(exp(est_resamp),2)),
+  p1_est$label <- with(p1_est, paste( sprintf("%.2f", round(exp(est),2)),
                                       " [",
-                                      sprintf("%.2f", round(exp(LCL.pct),2)), ",",
-                                      sprintf("%.2f", round(exp(UCL.pct),2)), "]", sep=""))
+                                      sprintf("%.2f", round(exp(LCL),2)), ",",
+                                      sprintf("%.2f", round(exp(UCL),2)), "]", sep=""))
   p1_est$prob.est <- with(p1_est, sprintf("%.2f", round(1-`Prob(>0)`,2)))
   
   p1 <- plot(res1, type="tree", tree.plots = "density")
@@ -332,7 +332,7 @@ test_that("Test whether plot_ggparty works (survival)", {
   for (s in unique(p1_check$Subgrps)) {
     
     plot.s <- p1$data$info_list[[as.numeric(s)]]$dat.dens
-    hold.s = res1$resamp.dist[res1$resamp.dist$Subgrps==s,]
+    hold.s = res1$resamp_dist[res1$resamp_dist$Subgrps==s,]
     dat.s = with(density(exp(hold.s$est), na.rm=T), data.frame(x, y))
     hold <- data.frame(plot.s, dat.s)
     p1_densdat <- rbind(hold, p1_densdat)

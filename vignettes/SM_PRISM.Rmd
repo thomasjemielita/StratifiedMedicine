@@ -22,7 +22,7 @@ Welcome to the StratifiedMedicine R package. The overall goal of this package is
 Currently, the main tools in this package area: (1) Filter Models (identify important variables and reduce input covariate space), (2) Patient-Level Estimate Models (using regression models, estimate counterfactual quantities, such as the conditional average treatment effect or CATE), (3) Subgroup Models (identify groups of patients using tree-based approaches),
 and (4) Parameter Estimation (across the identified subgroups), and (5) PRISM (Patient Response Identifiers for Stratified Medicine; combines tools 1-4). Development of this package is ongoing. 
 
-As a running example, consider a continuous outcome (ex: % change in tumor size) with a binary treatment (study drug vs standard of care). The estimand of interest is the average treatment effect, $\theta_0 = E(Y|A=1)-E(Y|A=0)$. First, we simulate continuous data where roughly 30\% of the patients receive no treatment-benefit for using $A=1$ vs $A=0$. Responders vs non-responders are defined by the continuous predictive covariates $X_1$ and $X_2$ for a total of four subgroups. Subgroup treatment effects are: $\theta_{1} = 0$ ($X_1 \leq 0, X_2 \leq 0$), $\theta_{2} = 0.25 (X_1 > 0, X_2 \leq 0)$, $\theta_{3} = 0.45 (X_1 \leq 0, X2 > 0$), $\theta_{4} = 0.65 (X_1>0, X_2>0)$.
+As a running example, consider a continuous outcome (ex: % change in tumor size) with a binary treatment (study treatment vs control). The estimand of interest is the average treatment effect, $\theta_0 = E(Y|A=1)-E(Y|A=0)$. First, we simulate continuous data where roughly 30\% of the patients receive no treatment-benefit for using $A=1$ vs $A=0$. Responders (should receive study treatment) vs non-responders (should receive control) are defined by the continuous predictive covariates $X_1$ and $X_2$ for a total of four subgroups. Subgroup treatment effects are: $\theta_{1} = 0$ ($X_1 \leq 0, X_2 \leq 0$), $\theta_{2} = 0.25 (X_1 > 0, X_2 \leq 0)$, $\theta_{3} = 0.45 (X_1 \leq 0, X2 > 0$), $\theta_{4} = 0.65 (X_1>0, X_2>0)$.
 
 ```{r sim_ctns, warning=FALSE, message=FALSE}
 library(ggplot2)
@@ -80,34 +80,28 @@ tree-based methods (ctree, lmtree, glmtree from partykit R package and rpart fro
 
 ```{r submod_train1, warning=FALSE, message=FALSE}
 res_s1 <- submod_train(Y, A, X, submod="lmtree")
-table(res_s1$Subgrps.train)
-plot(res_s1$fit$mod)
+summary(res_s1)
+plot_tree(res_s1)
 ```
 
-Another generic approach is "otr", which follows an outcome weighted learning approach. Here, we regress I(CATE>delta) ~ ctree(X) with weights=abs(CATE-delta) where CATE corresponds to estimates of E(Y|A=1,X)-E(Y|A=0,X). For survival endpoints, the treatment difference would correspond to either logHR or RMST. For the example below, we set the clinically meaningful threshold to 0.1 (delta=">0.10"). 
+At each node, "naive" treatment estimates are provided. Without some type of resampling or penalization, subgroup-specific estimates tend to be overly positive or negative, as the same data that trains the subgroup model is used for parameter estimation. Resampling methods, such as bootstrapping, can help mitigate biased treatment estimates (more details in later Sections). See the "resample" argument for more details. 
+
+Another generic approach is "rpart_cate", which corresponds to regressing CATE~rpart(X) where CATE corresponds to estimates of E(Y|A=1,X)-E(Y|A=0,X). For survival endpoints, the treatment difference would correspond to either logHR or RMST. For the example below, we set the clinically meaningful threshold to 0.1 (delta=">0.10"). 
 
 ```{r submod_train2, warning=FALSE, message=FALSE}
-res_s2 <- submod_train(Y, A, X,  mu_train=res_p2$mu_train, 
-                       submod="otr", delta=">0.10")
-plot(res_s2$fit$mod)
+res_s2 <- submod_train(Y, A, X,  mu_train=res_p2$mu_train, submod="rpart_cate")
+summary(res_s2)
 ```
 
 # Treatment Effect Estimation
 
-To facilitate treatment effect estimation across the identified subgroups, "StratifiedMedicine" currently includes the function "param_est." This includes param="lm", "dr", "gcomp", "cox", and "rmst" which correspond respectively to linear regression, the doubly robust estimator, average the patient-level estimates (G-computation), cox regresson, and RMST (as in survRM2 R package). Notably, if the subgroups are determined adaptively (for example through lmtree), without resampling corrections, point-estimates tend to be overly optimistic. We address this later.
+The "param" argument within "submod_train" and "PRISM" determines the method for treatment effect estimation across the identified subgroups. Options include param="lm", "dr", "gcomp", "cox", and "rmst" which correspond respectively to linear regression, the doubly robust estimator, average the patient-level estimates (G-computation), cox regresson, and RMST (as in survRM2 R package). Notably, if the subgroups are determined adaptively (for example through lmtree), without resampling corrections, point-estimates tend to be overly optimistic. Resampling-based methods are described later.
 
-Given a candidate set of subgroups, a simple approach is to fit linear regression models within each subgroup to obtain treatment effect estimates (A=1 vs A=0). See below.
+Given a candidate set of subgroups, a "naive" approach is to fit linear regression models within each subgroup to obtain treatment effect estimates (A=1 vs A=0). See below.
 
 ```{r param1, warning=FALSE, message=FALSE}
 param.dat1 <- param_est(Y, A, X, Subgrps = res_s1$Subgrps.train, param="lm")
 param.dat1
-```
-
-Alternatively, we may instead use the doubly-robust estimator, which combines the observed outcome (Y) and model estimates from "ple_train". This requires inputting model estimates (see "mu_hat"). See below:
-```{r param2, warning=FALSE, message=FALSE}
-param.dat2 <- param_est(Y, A, X, Subgrps = res_s1$Subgrps.train, 
-                        mu_hat = res_p1$mu_train, param="dr")
-param.dat2 %>% filter(estimand=="mu_1-mu_0")
 ```
 
 # PRISM: Patient Response Identifiers for Stratified Medicine
@@ -120,14 +114,11 @@ While the above tools individually can be useful, PRISM (Patient Response Identi
 
 2. **Patient-level estimate (ple)**: Estimate counterfactual patient-level quantities, for example the conditional average treatment effect (CATE), $\theta(x) = E(Y|X=x,A=1)-E(Y|X=x,A=0)$. These can be used in the subgroup model and/or parameter estimation.
 
-3. **Subgroup model (submod)**: Identify subgroups of patients with potentially varying treatment response.
+3. **Subgroup model (submod)**: Identify subgroups of patients with potentially varying treatment response. Based on initial subgroups (ex: tree nodes), we may also pool patients into "benefitting" and "non-benefitting" (see "pool" argument). With or without pooling, subgroup-specific treatment estimates and variability metrics are also provided. 
 
+4. **Resampling**: Repeat Steps 1-3 across $R$ resamples for improved statistical performance of subgroup-specific estimates.
 
-4. **Parameter estimation and inference (param)**: For the overall population and discovered subgroups, output point estimates and variability metrics. If the subgroups are determined adaptively, resampling is needed to avoid overly optimistic point estimates and to form CIs.
-
-5. **Resampling**: Repeat Steps 1-4 across $R$ non-parametric bootstrap resamplings to generate subgroup-specific parameter estimate bootstrap distributions. 
-
-Ultimately, PRISM provides information at the patient-level, the subgroup-level (if any), and the overall population. While there are defaults in place, the user can also input their own functions/model wrappers into the PRISM algorithm. We will demonstrate this later. PRISM can also be run without treatment assignment (A=NULL); in this setting, the focus is on finding subgroups based on prognostic effects. The below table describes default PRISM configurations for different family (gaussian, biomial, survival) and treatment (no treatment vs treatment) settings, including the associated estimands. Note that OLS refers to ordinary least squares (linear regression), GLM refers to generalized linear model, and MOB refers to model based partitioning (Zeileis, Hothorn, Hornik 2008; Seibold, Zeileis, Hothorn 2016). To summarise, default models include elastic net (Zou and Hastie 2005) for filtering, random forest ("ranger" R package) for patient-level /counterfactual estimation, and MOB (through "partykit" R package; lmtree, glmtree, and ctree (Hothorn, Hornik, Zeileis 2005)). When treatment assignment is provided, parameter estimation for continuous and binary outcomes uses the double-robust estimator (based on the patient-level estimates). For survival outcomes, the cox regression hazard ratio (HR) or RMST (from the survR2 package) is used.
+Ultimately, PRISM provides information at the patient-level and the subgroup-level (if any). While there are defaults in place, the user can also input their own functions/model wrappers into the PRISM algorithm. We will demonstrate this later. PRISM can also be run without treatment assignment (A=NULL); in this setting, the focus is on finding subgroups based on prognostic effects. The below table describes default PRISM configurations for different family (gaussian, biomial, survival) and treatment (no treatment vs treatment) settings, including the associated estimands. Note that OLS refers to ordinary least squares (linear regression), GLM refers to generalized linear model, and MOB refers to model based partitioning (Zeileis, Hothorn, Hornik 2008; Seibold, Zeileis, Hothorn 2016). To summarise, default models include elastic net (Zou and Hastie 2005) for filtering, random forest ("ranger" R package) for patient-level /counterfactual estimation, and MOB (through "partykit" R package; lmtree, glmtree, and ctree (Hothorn, Hornik, Zeileis 2005)). When treatment assignment is provided, parameter estimation for continuous and binary outcomes uses the double-robust estimator (based on the patient-level estimates). For survival outcomes, the cox regression hazard ratio (HR) or RMST (from the survR2 package) is used.
 
 ```{r table_steps, echo=FALSE}
 library(knitr)
@@ -179,7 +170,7 @@ res0 = PRISM(Y=Y, A=A, X=X)
 summary(res0)
 plot(res0) # same as plot(res0, type="tree")
 ```
-We can als0 directly look for prognostic effects by specifying omitting A (treatment) from PRISM:
+We can also directly look for prognostic effects by specifying omitting A (treatment) from PRISM (or submod_train):
 
 ```{r default_ctns_prog, warning=FALSE}
 # PRISM Default: filter_glmnet, ranger, ctree, param_lm #
@@ -190,9 +181,9 @@ summary(res_prog)
 
 Next, circling back to the first PRISM model with treatment included, let's review other core PRISM outputs. Results relating to the filter include "filter.mod" (model output) and "filter.vars" (variables that pass the filter). The "plot_importance" function can also be called:
 ```{r default_ctns_filter, include=FALSE}
-# elastic net model: loss by lambda #
+# Elastic net model: loss by lambda #
 plot(res0$filter.mod)
-## Variables that remain after filtering ##
+# Variables that remain after filtering #
 res0$filter.vars
 # All predictive variables (X1,X2) and prognostic variables (X3,X5, X7) remains.
 plot_importance(res0)
@@ -209,18 +200,7 @@ plot(res0$submod.fit$mod, terminal_panel = NULL)
 table(res0$out.train$Subgrps)
 table(res0$out.test$Subgrps)
 ```
-For any parameter estimation approache, subgroup-specific estimates tend to be overly positive or negative, as the same data that trains the subgroup model is used for parameter estimation. Resampling, such as bootstrapping, is generally perferred for "honest" treatment effect estimates (more details below). 
-
-For continuous and binary data, the default parameter estimation approach is param="dr" (double robust estimator). This approach incorporates regression estimates, which could potentially increase the efficiency of the point-estimate. Let $k=1,...,K$ index the $K$ identified subgroups with corresponding rules $S_1,...,S_K$. Next, let $E(Y|X=x,A=a) = \mu(x, a)$ correspond to the outcome regression model(s) with estimates $\hat{\mu}(x, a)$. These estimates come directly from the fitted PLE model(s), in this case, treatment-specific random forest models. Define the "pseudo-outcomes" as:
-
-$$ Y^{\star}_i = \frac{AY - (A-\hat{\pi}(x))\hat{\mu}(a=1,x)}{\hat{\pi}(x)} - \frac{(1-A)Y - (A-\hat{\pi}(x))\hat{\mu}(a=0,x)}{1-\hat{\pi}(x)}$$
-
-where $\pi(x)=P(A=1|X)$, or the treatment assignment probability for an individual. In a randomized controlled trial, this can be replaced by the marginal probability, $P(A=1|X)$. For each discovered subgroup ($k=1,...,K$), the treatment effect (or risk difference) and associated SE are then: can be estimated by averaging the patient-specific treatment effect estimates (PLEs):
-$$\hat{\theta}_k = \sum_{i \in S_k} Y^{\star}_i$$
-$$SE(\hat{\theta}_k) = \sqrt{  n_k ^ {-2} \sum_{i \in S_k} \left( Y^{\star}_i-\hat{\theta}(x_i) \right)^2} $$
-CIs can then be formed using Z-intervals. For example, a two-sided 95\% CI, $CI_{\alpha}(\hat{\theta}_{k}) = \left[\hat{\theta}_{k} \pm  1.96*SE(\hat{\theta}_k) \right]$
-
-Moving back to the PRISM outputs, for any of the provided "param" options, a key output is the object "param.dat". By default, "param.dat" contain point-estimates, standard errors, lower/upper confidence intervals (depends on alpha_s and alpha_ovrl) and p-values. This output feeds directly into previously shown default ("tree") plot.
+Lastly, the "param.dat" object contain point-estimates, standard errors, lower/upper confidence intervals and p-values. This output feeds directly into previously shown default ("tree") plot.
 ```{r default_ctns2}
 ## Overall/subgroup specific parameter estimates/inference
 res0$param.dat
@@ -229,11 +209,9 @@ res0$param.dat
 The hyper-parameters for the individual steps of PRISM can also be easily modified. For example, "glmnet" by default selects covariates based on "lambda.min", "ranger" requires nodes to contain at least 10% of the total observations, and "lmtree" requires nodes to contain at least 10% of the total observations. See below for a different set of hyper-parameters.
 
 ```{r default_hyper, eval=FALSE}
-# PRISM Default: glmnet, ranger, lmtree, dr #
-# Change hyper-parameters #
 res_new_hyper = PRISM(Y=Y, A=A, X=X, filter.hyper = list(lambda="lambda.1se"),
                       ple.hyper = list(min.node.pct=0.05), 
-                      submod.hyper = list(minsize=200), verbose=FALSE)
+                      submod.hyper = list(minsize=200, maxdepth=3), verbose=FALSE)
 summary(res_new_hyper)
 ```
 # Example: Binary Outcome with Binary Treatment
@@ -274,7 +252,7 @@ plot(res_weib)
 
 # Resampling
 
-Resampling methods are also a feature in PRISM. Bootstrap (resample="Bootstrap"), permutation (resample="Permutation"), and cross-validation (resample="CV") based-resampling are included. Resampling can be used for obtaining de-biased or "honest" subgroup estimates, inference, and/or probability statements. For each resampling method, the sampling mechanism can be stratified by the discovered subgroups (default: stratify=TRUE). To summarize:
+Resampling methods are also a feature in PRISM and submod_train. Bootstrap (resample="Bootstrap"), permutation (resample="Permutation"), and cross-validation (resample="CV") based-resampling are included. Resampling can be used for obtaining de-biased or "honest" subgroup estimates, inference, and/or probability statements. For each resampling method, the sampling mechanism can be stratified by the discovered subgroups and/or treatment (default: stratify="trt"). To summarize:
 
 **Bootstrap Resampling**
 
@@ -306,5 +284,5 @@ CV-based confidence intervals can then be formed, $\left[\hat{\theta}_{k,CV} \pm
 
 # Conclusion
 
-Overall, the StratifiedMedicine package contains a variety of tools ("filter_train", "ple_train", "submod_train", and "PRISM") and plotting features ("plot_dependence", "plot_importance", "plot_ple") for the exploration of heterogeneous treatment effects. Each tool is also customizable, allowing the user to plug-in specific models (for example, xgboost with built-in hyper-parameter tuning). More details on creating user-specific models can be found in the "User_Specific_Models_PRISM" vignette [User_Specific_Models](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_User_Models.html). The StratifiedMedicine R package will be continually updated and improved.
+Overall, the StratifiedMedicine package contains a variety of tools ("filter_train", "ple_train", "submod_train", and "PRISM") and plotting features ("plot_dependence", "plot_importance", "plot_ple", "plot_tree") for the exploration of heterogeneous treatment effects. Each tool is also customizable, allowing the user to plug-in specific models (for example, xgboost with built-in hyper-parameter tuning). More details on creating user-specific models can be found in the "User_Specific_Models_PRISM" vignette [User_Specific_Models](https://CRAN.R-project.org/package=StratifiedMedicine/vignettes/SM_User_Models.html). The StratifiedMedicine R package will be continually updated and improved.
 
